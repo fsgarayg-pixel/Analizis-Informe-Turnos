@@ -105,6 +105,7 @@ main{max-width:1240px;margin:0 auto;padding:18px 20px 40px}
 .rank .ct{font-family:var(--font-num);font-weight:600;font-size:15px;text-align:right}
 .rank .bar{grid-column:1/-1;height:8px;border-radius:3px;background:var(--soft);display:flex;overflow:hidden}
 .rank .bar i{display:block;height:100%}
+.rank .meta{grid-column:1/-1;font-size:12px;color:var(--muted);margin:-2px 0 2px}
 .rank li.on{background:var(--soft);box-shadow:inset 3px 0 0 var(--focus)}
 .empty{color:var(--muted);font-size:14px;padding:12px 0}
 
@@ -200,6 +201,32 @@ input[type=file]{display:none}
     <section class="panel"><h2>Por proceso</h2><p class="sub">Correctivo y preventivo</p><ul class="rank" id="rProceso"></ul></section>
     <section class="panel"><h2>Por turno</h2><p class="sub">Correctivo y preventivo</p><ul class="rank" id="rTurno"></ul></section>
   </div>
+
+  <section class="panel" aria-label="Análisis de fallas por máquina">
+    <div class="ph">
+      <div>
+        <h2>Análisis de fallas por máquina</h2>
+        <p class="sub" id="failSub">Causas más comunes de los paros, soluciones más usadas y con qué frecuencia se repite cada falla.</p>
+      </div>
+      <div class="field" style="min-width:220px">
+        <label for="failMaq">Máquina</label>
+        <select id="failMaq"></select>
+      </div>
+    </div>
+    <div class="kpis" id="failKpis" style="margin:14px 0"></div>
+    <div class="grid2" style="margin-bottom:0">
+      <div>
+        <h2 style="font-size:16px;margin-bottom:2px">Causas más frecuentes de paro</h2>
+        <p class="sub">Agrupadas por tipo de causa (eléctrica, mecánica, fuga, etc.).</p>
+        <ul class="rank" id="failCausas"></ul>
+      </div>
+      <div>
+        <h2 style="font-size:16px;margin-bottom:2px">Soluciones más usadas</h2>
+        <p class="sub">Agrupadas por tipo de acción, para los paros de esta máquina.</p>
+        <ul class="rank" id="failSoluciones"></ul>
+      </div>
+    </div>
+  </section>
 
   <section class="panel" aria-label="Registros">
     <div class="ph"><div><h2>Registros</h2><p class="sub" id="tblSub"></p></div></div>
@@ -358,6 +385,7 @@ async function fetchLive(isAuto){
     META = {when: now.toISOString()};
     saveStore();
     resetFilters();
+    FAIL_MAQ = "";
     refreshSelects();
     renderAll();
     const diff = data.length - before;
@@ -439,6 +467,7 @@ let VIEW = [];
 function renderAll(){
   VIEW = getFiltered(true);
   renderHeader(); renderChips(); renderKpis(); renderTrend(); renderRanks(); renderTable();
+  refreshFailSelect(); renderFailureAnalysis();
 }
 function renderHeader(){
   const a = DATA[0].ts, b = DATA[DATA.length-1].ts;
@@ -597,6 +626,137 @@ function renderRanks(){
   rank("rTurno","turno","turno",0);
 }
 
+/* ---------- Análisis de fallas por máquina ---------- */
+let FAIL_MAQ = "";
+
+/* Taxonomía por palabras clave: el texto libre de "Problema"/"Solución" casi nunca se
+   repite exacto entre registros, así que agrupamos por tipo de causa/acción, no por texto literal. */
+const CAUSA_CATS = [
+  {label:"Eléctrica / energía", re:/el[eé]ctric|energ[ií]a|corto\s?circuit|breaker|t[eé]rmico\s+salt|fusible|voltaje|tablero el[eé]ctrico|\bcable\b/},
+  {label:"Electrónica / sensores / PLC / pantalla", re:/\bplc\b|sensor|pantalla|\bhmi\b|programa|comunicaci[oó]n|encoder|fotocelda|presostato|termopar|se[ñn]al/},
+  {label:"Neumática (aire, cilindro, válvula)", re:/\baire\b|neum[aá]tic|cilindro|v[aá]lvula|electrov[aá]lvula|regulador/},
+  {label:"Hidráulica", re:/hidr[aá]ulic|\baceite\b/},
+  {label:"Motor / no arranca", re:/\bmotor\b|no arranca|no enciende|no prende/},
+  {label:"Temperatura / quemador", re:/temperatura|quemador|resistencia|termostato|sobrecalent/},
+  {label:"Fuga", re:/\bfuga\b/},
+  {label:"Bloqueo / atasco", re:/bloque|atasc|obstru/},
+  {label:"Mecánica (rodamiento, cadena, banda, eje)", re:/rodamiento|cadena|\bbanda\b|correa|engranaje|acople|\beje\b|polea|rotura|ruptura|desgaste/},
+  {label:"Velocidad / ajuste de proceso", re:/velocidad/},
+  {label:"Vibración / ruido", re:/vibraci[oó]n|ruido/},
+  {label:"Desalineación", re:/desalin|alineaci[oó]n/},
+  {label:"Bomba", re:/\bbomba\b/},
+  {label:"Alarma / paro de emergencia", re:/alarma|emergencia/}
+];
+const SOL_CATS = [
+  {label:"Ajuste / calibración", re:/ajust|calibr/},
+  {label:"Limpieza", re:/limpi/},
+  {label:"Lubricación", re:/lubric|engras/},
+  {label:"Apriete de pernos / tornillos", re:/aprie|\btornill/},
+  {label:"Soldadura", re:/soldad/},
+  {label:"Cambio de repuesto / pieza", re:/cambi|reemplaz|se instal|repuesto/},
+  {label:"Reparación de fuga", re:/\bfuga\b|repar/},
+  {label:"Reinicio / reprogramación", re:/reinici|\breset\b|reprogram/},
+  {label:"Revisión de conexiones", re:/revis|verific|conexi[oó]n/},
+  {label:"Seguimiento pendiente", re:/pendiente|seguir revisando/}
+];
+function classify(text, cats){
+  const t = text.toLowerCase();
+  for (const c of cats){ if (c.re.test(t)) return c.label; }
+  return null;
+}
+function truncate(s, n){ return s.length>n ? s.slice(0,n)+"…" : s; }
+function groupByCategory(recs, field, cats, fallback){
+  const map = new Map();
+  for (const r of recs){
+    const raw = cl(r[field]);
+    if (!raw) continue;
+    const label = classify(raw, cats) || fallback;
+    let g = map.get(label);
+    if (!g){ g = {label, count:0, ts:[], sample:raw}; map.set(label, g); }
+    g.count++; g.ts.push(r.ts);
+  }
+  return [...map.values()];
+}
+function avgGapDays(tsList){
+  if (tsList.length < 2) return null;
+  const sorted = tsList.slice().sort();
+  let sum = 0, n = 0;
+  for (let i=1;i<sorted.length;i++){ sum += (new Date(sorted[i]) - new Date(sorted[i-1])); n++; }
+  return sum / n / 86400000;
+}
+function fmtDias(d){
+  if (d == null) return null;
+  if (d < 1) return (d*24).toFixed(1).replace(".0","")+" horas";
+  if (d < 2) return "1 día";
+  return Math.round(d)+" días";
+}
+function refreshFailSelect(){
+  const el = $("failMaq");
+  const counts = new Map();
+  for (const r of VIEW){ if (r.paro==="Si"){ counts.set(r.maq, (counts.get(r.maq)||0)+1); } }
+  const opts = [...counts.entries()].sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0],"es"));
+  const cur = el.value;
+  el.innerHTML = '<option value="">Automático (la de más paros)</option>' + opts.map(([m,c])=>'<option value="'+esc(m)+'">'+esc(m)+' ('+fmt(c)+')</option>').join("");
+  el.value = opts.some(([m])=>m===cur) ? cur : "";
+}
+function renderFailureAnalysis(){
+  const target = FAIL_MAQ || (function(){
+    const counts = new Map();
+    for (const r of VIEW){ if (r.paro==="Si") counts.set(r.maq, (counts.get(r.maq)||0)+1); }
+    let best=null, bestN=0;
+    counts.forEach((n,m)=>{ if(n>bestN){bestN=n; best=m;} });
+    return best;
+  })();
+
+  if (!target){
+    $("failKpis").innerHTML = '';
+    $("failCausas").innerHTML = '<li class="empty" style="cursor:default">No hay paros registrados con estos filtros.</li>';
+    $("failSoluciones").innerHTML = '<li class="empty" style="cursor:default">No hay paros registrados con estos filtros.</li>';
+    $("failSub").textContent = "No hay paros registrados con estos filtros.";
+    return;
+  }
+
+  const recs = VIEW.filter(r=> r.maq===target && r.paro==="Si");
+  $("failSub").textContent = (FAIL_MAQ ? "Máquina seleccionada: " : "Mostrando automáticamente la de más paros: ") + target + ". Agrupado por tipo de causa/acción (el texto exacto casi nunca se repite entre registros). Se basa en los filtros activos arriba.";
+
+  const causas = groupByCategory(recs, "prob", CAUSA_CATS, "Otra causa").sort((a,b)=> b.count-a.count || a.label.localeCompare(b.label,"es"));
+  const soluciones = groupByCategory(recs, "sol", SOL_CATS, "Otra solución").sort((a,b)=> b.count-a.count || a.label.localeCompare(b.label,"es"));
+
+  const gaps = causas.filter(c=>c.count>=2).flatMap(c=>{
+    const sorted = c.ts.slice().sort();
+    const out = [];
+    for (let i=1;i<sorted.length;i++) out.push((new Date(sorted[i])-new Date(sorted[i-1]))/86400000);
+    return out;
+  });
+  const avgAll = gaps.length ? gaps.reduce((a,b)=>a+b,0)/gaps.length : null;
+
+  $("failKpis").innerHTML = [
+    [fmt(recs.length), "Paros analizados", ""],
+    [fmt(causas.length), "Tipos de causa detectados", ""],
+    [avgAll==null ? "—" : fmtDias(avgAll), "Recurrencia promedio", avgAll==null ? "aún no hay causas repetidas" : "entre repeticiones del mismo tipo de falla"]
+  ].map(i=>'<div class="kpi"><div class="n">'+i[0]+'</div><div class="l">'+i[1]+'</div>'+(i[2]?'<div class="p">'+i[2]+'</div>':'')+'</div>').join("");
+
+  function renderList(id, arr, showRecurrence){
+    const el = $(id);
+    if (!arr.length){ el.innerHTML = '<li class="empty" style="cursor:default">Sin datos para esta máquina.</li>'; return; }
+    const top = arr.slice(0,8);
+    const max = Math.max(...top.map(a=>a.count));
+    el.innerHTML = top.map(a=>{
+      const pctV = pct(a.count, recs.length);
+      const rec = showRecurrence ? avgGapDays(a.ts) : null;
+      const recTxt = showRecurrence ? (rec==null ? "Se presentó 1 vez en el periodo filtrado" : "Se repite cada "+fmtDias(rec)+" en promedio") : "";
+      const ejTxt = 'Ej.: "'+esc(truncate(a.sample,80))+'"';
+      return '<li style="cursor:default" title="'+esc(a.sample)+'">'
+        + '<span class="nm">'+esc(a.label)+'</span><span class="ct">'+fmt(a.count)+' ('+pctV+'%)</span>'
+        + (recTxt ? '<span class="meta">'+recTxt+'</span>' : '')
+        + '<span class="meta">'+ejTxt+'</span>'
+        + '<span class="bar"><i style="width:'+(a.count/max*100)+'%;background:var(--corr)"></i></span></li>';
+    }).join("");
+  }
+  renderList("failCausas", causas, true);
+  renderList("failSoluciones", soluciones, false);
+}
+
 /* Tabla */
 function renderTable(){
   const rows = getFiltered(false).slice().sort((a,b)=> a.ts<b.ts?1:a.ts>b.ts?-1:0);
@@ -616,6 +776,7 @@ function renderTable(){
 
 /* ---------- Eventos ---------- */
 $("btnUpdate").addEventListener("click", ()=> fetchLive(false));
+$("failMaq").addEventListener("change", e=>{ FAIL_MAQ = e.target.value; renderFailureAnalysis(); });
 const map = {fFrom:"from",fTo:"to",fPlanta:"planta",fProceso:"proceso",fTurno:"turno",fMto:"mto",fParo:"paro"};
 Object.keys(map).forEach(id=> $(id).addEventListener("change", e=>{ F[map[id]] = e.target.value; PAGE=0; renderAll(); }));
 let qTimer; $("q").addEventListener("input", e=>{ clearTimeout(qTimer); qTimer=setTimeout(()=>{ F.q=e.target.value.trim(); PAGE=0; renderTable(); },180); });
