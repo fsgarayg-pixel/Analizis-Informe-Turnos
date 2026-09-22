@@ -327,9 +327,13 @@ function gvizToRows(resp){
 }
 function normalizeCsvRows(rows){
   const out = [];
+  let skipped = 0;
+  const minTs = "2018-01-01T00:00:00";
+  const maxTs = (()=>{ const d=new Date(); d.setDate(d.getDate()+30); return d.toISOString().slice(0,19); })();
   for (const r of rows){
     const ts = parseFechaHoraStr(r["Fecha y Hora"]) || parseFechaHoraStr(r["Hora de inicio"]);
     if (!ts) continue;
+    if (ts < minTs || ts > maxTs){ skipped++; continue; }
     const mto = cl(r["Mantenimiento"]);
     if (!mto) continue;
     out.push({
@@ -349,6 +353,7 @@ function normalizeCsvRows(rows){
     });
   }
   out.sort((a,b)=> a.ts<b.ts?-1:a.ts>b.ts?1:0);
+  out.skipped = skipped;
   return out;
 }
 function setStatus(msg, kind){
@@ -390,7 +395,8 @@ async function fetchLive(isAuto){
     renderAll();
     const diff = data.length - before;
     const dtxt = diff>0 ? "+"+fmt(diff)+" registros nuevos" : diff<0 ? fmt(-diff)+" registros menos que antes" : "sin cambios en la cantidad";
-    setStatus("Actualizado a las "+fmtHora(now)+": "+fmt(data.length)+" registros ("+dtxt+").", "ok");
+    const skipTxt = data.skipped ? " Se ignoraron "+fmt(data.skipped)+" fila(s) con fecha fuera de rango (revísalas en tu hoja)." : "";
+    setStatus("Actualizado a las "+fmtHora(now)+": "+fmt(data.length)+" registros ("+dtxt+")."+skipTxt, data.skipped ? "err" : "ok");
   }catch(e){
     console.error(e);
     setStatus("No se pudo conectar con la hoja de Google. Mostrando la última copia guardada. Vuelve a intentar en un momento.", "err");
