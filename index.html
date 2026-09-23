@@ -296,14 +296,15 @@ function parseFechaHoraStr(v){
   if (v==null) return null;
   const s = String(v).trim();
   if (!s) return null;
-  // dd/mm/aaaa hh:mm:ss  (columna "Fecha y Hora")
-  let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})[ ,T]+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
-  if (m) return m[3]+"-"+p2(m[2])+"-"+p2(m[1])+"T"+p2(m[4])+":"+m[5]+":"+p2(m[6]||0);
-  // aaaa-mm-dd hh:mm:ss (ISO, o convertido desde el tipo "datetime" de Google)
-  m = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
+  // aaaa-mm-dd hh:mm:ss (formato que produce la conversión del tipo "datetime" de Google — sin ambigüedad)
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
   if (m) return m[1]+"-"+m[2]+"-"+m[3]+"T"+m[4]+":"+m[5]+":"+(m[6]||"00");
-  const d = new Date(s);
-  if (!isNaN(d)) return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())+"T"+p2(d.getHours())+":"+p2(d.getMinutes())+":"+p2(d.getSeconds());
+  // dd/mm/aaaa hh:mm:ss (columna de texto "Fecha y Hora", solo si trae año de 4 dígitos real)
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})[ ,T]+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (m) return m[3]+"-"+p2(m[2])+"-"+p2(m[1])+"T"+p2(m[4])+":"+m[5]+":"+p2(m[6]||0);
+  // Ya NO se usa new Date(s) como último recurso: ese conversor "adivina" formatos ambiguos
+  // (por ejemplo interpreta texto corrupto como fechas de 2005). Preferimos descartar la fila
+  // a mostrar una fecha inventada.
   return null;
 }
 function gvizToRows(resp){
@@ -327,9 +328,28 @@ function gvizToRows(resp){
 }
 function normalizeCsvRows(rows){
   const out = [];
+  let skipped = 0, unparsed = 0;
+  const skippedSamples = [], unparsedSamples = [];
+  const minTs = "2018-01-01T00:00:00";
+  const maxTs = (()=>{ const d=new Date(); d.setDate(d.getDate()+30); return d.toISOString().slice(0,19); })();
   for (const r of rows){
-    const ts = parseFechaHoraStr(r["Fecha y Hora"]) || parseFechaHoraStr(r["Hora de inicio"]);
-    if (!ts) continue;
+    const rawFH = r["Fecha y Hora"], rawHI = r["Hora de inicio"];
+    const ts = parseFechaHoraStr(rawHI) || parseFechaHoraStr(rawFH);
+    if (!ts){
+      const anyContent = cl(rawHI) || cl(rawFH) || cl(r["Mantenimiento"]);
+      if (anyContent){
+        unparsed++;
+        if (unparsedSamples.length < 5) unparsedSamples.push('Id '+cl(r["Id"]||"?")+': Hora de inicio="'+cl(rawHI)+'", Fecha y Hora="'+cl(rawFH)+'"');
+      }
+      continue;
+    }
+    if (ts < minTs || ts > maxTs){
+      skipped++;
+      if (skippedSamples.length < 5){
+        skippedSamples.push('Id '+cl(r["Id"]||"?")+': "'+cl(rawHI||rawFH)+'" → interpretado como '+ts.replace("T"," "));
+      }
+      continue;
+    }
     const mto = cl(r["Mantenimiento"]);
     if (!mto) continue;
     out.push({
@@ -349,6 +369,10 @@ function normalizeCsvRows(rows){
     });
   }
   out.sort((a,b)=> a.ts<b.ts?-1:a.ts>b.ts?1:0);
+  out.skipped = skipped;
+  out.skippedSamples = skippedSamples;
+  out.unparsed = unparsed;
+  out.unparsedSamples = unparsedSamples;
   return out;
 }
 function setStatus(msg, kind){
@@ -390,7 +414,14 @@ async function fetchLive(isAuto){
     renderAll();
     const diff = data.length - before;
     const dtxt = diff>0 ? "+"+fmt(diff)+" registros nuevos" : diff<0 ? fmt(-diff)+" registros menos que antes" : "sin cambios en la cantidad";
-    setStatus("Actualizado a las "+fmtHora(now)+": "+fmt(data.length)+" registros ("+dtxt+").", "ok");
+    let skipTxt = "";
+    if (data.skipped){
+      skipTxt += " Se ignoraron "+fmt(data.skipped)+" fila(s) con fecha fuera de rango: "+data.skippedSamples.join(" | ");
+    }
+    if (data.unparsed){
+      skipTxt += " No se pudo leer la fecha de "+fmt(data.unparsed)+" fila(s): "+data.unparsedSamples.join(" | ");
+    }
+    setStatus("Actualizado a las "+fmtHora(now)+": "+fmt(data.length)+" registros ("+dtxt+")."+skipTxt, (data.skipped||data.unparsed) ? "err" : "ok");
   }catch(e){
     console.error(e);
     setStatus("No se pudo conectar con la hoja de Google. Mostrando la última copia guardada. Vuelve a intentar en un momento.", "err");
@@ -812,6 +843,7 @@ refreshSelects();
 renderAll();
 if (hadCache) setStatus("Mostrando la última copia guardada en este navegador. Conectando con la hoja de Google…");
 fetchLive(true);
+setInterval(()=> fetchLive(true), 5*60*1000);
 </script>
 </body>
 </html>
