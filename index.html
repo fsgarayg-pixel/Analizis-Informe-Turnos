@@ -13,22 +13,22 @@
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
   --bg:#F2F4F8; --surface:#FFFFFF; --ink:#14213D; --muted:#5A6478; --line:#D8DDE6;
-  --band:#16244A; --band-ink:#F4F6FB; --btn:#F2B544; --btn-ink:#1B1A14;
-  --corr:#D9822B; --prev:#1C8C90; --paro:#B8372B; --focus:#2F5BD3; --soft:#EAEEF5;
+  --band:#E20020; --band-ink:#FFFFFF; --btn:#F2B544; --btn-ink:#1B1A14;
+  --corr:#D9822B; --prev:#1C8C90; --paro:#B8372B; --focus:#E20020; --soft:#EAEEF5;
   --font-ui:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
   --font-num:"Barlow Semi Condensed","Barlow",system-ui,"Arial Narrow",Arial,sans-serif;
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
     --bg:#0E1320; --surface:#161D2E; --ink:#E7EBF3; --muted:#9AA6BA; --line:#283249;
-    --band:#0A0F1C; --band-ink:#EEF1F8; --btn:#F2B544; --btn-ink:#1B1A14;
-    --corr:#F0A048; --prev:#4FC3C8; --paro:#F07A6C; --focus:#86A6FF; --soft:#1D2740;
+    --band:#4A000C; --band-ink:#FFFFFF; --btn:#F2B544; --btn-ink:#1B1A14;
+    --corr:#F0A048; --prev:#4FC3C8; --paro:#F07A6C; --focus:#FF4D6D; --soft:#1D2740;
   }
 }
 :root[data-theme="dark"]{
   --bg:#0E1320; --surface:#161D2E; --ink:#E7EBF3; --muted:#9AA6BA; --line:#283249;
-  --band:#0A0F1C; --band-ink:#EEF1F8; --btn:#F2B544; --btn-ink:#1B1A14;
-  --corr:#F0A048; --prev:#4FC3C8; --paro:#F07A6C; --focus:#86A6FF; --soft:#1D2740;
+  --band:#4A000C; --band-ink:#FFFFFF; --btn:#F2B544; --btn-ink:#1B1A14;
+  --corr:#F0A048; --prev:#4FC3C8; --paro:#F07A6C; --focus:#FF4D6D; --soft:#1D2740;
 }
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
@@ -54,7 +54,7 @@ button,select,input{font:inherit;color:inherit}
 .btn.ghost{background:transparent;color:var(--band-ink);border:1px solid rgba(255,255,255,.35);font-weight:500}
 .btn svg{width:16px;height:16px}
 .status{max-width:1240px;margin:0 auto;padding:0 20px 14px;font-size:13.5px;min-height:20px;color:var(--band-ink)}
-.status .ok{color:#8FE0B2}.status .err{color:#FFB4A8}
+.status .ok{color:#8FE0B2}.status .err{color:#FFE29B}
 :root:not([data-theme="dark"]) .status .ok{color:#A6F0C4}
 
 main{max-width:1240px;margin:0 auto;padding:18px 20px 40px}
