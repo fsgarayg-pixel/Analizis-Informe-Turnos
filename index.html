@@ -686,15 +686,17 @@ let FAIL_AREA = "";
    repite exacto entre registros, así que agrupamos por tipo de causa/acción, no por texto literal. */
 const CAUSA_CATS = [
   {label:"Eléctrica / energía", re:/el[eé]ctric|energ[ií]a|corto\s?circuit|breaker|t[eé]rmico\s+salt|fusible|voltaje|tablero el[eé]ctrico|\bcable\b|disparo/},
-  {label:"Electrónica / sensores / PLC / pantalla", re:/\bplc\b|sensor|pantalla|\bhmi\b|programa|comunicaci[oó]n|encoder|fotocelda|presostato|termopar|se[ñn]al|variador|transmisor|\bboard\b|tarjeta/},
+  {label:"Electrónica / sensores / PLC / pantalla", re:/\bplc\b|sensor|pantalla|\bhmi\b|programa|comunicaci[oó]n|encoder|fotocelda|presostato|termopar|se[ñn]al|variador|inverter|transmisor|\bboard\b|tarjeta/},
   {label:"Neumática (aire, cilindro, válvula)", re:/\baire\b|neum[aá]tic|cilindro|v[aá]lvula|electrov[aá]lvula|regulador/},
   {label:"Hidráulica", re:/hidr[aá]ulic|\baceite\b/},
   {label:"Nivel / llenado (tanque, olla)", re:/\bnivel\b|llen|rebos|\bolla\b|drenaj|\bdrena\b|\blitros\b/},
+  {label:"Tubería / suministro de agua", re:/tuber[ií]a|agua (fr[ií]a|caliente)/},
+  {label:"Seguridad (puertas, cortinas)", re:/puertas?\b|cortinas?\b|guaya de seguridad/},
   {label:"Motor / no arranca", re:/\bmotor\b|no arranca|no enciende|no prende|\bservo\b/},
   {label:"Temperatura / quemador", re:/temperatura|quemador|resistencia|termostato|sobrecalent|\bhorno\b|pt100|\bgrados\b/},
   {label:"Fuga", re:/\bfuga\b/},
   {label:"Bloqueo / atasco", re:/bloque|atasc|obstru/},
-  {label:"Componentes de telar (trama, carrete, tensión)", re:/\btelar\b|\btrama\b|carrete|molinete|centrador|tijera|enrr?ollador|compensador|cortador|acumulador|\bhilo\b|tensi[oó]n/},
+  {label:"Componentes de telar (trama, carrete, tensión)", re:/\btelar\b|\btrama\b|carrete|molinete|centrador|tijera|enrr?ollador|compensador|cortador|acumulador|\bhilo\b|tensi[oó]n|orillo/},
   {label:"Mecánica (rodamiento, cadena, banda, eje)", re:/rodamiento|cadena|\bbanda\b|correa|engranaje|acople|\beje\b|polea|rotura|ruptura|desgaste/},
   {label:"Velocidad / ajuste de proceso", re:/velocidad/},
   {label:"Vibración / ruido", re:/vibraci[oó]n|ruido/},
@@ -713,13 +715,31 @@ const SOL_CATS = [
   {label:"Cambio de repuesto / pieza", re:/cambi|reemplaz|se instal|repuesto|\bmont|desmont/},
   {label:"Reparación de fuga", re:/\bfuga\b/},
   {label:"Reinicio / reprogramación", re:/reinici|reset|reprogram/},
-  {label:"Revisión de conexiones", re:/revis|verific|conexi[oó]n/},
+  {label:"Revisión de conexiones", re:/revis|verific|conexi[oó]n|conect/},
   {label:"Seguimiento pendiente", re:/pendiente|seguir revisando/},
-  {label:"Reparación general", re:/repar/}
+  {label:"Reparación general", re:/repar|arregl/}
 ];
-function classify(text, cats){
+/* Palabras demasiado genéricas para servir como "palabra clave" de un residual —
+   si el texto no encaja en ninguna categoría de arriba, buscamos la primera palabra
+   fuera de esta lista para nombrar el grupo en vez de decir solo "Otra causa". */
+const GENERIC_WORDS = new Set(("de la el en y a que se no con por para del un una los las al su es fue esta este ese esa "
+  +"presenta problema atiende llamada mantenimiento realiza tiene hace bien queda cuando maquina máquina falla "
+  +"encuentra revisa revisó revisa revision lado puesto trabaja trabajando sube apago arranca arranque parada "
+  +"parando paro sistema operario tapa sobre baja tomas falso correctamente compañero estar pendiente favor equipo "
+  +"informan prendia puestos activan daño esta deja estaba novedad trabajar trabajo servicio nuevo contacto haya "
+  +"ninguna colabora pruebas empieza dejan encontraba estaban quedan queda").split(/\s+/));
+function keywordLabel(text){
+  const words = text.toLowerCase().match(/[a-záéíóúñ]{4,}/g) || [];
+  for (const w of words){ if (!GENERIC_WORDS.has(w)) return w; }
+  return null;
+}
+function classify(text, cats, fallback){
   const t = text.toLowerCase();
   for (const c of cats){ if (c.re.test(t)) return c.label; }
+  if (fallback){
+    const kw = keywordLabel(text);
+    return kw ? fallback+" ("+kw+")" : fallback;
+  }
   return null;
 }
 function truncate(s, n){ return s.length>n ? s.slice(0,n)+"…" : s; }
@@ -730,7 +750,7 @@ function groupByCategory(recs, field, cats, fallback, solConf){
     const obsTxt = cl(r.obs);
     const raw = [primary, obsTxt].filter(Boolean).join(" — ");
     if (!raw) continue;
-    const label = classify(raw, cats) || fallback;
+    const label = classify(raw, cats, fallback);
     let g = map.get(label);
     if (!g){ g = {label, count:0, ts:[], sample:raw, solCounts: solConf ? new Map() : null}; map.set(label, g); }
     g.count++; g.ts.push(r.ts);
@@ -738,7 +758,7 @@ function groupByCategory(recs, field, cats, fallback, solConf){
       const solPrimary = cl(r[solConf.field]);
       const solRaw = [solPrimary, obsTxt].filter(Boolean).join(" — ");
       if (solRaw){
-        const solLabel = classify(solRaw, solConf.cats) || solConf.fallback;
+        const solLabel = classify(solRaw, solConf.cats, solConf.fallback);
         let s = g.solCounts.get(solLabel);
         if (!s){ s = {count:0, examples:[]}; g.solCounts.set(solLabel, s); }
         s.count++;
