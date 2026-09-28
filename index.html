@@ -709,11 +709,13 @@ const SOL_CATS = [
   {label:"Lubricación", re:/lubric|engras/},
   {label:"Apriete de pernos / tornillos", re:/aprie|\btornill/},
   {label:"Soldadura", re:/soldad/},
+  {label:"Envío a taller / bobinado", re:/\btaller\b|bobinad/},
   {label:"Cambio de repuesto / pieza", re:/cambi|reemplaz|se instal|repuesto|\bmont|desmont/},
-  {label:"Reparación de fuga", re:/\bfuga\b|repar/},
+  {label:"Reparación de fuga", re:/\bfuga\b/},
   {label:"Reinicio / reprogramación", re:/reinici|reset|reprogram/},
   {label:"Revisión de conexiones", re:/revis|verific|conexi[oó]n/},
-  {label:"Seguimiento pendiente", re:/pendiente|seguir revisando/}
+  {label:"Seguimiento pendiente", re:/pendiente|seguir revisando/},
+  {label:"Reparación general", re:/repar/}
 ];
 function classify(text, cats){
   const t = text.toLowerCase();
