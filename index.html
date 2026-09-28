@@ -241,7 +241,7 @@ input[type=file]{display:none}
       </div>
       <div>
         <h2 style="font-size:16px;margin-bottom:2px">Soluciones más usadas</h2>
-        <p class="sub">Agrupadas por tipo de acción, usando la solución y la observación.</p>
+        <p class="sub">Agrupadas por tipo de acción, con la causa más común que cada una resolvió.</p>
         <ul class="rank" id="failSoluciones"></ul>
       </div>
     </div>
@@ -814,7 +814,7 @@ function renderFailureAnalysis(){
   $("failSub").textContent = (FAIL_MAQ ? "Máquina seleccionada: " : "Mostrando automáticamente la de más paros"+areaTxt+": ") + target + ". Agrupado por tipo de causa/acción (el texto exacto casi nunca se repite entre registros). Se basa en los filtros activos arriba.";
 
   const causas = groupByCategory(recs, "prob", CAUSA_CATS, "Otra causa", {field:"sol", cats:SOL_CATS, fallback:"Otra solución"}).sort((a,b)=> b.count-a.count || a.label.localeCompare(b.label,"es"));
-  const soluciones = groupByCategory(recs, "sol", SOL_CATS, "Otra solución").sort((a,b)=> b.count-a.count || a.label.localeCompare(b.label,"es"));
+  const soluciones = groupByCategory(recs, "sol", SOL_CATS, "Otra solución", {field:"prob", cats:CAUSA_CATS, fallback:"Otra causa"}).sort((a,b)=> b.count-a.count || a.label.localeCompare(b.label,"es"));
 
   const gaps = causas.filter(c=>c.count>=2).flatMap(c=>{
     const sorted = c.ts.slice().sort();
@@ -839,7 +839,7 @@ function renderFailureAnalysis(){
         + '<div><span class="ex-tag">Solución:</span> '+esc(truncate(s,140))+'</div></div>';
     }).join("");
   }
-  function renderList(id, arr, showRecurrence, showSolPair){
+  function renderList(id, arr, showRecurrence, pairLabel){
     const el = $(id);
     if (!arr.length){ el.innerHTML = '<li class="empty" style="cursor:default">Sin datos para esta máquina.</li>'; return; }
     const top = arr.slice(0,8);
@@ -849,8 +849,8 @@ function renderFailureAnalysis(){
       const rec = showRecurrence ? avgGapDays(a.ts) : null;
       const recTxt = showRecurrence ? (rec==null ? "Se presentó 1 vez en el periodo filtrado" : "Se repite cada "+fmtDias(rec)+" en promedio") : "";
       const ejTxt = 'Ej.: "'+esc(truncate(a.sample,80))+'"';
-      const sol = showSolPair ? topSolFor(a) : null;
-      const solTxt = sol ? '↳ Solución más usada para esto: <strong>'+esc(sol.label)+'</strong> ('+fmt(sol.count)+'/'+fmt(a.count)+' veces) <span class="sol-toggle-txt">— ver registros</span>' : '';
+      const sol = pairLabel ? topSolFor(a) : null;
+      const solTxt = sol ? '↳ '+pairLabel+': <strong>'+esc(sol.label)+'</strong> ('+fmt(sol.count)+'/'+fmt(a.count)+' veces) <span class="sol-toggle-txt">— ver registros</span>' : '';
       return '<li style="cursor:default" title="'+esc(a.sample)+'">'
         + '<span class="nm">'+esc(a.label)+'</span><span class="ct">'+fmt(a.count)+' ('+pctV+'%)</span>'
         + (recTxt ? '<span class="meta">'+recTxt+'</span>' : '')
@@ -860,8 +860,8 @@ function renderFailureAnalysis(){
         + '<span class="bar"><i style="width:'+(a.count/max*100)+'%;background:var(--corr)"></i></span></li>';
     }).join("");
   }
-  renderList("failCausas", causas, true, true);
-  renderList("failSoluciones", soluciones, false, false);
+  renderList("failCausas", causas, true, "Solución más usada para esto");
+  renderList("failSoluciones", soluciones, false, "Causa más común de esto");
 }
 
 /* Tabla */
@@ -891,15 +891,19 @@ $("failMaq").addEventListener("input", e=>{
   failTimer = setTimeout(()=>{ FAIL_MAQ = e.target.value.trim(); renderFailureAnalysis(); }, 180);
 });
 $("failArea").addEventListener("change", e=>{ FAIL_AREA = e.target.value; FAIL_MAQ=""; $("failMaq").value=""; refreshFailSelect(); renderFailureAnalysis(); });
-$("failCausas").addEventListener("click", e=>{
-  const btn = e.target.closest(".sol-pair"); if (!btn) return;
-  const ex = btn.nextElementSibling;
-  if (!ex || !ex.classList.contains("sol-examples")) return;
-  const open = ex.hasAttribute("hidden");
-  ex.toggleAttribute("hidden", !open);
-  const t = btn.querySelector(".sol-toggle-txt");
-  if (t) t.textContent = open ? "— ocultar registros" : "— ver registros";
-});
+function bindSolToggle(ul){
+  ul.addEventListener("click", e=>{
+    const btn = e.target.closest(".sol-pair"); if (!btn) return;
+    const ex = btn.nextElementSibling;
+    if (!ex || !ex.classList.contains("sol-examples")) return;
+    const open = ex.hasAttribute("hidden");
+    ex.toggleAttribute("hidden", !open);
+    const t = btn.querySelector(".sol-toggle-txt");
+    if (t) t.textContent = open ? "— ocultar registros" : "— ver registros";
+  });
+}
+bindSolToggle($("failCausas"));
+bindSolToggle($("failSoluciones"));
 $("failChips").addEventListener("click", e=>{
   const b = e.target.closest("[data-failclear]"); if (!b) return;
   if (b.dataset.failclear==="area"){ FAIL_AREA=""; $("failArea").value=""; }
