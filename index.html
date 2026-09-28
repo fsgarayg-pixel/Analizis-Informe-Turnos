@@ -106,6 +106,8 @@ main{max-width:1240px;margin:0 auto;padding:18px 20px 40px}
 .rank .bar{grid-column:1/-1;height:8px;border-radius:3px;background:var(--soft);display:flex;overflow:hidden}
 .rank .bar i{display:block;height:100%}
 .rank .meta{grid-column:1/-1;font-size:12px;color:var(--muted);margin:-2px 0 2px}
+.rank .meta.sol-pair{color:var(--prev);font-weight:600}
+.rank .meta.sol-pair strong{font-weight:700}
 .rank li.on{background:var(--soft);box-shadow:inset 3px 0 0 var(--focus)}
 .empty{color:var(--muted);font-size:14px;padding:12px 0}
 
@@ -210,16 +212,24 @@ input[type=file]{display:none}
         <h2>Análisis de fallas por máquina</h2>
         <p class="sub" id="failSub">Causas más comunes de los paros, soluciones más usadas y con qué frecuencia se repite cada falla.</p>
       </div>
-      <div class="field" style="min-width:220px">
-        <label for="failMaq">Máquina</label>
-        <select id="failMaq"></select>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <div class="field" style="min-width:160px">
+          <label for="failArea">Área (Planta)</label>
+          <select id="failArea"><option value="">Todas</option></select>
+        </div>
+        <div class="field" style="min-width:220px">
+          <label for="failMaq">Máquina</label>
+          <input type="text" id="failMaq" list="failMaqList" placeholder="Automático (la de más paros)" autocomplete="off">
+          <datalist id="failMaqList"></datalist>
+        </div>
       </div>
     </div>
+    <div class="chips" id="failChips"></div>
     <div class="kpis" id="failKpis" style="margin:14px 0"></div>
     <div class="grid2" style="margin-bottom:0">
       <div>
         <h2 style="font-size:16px;margin-bottom:2px">Causas más frecuentes de paro</h2>
-        <p class="sub">Agrupadas por tipo de causa, usando el problema reportado y la observación.</p>
+        <p class="sub">Agrupadas por tipo de causa, con la solución más usada para cada una.</p>
         <ul class="rank" id="failCausas"></ul>
       </div>
       <div>
@@ -413,7 +423,7 @@ async function fetchLive(isAuto){
     META = {when: now.toISOString()};
     saveStore();
     resetFilters();
-    FAIL_MAQ = "";
+    FAIL_MAQ = ""; FAIL_AREA = "";
     refreshSelects();
     renderAll();
     const diff = data.length - before;
@@ -663,6 +673,7 @@ function renderRanks(){
 
 /* ---------- Análisis de fallas por máquina ---------- */
 let FAIL_MAQ = "";
+let FAIL_AREA = "";
 
 /* Taxonomía por palabras clave: el texto libre de "Problema"/"Solución" casi nunca se
    repite exacto entre registros, así que agrupamos por tipo de causa/acción, no por texto literal. */
@@ -700,7 +711,7 @@ function classify(text, cats){
   return null;
 }
 function truncate(s, n){ return s.length>n ? s.slice(0,n)+"…" : s; }
-function groupByCategory(recs, field, cats, fallback){
+function groupByCategory(recs, field, cats, fallback, solConf){
   const map = new Map();
   for (const r of recs){
     const primary = cl(r[field]);
@@ -709,10 +720,24 @@ function groupByCategory(recs, field, cats, fallback){
     if (!raw) continue;
     const label = classify(raw, cats) || fallback;
     let g = map.get(label);
-    if (!g){ g = {label, count:0, ts:[], sample:raw}; map.set(label, g); }
+    if (!g){ g = {label, count:0, ts:[], sample:raw, solCounts: solConf ? new Map() : null}; map.set(label, g); }
     g.count++; g.ts.push(r.ts);
+    if (solConf){
+      const solPrimary = cl(r[solConf.field]);
+      const solRaw = [solPrimary, obsTxt].filter(Boolean).join(" — ");
+      if (solRaw){
+        const solLabel = classify(solRaw, solConf.cats) || solConf.fallback;
+        g.solCounts.set(solLabel, (g.solCounts.get(solLabel)||0)+1);
+      }
+    }
   }
   return [...map.values()];
+}
+function topSolFor(g){
+  if (!g.solCounts || g.solCounts.size===0) return null;
+  let best=null, bestN=0;
+  g.solCounts.forEach((n,l)=>{ if(n>bestN){bestN=n; best=l;} });
+  return {label:best, count:bestN};
 }
 function avgGapDays(tsList){
   if (tsList.length < 2) return null;
@@ -728,18 +753,36 @@ function fmtDias(d){
   return Math.round(d)+" días";
 }
 function refreshFailSelect(){
-  const el = $("failMaq");
+  const areaCounts = new Map();
+  for (const r of VIEW){ if (r.paro==="Si"){ areaCounts.set(r.planta, (areaCounts.get(r.planta)||0)+1); } }
+  const areaOpts = [...areaCounts.entries()].sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0],"es"));
+  const areaEl = $("failArea");
+  const curArea = areaEl.value;
+  areaEl.innerHTML = '<option value="">Todas</option>' + areaOpts.map(([a,c])=>'<option value="'+esc(a)+'">'+esc(a)+' ('+fmt(c)+')</option>').join("");
+  areaEl.value = areaOpts.some(([a])=>a===curArea) ? curArea : "";
+  if (areaEl.value !== curArea) FAIL_AREA = areaEl.value;
+
   const counts = new Map();
-  for (const r of VIEW){ if (r.paro==="Si"){ counts.set(r.maq, (counts.get(r.maq)||0)+1); } }
+  for (const r of VIEW){
+    if (r.paro==="Si" && (!FAIL_AREA || r.planta===FAIL_AREA)){ counts.set(r.maq, (counts.get(r.maq)||0)+1); }
+  }
   const opts = [...counts.entries()].sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0],"es"));
-  const cur = el.value;
-  el.innerHTML = '<option value="">Automático (la de más paros)</option>' + opts.map(([m,c])=>'<option value="'+esc(m)+'">'+esc(m)+' ('+fmt(c)+')</option>').join("");
-  el.value = opts.some(([m])=>m===cur) ? cur : "";
+  const list = $("failMaqList");
+  list.innerHTML = opts.map(([m,c])=>'<option value="'+esc(m)+'">'+fmt(c)+' paros</option>').join("");
+  const maqInput = $("failMaq");
+  if (FAIL_MAQ && !opts.some(([m])=>m===FAIL_MAQ)){ FAIL_MAQ = ""; maqInput.value = ""; }
+}
+function renderFailChips(){
+  const items = [];
+  if (FAIL_AREA) items.push(["area","Área: "+FAIL_AREA]);
+  if (FAIL_MAQ) items.push(["maq","Máquina: "+FAIL_MAQ]);
+  $("failChips").innerHTML = items.map(([k,t])=>'<span class="chip">'+esc(t)+'<button type="button" data-failclear="'+k+'" aria-label="Quitar">×</button></span>').join("");
 }
 function renderFailureAnalysis(){
+  renderFailChips();
   const target = FAIL_MAQ || (function(){
     const counts = new Map();
-    for (const r of VIEW){ if (r.paro==="Si") counts.set(r.maq, (counts.get(r.maq)||0)+1); }
+    for (const r of VIEW){ if (r.paro==="Si" && (!FAIL_AREA || r.planta===FAIL_AREA)) counts.set(r.maq, (counts.get(r.maq)||0)+1); }
     let best=null, bestN=0;
     counts.forEach((n,m)=>{ if(n>bestN){bestN=n; best=m;} });
     return best;
@@ -754,9 +797,10 @@ function renderFailureAnalysis(){
   }
 
   const recs = VIEW.filter(r=> r.maq===target && r.paro==="Si");
-  $("failSub").textContent = (FAIL_MAQ ? "Máquina seleccionada: " : "Mostrando automáticamente la de más paros: ") + target + ". Agrupado por tipo de causa/acción (el texto exacto casi nunca se repite entre registros). Se basa en los filtros activos arriba.";
+  const areaTxt = FAIL_AREA ? " en "+FAIL_AREA : "";
+  $("failSub").textContent = (FAIL_MAQ ? "Máquina seleccionada: " : "Mostrando automáticamente la de más paros"+areaTxt+": ") + target + ". Agrupado por tipo de causa/acción (el texto exacto casi nunca se repite entre registros). Se basa en los filtros activos arriba.";
 
-  const causas = groupByCategory(recs, "prob", CAUSA_CATS, "Otra causa").sort((a,b)=> b.count-a.count || a.label.localeCompare(b.label,"es"));
+  const causas = groupByCategory(recs, "prob", CAUSA_CATS, "Otra causa", {field:"sol", cats:SOL_CATS, fallback:"Otra solución"}).sort((a,b)=> b.count-a.count || a.label.localeCompare(b.label,"es"));
   const soluciones = groupByCategory(recs, "sol", SOL_CATS, "Otra solución").sort((a,b)=> b.count-a.count || a.label.localeCompare(b.label,"es"));
 
   const gaps = causas.filter(c=>c.count>=2).flatMap(c=>{
@@ -773,7 +817,7 @@ function renderFailureAnalysis(){
     [avgAll==null ? "—" : fmtDias(avgAll), "Recurrencia promedio", avgAll==null ? "aún no hay causas repetidas" : "entre repeticiones del mismo tipo de falla"]
   ].map(i=>'<div class="kpi"><div class="n">'+i[0]+'</div><div class="l">'+i[1]+'</div>'+(i[2]?'<div class="p">'+i[2]+'</div>':'')+'</div>').join("");
 
-  function renderList(id, arr, showRecurrence){
+  function renderList(id, arr, showRecurrence, showSolPair){
     const el = $(id);
     if (!arr.length){ el.innerHTML = '<li class="empty" style="cursor:default">Sin datos para esta máquina.</li>'; return; }
     const top = arr.slice(0,8);
@@ -783,15 +827,18 @@ function renderFailureAnalysis(){
       const rec = showRecurrence ? avgGapDays(a.ts) : null;
       const recTxt = showRecurrence ? (rec==null ? "Se presentó 1 vez en el periodo filtrado" : "Se repite cada "+fmtDias(rec)+" en promedio") : "";
       const ejTxt = 'Ej.: "'+esc(truncate(a.sample,80))+'"';
+      const sol = showSolPair ? topSolFor(a) : null;
+      const solTxt = sol ? '↳ Solución más usada para esto: <strong>'+esc(sol.label)+'</strong> ('+fmt(sol.count)+'/'+fmt(a.count)+' veces)' : '';
       return '<li style="cursor:default" title="'+esc(a.sample)+'">'
         + '<span class="nm">'+esc(a.label)+'</span><span class="ct">'+fmt(a.count)+' ('+pctV+'%)</span>'
         + (recTxt ? '<span class="meta">'+recTxt+'</span>' : '')
+        + (solTxt ? '<span class="meta sol-pair">'+solTxt+'</span>' : '')
         + '<span class="meta">'+ejTxt+'</span>'
         + '<span class="bar"><i style="width:'+(a.count/max*100)+'%;background:var(--corr)"></i></span></li>';
     }).join("");
   }
-  renderList("failCausas", causas, true);
-  renderList("failSoluciones", soluciones, false);
+  renderList("failCausas", causas, true, true);
+  renderList("failSoluciones", soluciones, false, false);
 }
 
 /* Tabla */
@@ -815,7 +862,18 @@ function renderTable(){
 
 /* ---------- Eventos ---------- */
 $("btnUpdate").addEventListener("click", ()=> fetchLive(false));
-$("failMaq").addEventListener("change", e=>{ FAIL_MAQ = e.target.value; renderFailureAnalysis(); });
+let failTimer;
+$("failMaq").addEventListener("input", e=>{
+  clearTimeout(failTimer);
+  failTimer = setTimeout(()=>{ FAIL_MAQ = e.target.value.trim(); renderFailureAnalysis(); }, 180);
+});
+$("failArea").addEventListener("change", e=>{ FAIL_AREA = e.target.value; FAIL_MAQ=""; $("failMaq").value=""; refreshFailSelect(); renderFailureAnalysis(); });
+$("failChips").addEventListener("click", e=>{
+  const b = e.target.closest("[data-failclear]"); if (!b) return;
+  if (b.dataset.failclear==="area"){ FAIL_AREA=""; $("failArea").value=""; }
+  if (b.dataset.failclear==="maq"){ FAIL_MAQ=""; $("failMaq").value=""; }
+  refreshFailSelect(); renderFailureAnalysis();
+});
 const map = {fFrom:"from",fTo:"to",fPlanta:"planta",fProceso:"proceso",fTurno:"turno",fMto:"mto",fParo:"paro"};
 Object.keys(map).forEach(id=> $(id).addEventListener("change", e=>{ F[map[id]] = e.target.value; PAGE=0; renderAll(); }));
 let qTimer; $("q").addEventListener("input", e=>{ clearTimeout(qTimer); qTimer=setTimeout(()=>{ F.q=e.target.value.trim(); PAGE=0; renderTable(); },180); });
