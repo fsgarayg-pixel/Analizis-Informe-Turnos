@@ -690,7 +690,8 @@ const OTRA_CAUSA_VAL = "__otra__";
    repite exacto entre registros, así que agrupamos por tipo de causa/acción, no por texto literal. */
 const CAUSA_CATS = [
   {label:"Eléctrica / energía", re:/el[eé]ctric|energ[ií]a|corto\s?circuit|breaker|t[eé]rmico\s+salt|fusible|voltaje|tablero el[eé]ctrico|\bcable\b|disparo/},
-  {label:"Electrónica / sensores / PLC / pantalla", re:/\bplc\b|sensor|pantalla|\bhmi\b|programa|comunicaci[oó]n|encoder|fotocelda|presostato|termopar|se[ñn]al|variador|inverter|transmisor|\bboard\b|tarjeta/},
+  {label:"Variador / Inverter", re:/variador|inverter/},
+  {label:"Electrónica / sensores / PLC / pantalla", re:/\bplc\b|sensor|pantalla|\bhmi\b|programa|comunicaci[oó]n|encoder|fotocelda|presostato|termopar|se[ñn]al|transmisor|\bboard\b|tarjeta/},
   {label:"Neumática (aire, cilindro, válvula)", re:/\baire\b|neum[aá]tic|cilindro|v[aá]lvula|electrov[aá]lvula|regulador/},
   {label:"Hidráulica", re:/hidr[aá]ulic|\baceite\b/},
   {label:"Nivel / llenado (tanque, olla)", re:/\bnivel\b|llen|rebos|\bolla\b|drenaj|\bdrena\b|\blitros\b/},
