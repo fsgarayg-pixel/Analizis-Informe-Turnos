@@ -886,15 +886,33 @@ function renderFailChips(){
 }
 function renderFailureAnalysis(){
   renderFailChips();
-  const target = FAIL_MAQ || (function(){
-    const counts = new Map();
-    for (const r of VIEW){ if (r.paro==="Si" && (!FAIL_AREA || r.planta===FAIL_AREA) && causaMatch(r, FAIL_CAUSA) && solucionMatch(r, FAIL_SOLUCION)) counts.set(r.maq, (counts.get(r.maq)||0)+1); }
-    let best=null, bestN=0;
-    counts.forEach((n,m)=>{ if(n>bestN){bestN=n; best=m;} });
-    return best;
-  })();
 
-  if (!target){
+  const hasCausaOrSol = !!(FAIL_CAUSA || FAIL_SOLUCION);
+  let target = null, recs, allMachinesMode = false;
+
+  if (FAIL_MAQ){
+    /* Se eligió una máquina explícita: todo se limita a ella, con o sin causa/solución. */
+    target = FAIL_MAQ;
+    recs = VIEW.filter(r=> r.maq===target && r.paro==="Si");
+    if (FAIL_CAUSA) recs = recs.filter(r=> causaMatch(r, FAIL_CAUSA));
+    if (FAIL_SOLUCION) recs = recs.filter(r=> solucionMatch(r, FAIL_SOLUCION));
+  } else if (hasCausaOrSol){
+    /* Hay filtro de causa y/o solución pero NO de máquina: se analiza en TODAS las máquinas. */
+    allMachinesMode = true;
+    recs = VIEW.filter(r=> r.paro==="Si" && (!FAIL_AREA || r.planta===FAIL_AREA) && causaMatch(r, FAIL_CAUSA) && solucionMatch(r, FAIL_SOLUCION));
+  } else {
+    /* Sin ningún filtro de causa/solución/máquina: comportamiento por defecto, la máquina con más paros. */
+    target = (function(){
+      const counts = new Map();
+      for (const r of VIEW){ if (r.paro==="Si" && (!FAIL_AREA || r.planta===FAIL_AREA)) counts.set(r.maq, (counts.get(r.maq)||0)+1); }
+      let best=null, bestN=0;
+      counts.forEach((n,m)=>{ if(n>bestN){bestN=n; best=m;} });
+      return best;
+    })();
+    recs = target ? VIEW.filter(r=> r.maq===target && r.paro==="Si") : [];
+  }
+
+  if (!recs.length){
     $("failKpis").innerHTML = '';
     $("failCausas").innerHTML = '<li class="empty" style="cursor:default">No hay paros registrados con estos filtros.</li>';
     $("failSoluciones").innerHTML = '<li class="empty" style="cursor:default">No hay paros registrados con estos filtros.</li>';
@@ -903,15 +921,14 @@ function renderFailureAnalysis(){
     return;
   }
 
-  let recs = VIEW.filter(r=> r.maq===target && r.paro==="Si");
-  if (FAIL_CAUSA) recs = recs.filter(r=> causaMatch(r, FAIL_CAUSA));
-  if (FAIL_SOLUCION) recs = recs.filter(r=> solucionMatch(r, FAIL_SOLUCION));
   const areaTxt = FAIL_AREA ? " en "+FAIL_AREA : "";
   const causaLabel = FAIL_CAUSA ? (FAIL_CAUSA===OTRA_CAUSA_VAL?"Otra causa":FAIL_CAUSA) : null;
   const solLabel = FAIL_SOLUCION ? (FAIL_SOLUCION===OTRA_SOLUCION_VAL?"Otra solución":FAIL_SOLUCION) : null;
   const filtParts = [causaLabel?'causa "'+causaLabel+'"':null, solLabel?'solución "'+solLabel+'"':null].filter(Boolean);
   const filtTxt = filtParts.length ? " — filtrado a "+filtParts.join(" + ") : "";
-  $("failSub").textContent = (FAIL_MAQ ? "Máquina seleccionada: " : "Mostrando automáticamente la de más paros"+areaTxt+": ") + target + filtTxt + ". Agrupado por tipo de causa/acción (el texto exacto casi nunca se repite entre registros). Se basa en los filtros activos arriba.";
+  $("failSub").textContent = allMachinesMode
+    ? "Mostrando todas las máquinas"+areaTxt+filtTxt+". Agrupado por tipo de causa/acción (el texto exacto casi nunca se repite entre registros). Se basa en los filtros activos arriba."
+    : (FAIL_MAQ ? "Máquina seleccionada: " : "Mostrando automáticamente la de más paros"+areaTxt+": ") + target + filtTxt + ". Agrupado por tipo de causa/acción (el texto exacto casi nunca se repite entre registros). Se basa en los filtros activos arriba.";
 
   const causas = groupByCategory(recs, "prob", CAUSA_CATS, "Otra causa", {field:"sol", cats:SOL_CATS, fallback:"Otra solución"}).sort((a,b)=> b.count-a.count || a.label.localeCompare(b.label,"es"));
   const soluciones = groupByCategory(recs, "sol", SOL_CATS, "Otra solución", {field:"prob", cats:CAUSA_CATS, fallback:"Otra causa"}).sort((a,b)=> b.count-a.count || a.label.localeCompare(b.label,"es"));
