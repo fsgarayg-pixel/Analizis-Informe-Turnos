@@ -783,22 +783,36 @@ function solucionMatch(r, sel){
   return lab === sel;
 }
 function truncate(s, n){ return s.length>n ? s.slice(0,n)+"…" : s; }
-function groupByCategory(recs, field, cats, fallback, solConf){
+function groupByCategory(recs, field, cats, fallback, solConf, pinnedPrimary){
   const map = new Map();
   for (const r of recs){
     const primary = cl(r[field]);
     const obsTxt = cl(r.obs);
     const raw = [primary, obsTxt].filter(Boolean).join(" — ");
-    if (!raw) continue;
-    const label = classify(raw, cats, fallback);
+    if (!raw && !pinnedPrimary) continue;
+    /* Si el usuario ya filtró exactamente por "Otra causa"/"Otra solución" (el
+       cajón genérico), no lo volvemos a fragmentar por palabra clave — todos
+       los registros en "recs" ya pertenecen a ese mismo cajón, así que se
+       muestran como un solo grupo (100%), no como decenas de sub-grupos de 1. */
+    const label = pinnedPrimary || classify(raw, cats, fallback);
     let g = map.get(label);
     if (!g){ g = {label, count:0, ts:[], sample:raw, solCounts: solConf ? new Map() : null}; map.set(label, g); }
     g.count++; g.ts.push(r.ts);
     if (solConf){
-      const solPrimary = cl(r[solConf.field]);
-      const solRaw = [solPrimary, obsTxt].filter(Boolean).join(" — ");
-      if (solRaw){
-        const solLabel = classify(solRaw, solConf.cats, solConf.fallback);
+      let solLabel;
+      if (solConf.pinned){
+        /* Este eje ya está fijado por un filtro activo (Tipo de causa/solución) —
+           todos los registros en "recs" ya coinciden con ese valor exacto, así que
+           no lo volvemos a re-clasificar con la palabra clave dinámica (eso fragmentaría
+           un grupo ya filtrado en pedazos pequeños, dando resultados como "1/16" en vez
+           de "16/16"). */
+        solLabel = solConf.pinned;
+      } else {
+        const solPrimary = cl(r[solConf.field]);
+        const solRaw = [solPrimary, obsTxt].filter(Boolean).join(" — ");
+        solLabel = solRaw ? classify(solRaw, solConf.cats, solConf.fallback) : null;
+      }
+      if (solLabel){
         let s = g.solCounts.get(solLabel);
         if (!s){ s = {count:0, examples:[]}; g.solCounts.set(solLabel, s); }
         s.count++;
@@ -930,8 +944,10 @@ function renderFailureAnalysis(){
     ? "Mostrando todas las máquinas"+areaTxt+filtTxt+". Agrupado por tipo de causa/acción (el texto exacto casi nunca se repite entre registros). Se basa en los filtros activos arriba."
     : (FAIL_MAQ ? "Máquina seleccionada: " : "Mostrando automáticamente la de más paros"+areaTxt+": ") + target + filtTxt + ". Agrupado por tipo de causa/acción (el texto exacto casi nunca se repite entre registros). Se basa en los filtros activos arriba.";
 
-  const causas = groupByCategory(recs, "prob", CAUSA_CATS, "Otra causa", {field:"sol", cats:SOL_CATS, fallback:"Otra solución"}).sort((a,b)=> b.count-a.count || a.label.localeCompare(b.label,"es"));
-  const soluciones = groupByCategory(recs, "sol", SOL_CATS, "Otra solución", {field:"prob", cats:CAUSA_CATS, fallback:"Otra causa"}).sort((a,b)=> b.count-a.count || a.label.localeCompare(b.label,"es"));
+  const causaPinnedPrimary = (FAIL_CAUSA === OTRA_CAUSA_VAL) ? OTRA_CAUSA_VAL : null;
+  const solPinnedPrimary = (FAIL_SOLUCION === OTRA_SOLUCION_VAL) ? OTRA_SOLUCION_VAL : null;
+  const causas = groupByCategory(recs, "prob", CAUSA_CATS, "Otra causa", {field:"sol", cats:SOL_CATS, fallback:"Otra solución", pinned: FAIL_SOLUCION || null}, causaPinnedPrimary).sort((a,b)=> b.count-a.count || a.label.localeCompare(b.label,"es"));
+  const soluciones = groupByCategory(recs, "sol", SOL_CATS, "Otra solución", {field:"prob", cats:CAUSA_CATS, fallback:"Otra causa", pinned: FAIL_CAUSA || null}, solPinnedPrimary).sort((a,b)=> b.count-a.count || a.label.localeCompare(b.label,"es"));
 
   const gaps = causas.filter(c=>c.count>=2).flatMap(c=>{
     const sorted = c.ts.slice().sort();
