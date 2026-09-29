@@ -821,14 +821,15 @@ function refreshFailSelect(){
     const lab = causaLabelStrict(r) || OTRA_CAUSA_VAL;
     causaCounts.set(lab, (causaCounts.get(lab)||0)+1);
   }
-  const causaEl = $("failCausa");
   const causaOpts = CAUSA_CATS.map(c=>c.label).filter(l=>causaCounts.has(l))
     .sort((a,b)=> (causaCounts.get(b)||0)-(causaCounts.get(a)||0));
   let causaListHtml = causaOpts.map(l=>'<option value="'+esc(l)+'">'+fmt(causaCounts.get(l))+' casos</option>').join("");
   if (causaCounts.has(OTRA_CAUSA_VAL)) causaListHtml += '<option value="'+OTRA_CAUSA_VAL+'">'+fmt(causaCounts.get(OTRA_CAUSA_VAL))+' casos</option>';
   $("failCausaList").innerHTML = causaListHtml;
   const validCausas = new Set(causaOpts); if (causaCounts.has(OTRA_CAUSA_VAL)) validCausas.add(OTRA_CAUSA_VAL);
-  if (FAIL_CAUSA && !validCausas.has(FAIL_CAUSA)){ FAIL_CAUSA = ""; causaEl.value = ""; }
+  /* No borramos el campo aquí aunque el texto no coincida todavía — eso pasaría en
+     cada tecla mientras el usuario escribe. Si al final no coincide con nada real,
+     el filtro simplemente no encuentra registros (mensaje "No hay paros..."). */
 
   const counts = new Map();
   for (const r of scope){
@@ -837,8 +838,8 @@ function refreshFailSelect(){
   const opts = [...counts.entries()].sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0],"es"));
   const list = $("failMaqList");
   list.innerHTML = opts.map(([m,c])=>'<option value="'+esc(m)+'">'+fmt(c)+' paros</option>').join("");
-  const maqInput = $("failMaq");
-  if (FAIL_MAQ && !opts.some(([m])=>m===FAIL_MAQ)){ FAIL_MAQ = ""; maqInput.value = ""; }
+  /* Igual que con la causa: no borramos mientras el usuario escribe, solo dejamos
+     de encontrar coincidencias si el texto final no es un nombre real de máquina. */
 }
 function renderFailChips(){
   const items = [];
