@@ -231,7 +231,8 @@ input[type=file]{display:none}
         </div>
         <div class="field" style="min-width:200px">
           <label for="failCausa">Tipo de causa</label>
-          <select id="failCausa"><option value="">Todas</option></select>
+          <input type="text" id="failCausa" list="failCausaList" placeholder="Todas (escribe para buscar)" autocomplete="off">
+          <datalist id="failCausaList"></datalist>
         </div>
       </div>
     </div>
@@ -684,7 +685,7 @@ function renderRanks(){
 let FAIL_MAQ = "";
 let FAIL_AREA = "";
 let FAIL_CAUSA = "";
-const OTRA_CAUSA_VAL = "__otra__";
+const OTRA_CAUSA_VAL = "Otra causa";
 
 /* Taxonomía por palabras clave: el texto libre de "Problema"/"Solución" casi nunca se
    repite exacto entre registros, así que agrupamos por tipo de causa/acción, no por texto literal. */
@@ -821,14 +822,13 @@ function refreshFailSelect(){
     causaCounts.set(lab, (causaCounts.get(lab)||0)+1);
   }
   const causaEl = $("failCausa");
-  const curCausa = causaEl.value;
   const causaOpts = CAUSA_CATS.map(c=>c.label).filter(l=>causaCounts.has(l))
     .sort((a,b)=> (causaCounts.get(b)||0)-(causaCounts.get(a)||0));
-  let causaHtml = '<option value="">Todas</option>' + causaOpts.map(l=>'<option value="'+esc(l)+'">'+esc(l)+' ('+fmt(causaCounts.get(l))+')</option>').join("");
-  if (causaCounts.has(OTRA_CAUSA_VAL)) causaHtml += '<option value="'+OTRA_CAUSA_VAL+'">Otra causa ('+fmt(causaCounts.get(OTRA_CAUSA_VAL))+')</option>';
-  causaEl.innerHTML = causaHtml;
-  causaEl.value = (causaOpts.includes(curCausa) || curCausa===OTRA_CAUSA_VAL) && causaCounts.has(curCausa) ? curCausa : "";
-  if (causaEl.value !== curCausa) FAIL_CAUSA = causaEl.value;
+  let causaListHtml = causaOpts.map(l=>'<option value="'+esc(l)+'">'+fmt(causaCounts.get(l))+' casos</option>').join("");
+  if (causaCounts.has(OTRA_CAUSA_VAL)) causaListHtml += '<option value="'+OTRA_CAUSA_VAL+'">'+fmt(causaCounts.get(OTRA_CAUSA_VAL))+' casos</option>';
+  $("failCausaList").innerHTML = causaListHtml;
+  const validCausas = new Set(causaOpts); if (causaCounts.has(OTRA_CAUSA_VAL)) validCausas.add(OTRA_CAUSA_VAL);
+  if (FAIL_CAUSA && !validCausas.has(FAIL_CAUSA)){ FAIL_CAUSA = ""; causaEl.value = ""; }
 
   const counts = new Map();
   for (const r of scope){
@@ -949,7 +949,11 @@ $("failMaq").addEventListener("input", e=>{
   failTimer = setTimeout(()=>{ FAIL_MAQ = e.target.value.trim(); renderFailureAnalysis(); }, 180);
 });
 $("failArea").addEventListener("change", e=>{ FAIL_AREA = e.target.value; FAIL_MAQ=""; $("failMaq").value=""; refreshFailSelect(); renderFailureAnalysis(); });
-$("failCausa").addEventListener("change", e=>{ FAIL_CAUSA = e.target.value; FAIL_MAQ=""; $("failMaq").value=""; refreshFailSelect(); renderFailureAnalysis(); });
+let failCausaTimer;
+$("failCausa").addEventListener("input", e=>{
+  clearTimeout(failCausaTimer);
+  failCausaTimer = setTimeout(()=>{ FAIL_CAUSA = e.target.value.trim(); FAIL_MAQ=""; $("failMaq").value=""; refreshFailSelect(); renderFailureAnalysis(); }, 180);
+});
 function bindSolToggle(ul){
   ul.addEventListener("click", e=>{
     const btn = e.target.closest(".sol-pair"); if (!btn) return;
