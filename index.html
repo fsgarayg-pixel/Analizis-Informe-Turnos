@@ -239,13 +239,19 @@ input[type=file]{display:none}
           <input type="text" id="failSolucion" list="failSolucionList" placeholder="Todas (escribe para buscar)" autocomplete="off">
           <datalist id="failSolucionList"></datalist>
         </div>
+        <div class="field" style="min-width:220px;justify-content:flex-end">
+          <label for="failAllParo" style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600">
+            <input type="checkbox" id="failAllParo" style="width:16px;height:16px;margin:0">
+            Incluir sin paro (preventivos)
+          </label>
+        </div>
       </div>
     </div>
     <div class="chips" id="failChips"></div>
     <div class="kpis" id="failKpis" style="margin:14px 0"></div>
     <div class="grid2" style="margin-bottom:0">
       <div>
-        <h2 style="font-size:16px;margin-bottom:2px">Causas más frecuentes de paro</h2>
+        <h2 style="font-size:16px;margin-bottom:2px" id="failCausasTitle">Causas más frecuentes de paro</h2>
         <p class="sub">Agrupadas por tipo de causa, con la solución más usada para cada una.</p>
         <ul class="rank" id="failCausas"></ul>
       </div>
@@ -696,6 +702,10 @@ let FAIL_MAQ = "";
 let FAIL_AREA = "";
 let FAIL_CAUSA = "";
 let FAIL_SOLUCION = "";
+let FAIL_ALL_PARO = false;
+/* Cuando está en true, el análisis incluye también los mantenimientos sin paro
+   (preventivos u otros trabajos registrados con Paro=No), no solo las fallas. */
+function paroOk(r){ return FAIL_ALL_PARO || r.paro==="Si"; }
 const OTRA_CAUSA_VAL = "Otra causa";
 const OTRA_SOLUCION_VAL = "Otra solución";
 
@@ -843,7 +853,7 @@ function fmtDias(d){
 }
 function refreshFailSelect(){
   const areaCounts = new Map();
-  for (const r of VIEW){ if (r.paro==="Si"){ areaCounts.set(r.planta, (areaCounts.get(r.planta)||0)+1); } }
+  for (const r of VIEW){ if (paroOk(r)){ areaCounts.set(r.planta, (areaCounts.get(r.planta)||0)+1); } }
   const areaOpts = [...areaCounts.entries()].sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0],"es"));
   const areaEl = $("failArea");
   const curArea = areaEl.value;
@@ -851,7 +861,7 @@ function refreshFailSelect(){
   areaEl.value = areaOpts.some(([a])=>a===curArea) ? curArea : "";
   if (areaEl.value !== curArea) FAIL_AREA = areaEl.value;
 
-  const scope = VIEW.filter(r=> r.paro==="Si" && (!FAIL_AREA || r.planta===FAIL_AREA));
+  const scope = VIEW.filter(r=> paroOk(r) && (!FAIL_AREA || r.planta===FAIL_AREA));
 
   const causaCounts = new Map();
   for (const r of scope){
@@ -907,30 +917,31 @@ function renderFailureAnalysis(){
   if (FAIL_MAQ){
     /* Se eligió una máquina explícita: todo se limita a ella, con o sin causa/solución. */
     target = FAIL_MAQ;
-    recs = VIEW.filter(r=> r.maq===target && r.paro==="Si");
+    recs = VIEW.filter(r=> r.maq===target && paroOk(r) && (!FAIL_AREA || r.planta===FAIL_AREA));
     if (FAIL_CAUSA) recs = recs.filter(r=> causaMatch(r, FAIL_CAUSA));
     if (FAIL_SOLUCION) recs = recs.filter(r=> solucionMatch(r, FAIL_SOLUCION));
   } else if (hasCausaOrSol){
     /* Hay filtro de causa y/o solución pero NO de máquina: se analiza en TODAS las máquinas. */
     allMachinesMode = true;
-    recs = VIEW.filter(r=> r.paro==="Si" && (!FAIL_AREA || r.planta===FAIL_AREA) && causaMatch(r, FAIL_CAUSA) && solucionMatch(r, FAIL_SOLUCION));
+    recs = VIEW.filter(r=> paroOk(r) && (!FAIL_AREA || r.planta===FAIL_AREA) && causaMatch(r, FAIL_CAUSA) && solucionMatch(r, FAIL_SOLUCION));
   } else {
     /* Sin ningún filtro de causa/solución/máquina: comportamiento por defecto, la máquina con más paros. */
     target = (function(){
       const counts = new Map();
-      for (const r of VIEW){ if (r.paro==="Si" && (!FAIL_AREA || r.planta===FAIL_AREA)) counts.set(r.maq, (counts.get(r.maq)||0)+1); }
+      for (const r of VIEW){ if (paroOk(r) && (!FAIL_AREA || r.planta===FAIL_AREA)) counts.set(r.maq, (counts.get(r.maq)||0)+1); }
       let best=null, bestN=0;
       counts.forEach((n,m)=>{ if(n>bestN){bestN=n; best=m;} });
       return best;
     })();
-    recs = target ? VIEW.filter(r=> r.maq===target && r.paro==="Si") : [];
+    recs = target ? VIEW.filter(r=> r.maq===target && paroOk(r)) : [];
   }
 
   if (!recs.length){
+    const emptyTxt = FAIL_ALL_PARO ? "No hay registros con estos filtros." : "No hay paros registrados con estos filtros.";
     $("failKpis").innerHTML = '';
-    $("failCausas").innerHTML = '<li class="empty" style="cursor:default">No hay paros registrados con estos filtros.</li>';
-    $("failSoluciones").innerHTML = '<li class="empty" style="cursor:default">No hay paros registrados con estos filtros.</li>';
-    $("failSub").textContent = "No hay paros registrados con estos filtros.";
+    $("failCausas").innerHTML = '<li class="empty" style="cursor:default">'+emptyTxt+'</li>';
+    $("failSoluciones").innerHTML = '<li class="empty" style="cursor:default">'+emptyTxt+'</li>';
+    $("failSub").textContent = emptyTxt;
     $("failCausaAllWrap").hidden = true;
     return;
   }
@@ -942,7 +953,8 @@ function renderFailureAnalysis(){
   const filtTxt = filtParts.length ? " — filtrado a "+filtParts.join(" + ") : "";
   $("failSub").textContent = allMachinesMode
     ? "Mostrando todas las máquinas"+areaTxt+filtTxt+". Agrupado por tipo de causa/acción (el texto exacto casi nunca se repite entre registros). Se basa en los filtros activos arriba."
-    : (FAIL_MAQ ? "Máquina seleccionada: " : "Mostrando automáticamente la de más paros"+areaTxt+": ") + target + filtTxt + ". Agrupado por tipo de causa/acción (el texto exacto casi nunca se repite entre registros). Se basa en los filtros activos arriba.";
+    : (FAIL_MAQ ? "Máquina seleccionada: " : "Mostrando automáticamente la de más "+(FAIL_ALL_PARO?"mantenimientos":"paros")+areaTxt+": ") + target + filtTxt + ". Agrupado por tipo de causa/acción (el texto exacto casi nunca se repite entre registros). Se basa en los filtros activos arriba.";
+  $("failCausasTitle").textContent = FAIL_ALL_PARO ? "Causas más frecuentes de mantenimiento" : "Causas más frecuentes de paro";
 
   const causaPinnedPrimary = (FAIL_CAUSA === OTRA_CAUSA_VAL) ? OTRA_CAUSA_VAL : null;
   const solPinnedPrimary = (FAIL_SOLUCION === OTRA_SOLUCION_VAL) ? OTRA_SOLUCION_VAL : null;
@@ -958,7 +970,7 @@ function renderFailureAnalysis(){
   const avgAll = gaps.length ? gaps.reduce((a,b)=>a+b,0)/gaps.length : null;
 
   $("failKpis").innerHTML = [
-    [fmt(recs.length), "Paros analizados", ""],
+    [fmt(recs.length), FAIL_ALL_PARO ? "Registros analizados" : "Paros analizados", ""],
     [fmt(causas.length), "Tipos de causa detectados", ""],
     [avgAll==null ? "—" : fmtDias(avgAll), "Recurrencia promedio", avgAll==null ? "aún no hay causas repetidas" : "entre repeticiones del mismo tipo de falla"]
   ].map(i=>'<div class="kpi"><div class="n">'+i[0]+'</div><div class="l">'+i[1]+'</div>'+(i[2]?'<div class="p">'+i[2]+'</div>':'')+'</div>').join("");
@@ -1000,7 +1012,7 @@ function renderFailureAnalysis(){
 
   const allWrap = $("failCausaAllWrap");
   if (FAIL_CAUSA || FAIL_SOLUCION){
-    const allRecs = VIEW.filter(r=> r.paro==="Si" && (!FAIL_AREA || r.planta===FAIL_AREA) && (!FAIL_MAQ || r.maq===FAIL_MAQ) && causaMatch(r, FAIL_CAUSA) && solucionMatch(r, FAIL_SOLUCION))
+    const allRecs = VIEW.filter(r=> paroOk(r) && (!FAIL_AREA || r.planta===FAIL_AREA) && (!FAIL_MAQ || r.maq===FAIL_MAQ) && causaMatch(r, FAIL_CAUSA) && solucionMatch(r, FAIL_SOLUCION))
       .sort((a,b)=> a.ts<b.ts?1:a.ts>b.ts?-1:0);
     allWrap.hidden = false;
     $("failCausaAllTitle").textContent = "Todos los registros" + (filtParts.length ? " — "+filtParts.join(" + ") : "") + (FAIL_MAQ ? "" : " — todas las máquinas");
@@ -1044,17 +1056,18 @@ $("failMaq").addEventListener("input", e=>{
   clearTimeout(failTimer);
   failTimer = setTimeout(()=>{ FAIL_MAQ = e.target.value.trim(); renderFailureAnalysis(); }, 180);
 });
-$("failArea").addEventListener("change", e=>{ FAIL_AREA = e.target.value; FAIL_MAQ=""; $("failMaq").value=""; refreshFailSelect(); renderFailureAnalysis(); });
+$("failArea").addEventListener("change", e=>{ FAIL_AREA = e.target.value; refreshFailSelect(); renderFailureAnalysis(); });
 let failCausaTimer;
 $("failCausa").addEventListener("input", e=>{
   clearTimeout(failCausaTimer);
-  failCausaTimer = setTimeout(()=>{ FAIL_CAUSA = e.target.value.trim(); FAIL_MAQ=""; $("failMaq").value=""; refreshFailSelect(); renderFailureAnalysis(); }, 180);
+  failCausaTimer = setTimeout(()=>{ FAIL_CAUSA = e.target.value.trim(); refreshFailSelect(); renderFailureAnalysis(); }, 180);
 });
 let failSolucionTimer;
 $("failSolucion").addEventListener("input", e=>{
   clearTimeout(failSolucionTimer);
-  failSolucionTimer = setTimeout(()=>{ FAIL_SOLUCION = e.target.value.trim(); FAIL_MAQ=""; $("failMaq").value=""; refreshFailSelect(); renderFailureAnalysis(); }, 180);
+  failSolucionTimer = setTimeout(()=>{ FAIL_SOLUCION = e.target.value.trim(); refreshFailSelect(); renderFailureAnalysis(); }, 180);
 });
+$("failAllParo").addEventListener("change", e=>{ FAIL_ALL_PARO = e.target.checked; refreshFailSelect(); renderFailureAnalysis(); });
 function bindSolToggle(ul){
   ul.addEventListener("click", e=>{
     const btn = e.target.closest(".sol-pair"); if (!btn) return;
