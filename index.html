@@ -1050,7 +1050,30 @@ function renderTable(){
 }
 
 /* ---------- Eventos ---------- */
-$("btnUpdate").addEventListener("click", ()=> fetchLive(false));
+// Boton "Actualizar datos": primero sincroniza Excel -> Google Sheet (servicio local), luego recarga
+async function syncAndRefresh(){
+  const btn = $("btnUpdate");
+  btn.disabled = true;
+  let aviso = "";
+  try{
+    setStatus("Sincronizando el Excel con Google Sheets… (puede tardar hasta 1 minuto)");
+    const ctl = new AbortController();
+    const t = setTimeout(()=>ctl.abort(), 180000);
+    const r = await fetch("http://127.0.0.1:8765/sync", {signal: ctl.signal});
+    clearTimeout(t);
+    const j = await r.json();
+    if (!j.ok) aviso = j.message || "no se pudo sincronizar el Excel.";
+  }catch(e){
+    aviso = "no se pudo sincronizar el Excel (el servicio local no responde o este equipo no es el del Excel). Se muestra lo que ya está en la hoja.";
+  }finally{
+    btn.disabled = false;
+  }
+  await fetchLive(false);
+  if (aviso){
+    $("status").insertAdjacentHTML("beforeend", ' <span class="err">Aviso: '+esc(aviso)+'</span>');
+  }
+}
+$("btnUpdate").addEventListener("click", syncAndRefresh);
 let failTimer;
 $("failMaq").addEventListener("input", e=>{
   clearTimeout(failTimer);
