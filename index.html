@@ -156,6 +156,14 @@ input[type=file]{display:none}
 .tab:hover{color:var(--ink)}
 .tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--btn)}
 .pg-note{margin:0 0 14px;font-size:13.5px;color:var(--muted)}
+/* Textos completos y evidencia por causa */
+.px-full{min-width:250px;max-width:480px;white-space:normal;overflow-wrap:anywhere}
+tr.px-causa{cursor:pointer}
+tr.px-det td{background:var(--soft)}
+.px-ev{margin:0 0 10px;padding:8px 12px;border-left:3px solid var(--line);background:var(--surface);border-radius:0 6px 6px 0;white-space:normal;overflow-wrap:anywhere}
+.px-ev b{font-weight:600}
+.px-evh{margin:8px 0 6px;font-weight:600;font-size:13.5px}
+.px-detwrap{position:sticky;left:0;width:min(92vw,940px);max-width:100%}
 </style>
 </head>
 <body>
@@ -350,11 +358,23 @@ input[type=file]{display:none}
         <ul class="rank px static" id="pxCand"></ul>
       </div>
     </div>
-    <h3 class="px-h3">Plan de acción por máquina y causa</h3>
+    <h3 class="px-h3">Qué hacer por causa</h3>
+    <p class="sub" id="pxQhSub"></p>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Causa</th><th>Qué hacer</th><th>Fallas en turnos</th><th>Proyección 30 d</th><th>ODT relacionadas</th></tr></thead>
+        <tbody id="pxQhBody"></tbody>
+      </table>
+    </div>
+    <div class="pager">
+      <span id="pxQhInfo"></span>
+      <button type="button" id="pxQhMore">Mostrar más</button>
+    </div>
+    <h3 class="px-h3" style="margin-top:22px">Plan de acción por máquina y causa</h3>
     <p class="sub" id="pxTblSub"></p>
     <div class="tw">
       <table>
-        <thead><tr><th>Estado</th><th>Máquina</th><th>Causa</th><th>Días con falla</th><th>Últ. 30 d</th><th>1 falla cada</th><th>Paro 90 d</th><th>ODT preventivas 90 d</th><th>Qué hacer</th><th>Último caso del turno</th><th>Último informe de ODT</th></tr></thead>
+        <thead><tr><th>Estado</th><th>Máquina</th><th>Causa</th><th>Días con falla</th><th>Últ. 30 d</th><th>1 falla cada</th><th>Paro 90 d</th><th>ODT de esta falla</th><th>Qué hacer</th><th>Último caso del turno</th><th>Último informe de ODT de esta falla</th></tr></thead>
         <tbody id="pxBody"></tbody>
       </table>
     </div>
@@ -362,7 +382,7 @@ input[type=file]{display:none}
       <span id="pxInfo"></span>
       <button type="button" id="pxMore">Mostrar más</button>
     </div>
-    <p class="foot" id="pxFoot">La causa se deduce del texto del reporte (problema, observación y solución) con reglas de palabras clave: es una primera asociación, no un código ingresado por el técnico. Activa: 2 o más días con falla en los últimos 30 días. Vigilar: 1 día. La inspección sugerida es la mitad del tiempo promedio entre fallas (entre 7 y 90 días) y es un punto de partida para ajustar con criterio de mantenimiento. Paros y ODT salen de los mismos archivos y con las mismas definiciones de tu Power BI (falla = paro que no es preventivo; MTTR = horas de falla entre número de fallas, meta 3,9 h; MTBF = horas disponibles menos horas de paro, entre fallas) sobre los últimos 90 días de paros cargados. Se cruzan con la máquina por el número después del «#». Las ODT son solo del grupo eléctrico, así que una máquina sin ODT no se marca como «sin preventiva».</p>
+    <p class="foot" id="pxFoot">La causa se deduce del texto del reporte (problema, observación y solución) con reglas de palabras clave: es una primera asociación, no un código ingresado por el técnico. Activa: 2 o más días con falla en los últimos 30 días. Vigilar: 1 día. La inspección sugerida es la mitad del tiempo promedio entre fallas (entre 7 y 90 días) y es un punto de partida para ajustar con criterio de mantenimiento. Paros y ODT salen de los mismos archivos y con las mismas definiciones de tu Power BI (falla = paro que no es preventivo; MTTR = horas de falla entre número de fallas, meta 3,9 h; MTBF = horas disponibles menos horas de paro, entre fallas) sobre los últimos 90 días de paros cargados. Se cruzan con la máquina por Maquina_Limpia, la misma llave del Power BI. Las ODT son solo del grupo eléctrico. «Qué hacer por causa» cruza las ODT correctivas terminadas (con su observación final) y los informes de turno: a cada ODT se le asigna la causa con el mismo catálogo, mirando su descripción y su observación final. La acción recomendada es la más frecuente en esas ODT y reportes (las ODT pesan el doble) y la proyección es el promedio de fallas de los últimos 90 días llevado a 30 días: son una guía, no una instrucción de trabajo.</p>
     <p class="foot" id="pxEnrInfo"></p>
   </section>
 
@@ -1157,7 +1177,7 @@ async function syncAndRefresh(){
   }finally{
     btn.disabled = false;
   }
-  pxLoadEnr(); pxLoadCatalogo();
+  pxLoadTodo();
   await fetchLive(false);
   if (aviso){
     $("status").insertAdjacentHTML("beforeend", ' <span class="err">Aviso: '+esc(aviso)+'</span>');
@@ -1273,7 +1293,7 @@ function pxLimpia(nombre){
   return String(nombre).replace(/[#\-`’]/g,"").trim().toUpperCase();
 }
 
-const PX = {estado:"vig", q:"", limit:25, res:null, enr:null, enrInfo:null, ver:1};
+const PX = {estado:"vig", q:"", limit:25, res:null, enr:null, enrInfo:null, ver:1, odt:null, odtIdx:new Map(), qh:[], qhMap:new Map(), qhLimit:12, qhAbierto:new Set()};
 /* Área de trabajo según el Power BI: la del equipo en paros/ODT (p. ej. "TINTORERIA PROD.");
    si la máquina no está allí, la sección del turno cuando coincide con un área del Power BI; si no, la sección tal cual. */
 let PX_AREA_MAPA = null, PX_AREA_VER = 0;
@@ -1350,15 +1370,117 @@ function pxFiltradas(){
   const q = pxNorm(PX.q);
   return rows.filter(r=> okEst.includes(r.est) && (!q || pxNorm(r.maq+" "+r.nom+" "+r.cod+" "+r.sec).includes(q)));
 }
-function pxRecomendar(r){
-  const l = ["Inspección cada "+r.insp+" d"+(r.acc && r.acc!=="Otra / sin detalle" ? " · acción habitual: "+r.acc.toLowerCase() : "")];
-  const e = r.enr;
-  if (e){
-    if (+e.sin_prev_90===1) l.push("Sin preventiva cumplida en 90 d: programar ODT preventiva");
-    if (+e.odt_atrasadas_abiertas>0) l.push("Cerrar "+(+e.odt_atrasadas_abiertas)+" ODT atrasada(s)");
-    if (r.est==="act" && +e.odt_prev_ok_90>=1) l.push((+e.odt_prev_ok_90)+" preventiva(s) cumplida(s) en 90 d y la falla persiste: revisar el alcance del plan preventivo");
-    if (+e.mttr_sobre_meta===1) l.push("MTTR de "+(+e.mttr_h).toFixed(1).replace(".",",")+" h sobre la meta de 3,9 h: asegurar repuesto crítico");
+/* ---- Qué hacer por causa: ODT correctivas terminadas + informes de turno ---- */
+const PX_ACC_SIN = new Set(["Otra / sin detalle","Seguimiento pendiente"]);
+const PX_REP_STOP = new Set(("queda quedo para segun porque cuando donde repuesto repuestos parametros ajuste maquina equipo pruebas funcionamiento solo tambien luego "
+  +"despues tiene estaba sistema correctamente nuevo nueva nuevos nuevas antiguo mismo misma otro otra varios varias cada todo todos todas esta este esos esas ese esa dando "
+  +"dejando personal supervisor mecanico electrico operario turno puesto lado parte area zona original provisional alterno alterna conectado conectada conexion conexiones "
+  +"mientras haya hace hacen realiza realizan mantenimiento servicio inmediato inmediata inmediatamente").split(" "));
+function pxOdtCausa(o){
+  if (!o._px) o._px = pxClasificar((o.d||"")+" "+(o.fa||""), "", o.o);
+  return o._px;
+}
+function pxRepuestos(textos){
+  const c = new Map(), rx = /\b(?:cambi\w*|reemplaz\w*|remplaz\w*|instal\w*|se monta|se coloca\w*)\s+(?:el |la |los |las |un |una |unos |unas |de |del |por |nuevo |nueva |nuevos |nuevas )*([a-z]{4,})/g;
+  for (const t of textos){
+    const s = pxNorm(t); rx.lastIndex = 0; let m;
+    while ((m = rx.exec(s))){ const w = m[1]; if (PX_REP_STOP.has(w) || /mente$/.test(w) || /^(cambi|reemplaz|remplaz|instal)/.test(w)) continue; c.set(w, (c.get(w)||0)+1); }
   }
+  return [...c.entries()].filter(([,n])=>n>=2).sort((a,b)=>b[1]-a[1]).slice(0,3);
+}
+function pxCausasResumen(res){
+  const hoy = res.hoy, map = new Map();
+  const get = p => { let g = map.get(p.cod); if (!g){ g = {cod:p.cod, nom:p.nom, n:0, paro:0, d90:0, accT:new Map(), nSol:0, solTxt:[], recT:[], accO:new Map(), odt:{tot:0, term:0, conObs:0}, odtTxt:[], odtLista:[]}; map.set(p.cod, g); } return g; };
+  for (const r of VIEW){
+    if (!/correctiv/i.test(r.mto) || !(cl(r.prob) || cl(r.sol))) continue;
+    if (!r._px) r._px = pxClasificar(r.prob, r.obs, r.sol);
+    const p = r._px; if (!p.cod) continue;
+    const g = get(p); g.n++; if (r.paro==="Si") g.paro++;
+    const d = pxDay(r.ts); if (d<=hoy+1 && hoy-d<=90) g.d90++;
+    if (cl(r.sol)){ g.nSol++; g.solTxt.push(r.sol); const a = pxAccion(r.sol, r.obs); g.accT.set(a, (g.accT.get(a)||0)+1); }
+    g.recT.push(r);
+  }
+  const maqSet = hasFilters() ? new Set(VIEW.map(r=>pxLimpia(r.maq))) : null;
+  for (const o of (PX.odt||[])){
+    if (maqSet && !maqSet.has(o.m)) continue;
+    const p = pxOdtCausa(o); if (!p.cod) continue;
+    const g = get(p); g.odt.tot++;
+    if (o.estado==="TERMINADO"){
+      g.odt.term++;
+      if (cl(o.o)){ g.odt.conObs++; g.odtTxt.push(o.o); const a = pxAccion(o.o, ""); g.accO.set(a, (g.accO.get(a)||0)+1); g.odtLista.push(o); }
+    }
+  }
+  const lista = [...map.values()].filter(g=>g.n>0 || g.odt.tot>0);
+  for (const g of lista){
+    g.recT.sort((a,b)=> b.ts<a.ts ? -1 : 1);
+    g.odtLista.sort((a,b)=> (b.f||"").localeCompare(a.f||""));
+    g.repu = pxRepuestos(g.odtTxt.concat(g.solTxt));
+    g.esp = g.d90/3;
+    g.lineas = pxQueHacer(g);
+  }
+  lista.sort((a,b)=> b.n-a.n || b.odt.term-a.odt.term);
+  return lista;
+}
+function pxQueHacer(g){
+  const l = [], comb = new Map();
+  for (const [a,k] of g.accO) comb.set(a, (comb.get(a)||0) + 2*k);
+  for (const [a,k] of g.accT) comb.set(a, (comb.get(a)||0) + k);
+  for (const a of PX_ACC_SIN) comb.delete(a);
+  const top = [...comb.entries()].sort((a,b)=>b[1]-a[1]).slice(0,2);
+  g.acciones = top.map(([a])=>a);
+  top.forEach(([a],i)=>{
+    const ev = [], kO = g.accO.get(a)||0, kT = g.accT.get(a)||0;
+    if (kO) ev.push(kO+" de "+g.odt.conObs+" ODT terminadas");
+    if (kT) ev.push(kT+" de "+g.nSol+" reportes de turno");
+    l.push((i===0 ? "Hacer primero: " : "Si no resuelve: ")+a.toLowerCase()+(ev.length ? " ("+ev.join(" y ")+")" : ""));
+  });
+  if (!top.length) l.push("Los informes no describen una acción repetida: dejar la solución escrita en cada ODT.");
+  if (g.repu.length) l.push("Repuestos a tener disponibles: "+g.repu.map(([w,n])=>w+" ("+n+")").join(", "));
+  if (g.n>0) l.push("Proyección: ≈"+g.esp.toFixed(1).replace(".",",")+" falla(s) en los próximos 30 días ("+g.d90+" en los últimos 90)");
+  if (g.odt.conObs===0) l.push("Sin ODT terminadas con informe para esta causa: la recomendación sale solo de los reportes de turno.");
+  return l;
+}
+function pxEvidencia(g){
+  let h = "";
+  if (g.odtLista.length){
+    h += '<div class="px-evh">ODT terminadas de esta causa (las más recientes de '+fmt(g.odtLista.length)+')</div>';
+    h += g.odtLista.slice(0,4).map(o=>'<div class="px-ev"><b>'+esc(fdate(o.f))+'</b> · '+esc(o.nombre||o.m||"")+(o.d ? '<div><b>Orden:</b> '+esc(o.d)+'</div>' : '')+'<div><b>Informe final:</b> '+esc(o.o)+'</div></div>').join("");
+  }
+  if (g.recT.length){
+    h += '<div class="px-evh">Reportes de turno de esta causa (los más recientes de '+fmt(g.recT.length)+')</div>';
+    h += g.recT.slice(0,3).map(r=>'<div class="px-ev"><b>'+esc(fdate(r.ts))+'</b> · '+esc(r.maq)+(cl(r.prob) ? '<div><b>Falla:</b> '+esc(cl(r.prob))+'</div>' : '')+(cl(r.sol) ? '<div><b>Solución:</b> '+esc(cl(r.sol))+'</div>' : '')+'</div>').join("");
+  }
+  return '<div class="px-detwrap">'+(h || '<div class="px-act">Sin evidencia para mostrar.</div>')+'</div>';
+}
+function pxRenderQh(){
+  const lista = PX.qh, vis = lista.slice(0, PX.qhLimit);
+  const dec = v => (+v).toFixed(1).replace(".",",");
+  $("pxQhSub").textContent = "Para cada causa del catálogo: cuántas fallas hay en turnos, cuántas ODT correctivas se relacionan con ella y qué hacer según lo que resolvió esas ODT y esos reportes. "
+    +(PX.odt ? "ODT desde "+fdate(PX.odt.reduce((m,o)=>(o.f && o.f<m ? o.f : m), "9999-12-31"))+"." : "No se pudieron leer las ODT: solo se usan los informes de turno.")+" Toca una causa para ver las ODT y reportes que la respaldan.";
+  $("pxQhBody").innerHTML = vis.length ? vis.map(g=>{
+    const ab = PX.qhAbierto.has(g.cod);
+    return '<tr class="px-causa" data-cod="'+esc(g.cod)+'">'
+      +'<td><b>'+esc(g.nom)+'</b><div class="px-act">código '+esc(g.cod)+' · '+(ab ? '▾ ocultar respaldo' : '▸ ver respaldo')+'</div></td>'
+      +'<td class="px-full">'+g.lineas.map((t,i)=>'<div'+(i ? ' class="px-act"' : '')+'>'+(i ? '' : '<b>')+esc(t)+(i ? '' : '</b>')+'</div>').join("")+'</td>'
+      +'<td class="px-num"><b>'+fmt(g.n)+'</b><div class="px-act">'+fmt(g.paro)+' con paro</div></td>'
+      +'<td class="px-num">'+(g.n>0 ? '≈ '+dec(g.esp)+'<div class="px-act">'+fmt(g.d90)+' en los últimos 90 d</div>' : '<span class="px-act">sin fallas en turnos</span>')+'</td>'
+      +'<td class="px-num"><b>'+fmt(g.odt.tot)+'</b> correctivas<div class="px-act">'+fmt(g.odt.term)+' terminadas</div></td></tr>'
+      +(ab ? '<tr class="px-det"><td colspan="5">'+pxEvidencia(g)+'</td></tr>' : '');
+  }).join("") : '<tr><td colspan="5" class="empty">No hay causas con fallas u ODT en estos filtros.</td></tr>';
+  $("pxQhInfo").textContent = "Mostrando "+fmt(vis.length)+" de "+fmt(lista.length)+" causas";
+  $("pxQhMore").hidden = vis.length >= lista.length;
+}
+function pxRecomendar(r){
+  const l = ["Inspección cada "+r.insp+" d"];
+  const g = PX.qhMap.get(r.cod);
+  if (g && g.lineas.length){
+    const primera = g.lineas.find(t=>/^Hacer primero/.test(t));
+    if (primera) l.push(primera);
+    const rep = g.lineas.find(t=>/^Repuestos/.test(t));
+    if (rep) l.push(rep);
+  } else if (r.acc && r.acc!=="Otra / sin detalle") l.push("Acción habitual: "+r.acc.toLowerCase());
+  const e = r.enr;
+  if (e && +e.mttr_sobre_meta===1) l.push("MTTR de "+(+e.mttr_h).toFixed(1).replace(".",",")+" h sobre la meta de 3,9 h: asegurar repuesto crítico");
   return l;
 }
 function pxRenderTabla(){
@@ -1374,11 +1496,19 @@ function pxRenderTabla(){
         +(x.mttr_h!=="" && x.mttr_h!=null ? '<div class="px-act">MTTR '+dec(x.mttr_h)+' h'+(x.mtbf_h!=="" && x.mtbf_h!=null ? ' · MTBF '+fmt(Math.round(+x.mtbf_h))+' h' : '')+'</div>' : '')
         +(x.disponibilidad_pct!=="" && x.disponibilidad_pct!=null ? '<div class="px-act">disponibilidad '+dec(x.disponibilidad_pct)+'%</div>' : '')
       : '<span class="px-act">sin datos</span>';
-    const odt = x && +x.tiene_odt===1
-      ? '<b>'+fmt(+x.odt_prev_ok_90||0)+'</b> cumplidas<div class="px-act">'+fmt(+x.odt_atrasadas_abiertas||0)+' atrasadas abiertas · cumplimiento '+fmt(+x.odt_cumplimiento_pct||0)+'%</div>'
-        +(x.desv_paros_odt!=="" && x.desv_paros_odt!=null ? '<div class="px-act">'+dec(x.desv_paros_odt)+' paros por ODT correctiva</div>' : '')
-      : (x ? '<span class="px-act">sin ODT registradas</span>' : '<span class="px-act">sin datos</span>');
-    const inf = x && cl(x.odt_informe) ? '<div>'+esc(cl(x.odt_informe))+'</div><div class="px-act">'+esc(x.odt_informe_fecha ? fdate(x.odt_informe_fecha) : "")+'</div>' : '<span class="px-act">sin informe de ODT</span>';
+    const od = PX.odtIdx.get(pxLimpia(r.maq)+"|"+r.cod) || [];
+    const odT = od.filter(o=>o.estado==="TERMINADO" && cl(o.o));
+    const odt = odT.length ? '<b>'+fmt(odT.length)+'</b> ODT terminada(s)<div class="px-act">de esta falla en esta máquina</div>'
+      : '<span class="px-act">'+(PX.odt ? 'sin ODT terminada de esta falla' : 'sin datos de ODT')+'</span>';
+    const u = odT[0];
+    const inf = u ? '<div><b>'+esc(fdate(u.f))+'</b></div>'+(u.d ? '<div class="px-act">Orden: '+esc(u.d)+'</div>' : '')+'<div>'+esc(u.o)+'</div>'
+      : '<span class="px-act">sin informe de ODT para esta falla</span>';
+    const lt = r.last;
+    const casoHtml = lt ? '<div><b>'+esc(fdate(lt.ts))+'</b></div>'
+        +(cl(lt.prob) ? '<div><b>Falla:</b> '+esc(cl(lt.prob))+'</div>' : '')
+        +(cl(lt.sol) ? '<div><b>Solución:</b> '+esc(cl(lt.sol))+'</div>' : '')
+        +(cl(lt.obs) ? '<div class="px-act"><b>Obs.:</b> '+esc(cl(lt.obs))+'</div>' : '')
+      : '';
     return '<tr style="cursor:default">'
       +'<td><span class="est"><i class="dot" style="background:'+e.c+'"></i>'+esc(e.t)+'</span></td>'
       +'<td>'+esc(r.maq)+'<div class="px-act">'+esc((x && x.area_pbi) || r.sec || r.planta || "")+'</div></td>'
@@ -1389,8 +1519,8 @@ function pxRenderTabla(){
       +'<td class="px-num">'+paro+'</td>'
       +'<td class="px-num">'+odt+'</td>'
       +'<td>'+pxRecomendar(r).map((t,i)=>'<div'+(i ? ' class="px-act"' : '')+'>'+(i ? '' : '<b>')+esc(t)+(i ? '' : '</b>')+'</div>').join("")+'</td>'
-      +'<td class="clip"><div>'+esc(caso)+'</div><div class="px-act">'+(r.last ? esc(fdate(r.last.ts)) : "")+'</div></td>'
-      +'<td class="clip">'+inf+'</td></tr>';
+      +'<td class="px-full">'+casoHtml+'</td>'
+      +'<td class="px-full">'+inf+'</td></tr>';
   }).join("") : '<tr style="cursor:default"><td colspan="11" class="empty">No hay combinaciones en este estado con los filtros actuales.</td></tr>';
   $("pxInfo").textContent = "Mostrando "+fmt(vis.length)+" de "+fmt(lista.length);
   $("pxMore").hidden = vis.length >= lista.length;
@@ -1409,15 +1539,22 @@ function pxRenderListas(){
 function renderPrescriptive(){
   PX.res = pxCompute();
   const res = PX.res;
+  PX.odtIdx = new Map();
+  for (const o of (PX.odt||[])){
+    const p = pxOdtCausa(o); if (!p.cod || !o.m) continue;
+    const k = o.m+"|"+p.cod; if (!PX.odtIdx.has(k)) PX.odtIdx.set(k, []); PX.odtIdx.get(k).push(o);
+  }
+  for (const a of PX.odtIdx.values()) a.sort((x,y)=> (y.f||"").localeCompare(x.f||""));
+  PX.qh = pxCausasResumen(res);
+  PX.qhMap = new Map(PX.qh.map(g=>[g.cod, g]));
   const act = res.rows.filter(r=>r.est==="act"), vig = res.rows.filter(r=>r.est==="vig");
   const maqAct = new Set(act.map(r=>r.maq)).size;
-  const sinPrev = act.filter(r=> r.enr && +r.enr.sin_prev_90===1).length;
-  const conPrev = act.filter(r=> r.enr && +r.enr.odt_prev_ok_90>=1).length;
+  const conTurnos = PX.qh.filter(g=>g.n>0).length, conRespaldo = PX.qh.filter(g=>g.n>0 && g.odt.conObs>0).length;
   const items = [
     [fmt(res.nFallas), "Correctivos analizados", ""],
     [pct(res.clasif, res.nFallas)+"%", "Con causa del listado", fmt(res.clasif)+" de "+fmt(res.nFallas)],
     [fmt(act.length), "Combinaciones activas", '<i class="dot" style="background:var(--paro)"></i>en '+fmt(maqAct)+' máquinas'],
-    PX.enr ? [fmt(conPrev), "Activas con preventiva cumplida", '<i class="dot" style="background:var(--paro)"></i>la falla persiste · sin preventiva: '+fmt(sinPrev)]
+    PX.odt ? [fmt(conRespaldo)+" de "+fmt(conTurnos), "Causas con ODT terminadas", '<i class="dot" style="background:var(--prev)"></i>respaldan qué hacer']
            : [fmt(maqAct), "Máquinas con alerta activa", '<i class="dot" style="background:var(--paro)"></i>al menos una causa activa'],
     [fmt(vig.length), "Por vigilar", '<i class="dot" style="background:var(--corr)"></i>1 día con falla en 30 d']
   ];
@@ -1425,7 +1562,7 @@ function renderPrescriptive(){
   $("pxEnrInfo").textContent = ei ? "Datos de Power BI: paros hasta el "+fdate(ei.p)+" y ODT hasta el "+fdate(ei.o)+" ("+fmt(ei.n)+" máquinas en la base)." : "No se pudo leer la pestaña con paros y ODT; se muestra solo lo que sale del informe de turnos.";
   $("pxKpis").innerHTML = items.map(i=>'<div class="kpi"><div class="n">'+i[0]+'</div><div class="l">'+i[1]+'</div><div class="p">'+i[2]+'</div></div>').join("");
   $("pxSub").textContent = "Qué falla se repite en cada máquina y cada cuánto inspeccionarla. Usa los filtros de arriba y toma como fecha de hoy el "+fdate(pxIso(res.hoy))+".";
-  pxRenderListas(); pxRenderTabla();
+  pxRenderListas(); pxRenderQh(); pxRenderTabla();
 }
 /* Paros y ODT (Power BI): pestaña "Prescriptivo_Maquinas" del mismo Google Sheet, una fila por máquina */
 function pxJsonp(hoja){
@@ -1471,6 +1608,17 @@ function pxLoadEnr(){
     refreshSelects(); renderAll();
   }).catch(e=>{ console.warn("Prescriptivo: sin paros/ODT", e); if (PX.res) renderPrescriptive(); });
 }
+/* ODT ligadas a fallas (correctivas): pestaña "ODT_Fallas"; a cada una se le asigna la causa con el mismo catálogo */
+function pxLoadOdt(){
+  return pxJsonp("ODT_Fallas").then(resp=>{
+    if (!resp || resp.status==="error" || !resp.table) throw new Error("sin pestaña");
+    const {rows} = gvizToRows(resp);
+    if (!rows.length) throw new Error("vacía");
+    PX.odt = rows.map(r=>({id:String(r.id), m:String(r.maquina_limpia||""), nombre:String(r.nombre||""), tipo:String(r.tipo||""), estado:String(r.estado||""), f:String(r.fecha||""), d:cl(r.d), fa:cl(r.fa), o:cl(r.o)}));
+    renderAll();
+  }).catch(e=>console.warn("Prescriptivo: sin ODT de fallas", e));
+}
+function pxLoadTodo(){ pxLoadEnr(); pxLoadCatalogo(); pxLoadOdt(); }
 /* Dos páginas: Turnos y Mantenimiento prescriptivo (los filtros de arriba valen para las dos) */
 function setPage(p){
   const presc = p==="prescriptivo";
@@ -1483,6 +1631,12 @@ function setPage(p){
 $("tabTurnos").addEventListener("click", ()=> setPage("turnos"));
 $("tabPresc").addEventListener("click", ()=> setPage("prescriptivo"));
 setTimeout(()=>{ if (location.hash==="#prescriptivo") setPage("prescriptivo"); }, 0);
+$("pxQhBody").addEventListener("click", e=>{
+  const tr = e.target.closest("tr.px-causa"); if (!tr) return;
+  const c = tr.dataset.cod; if (PX.qhAbierto.has(c)) PX.qhAbierto.delete(c); else PX.qhAbierto.add(c);
+  pxRenderQh();
+});
+$("pxQhMore").addEventListener("click", ()=>{ PX.qhLimit += 12; pxRenderQh(); });
 $("pxEstado").addEventListener("change", e=>{ PX.estado = e.target.value; PX.limit = 25; pxRenderTabla(); });
 let pxTimer; $("pxQ").addEventListener("input", e=>{ clearTimeout(pxTimer); pxTimer = setTimeout(()=>{ PX.q = e.target.value.trim(); PX.limit = 25; pxRenderListas(); pxRenderTabla(); }, 180); });
 $("pxMore").addEventListener("click", ()=>{ PX.limit += 25; pxRenderTabla(); });
@@ -1499,10 +1653,9 @@ refreshSelects();
 renderAll();
 if (hadCache) setStatus("Mostrando la última copia guardada en este navegador. Conectando con la hoja de Google…");
 fetchLive(true);
-pxLoadEnr();
-pxLoadCatalogo();
+pxLoadTodo();
 setInterval(()=> fetchLive(true), 5*60*1000);
-setInterval(()=>{ pxLoadEnr(); pxLoadCatalogo(); }, 15*60*1000);
+setInterval(pxLoadTodo, 15*60*1000);
 </script>
 </body>
 </html>
