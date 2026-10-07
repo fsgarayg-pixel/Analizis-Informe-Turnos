@@ -275,7 +275,7 @@ input[type=file]{display:none}
     <div class="grid2" style="margin-bottom:0">
       <div>
         <h2 style="font-size:16px;margin-bottom:2px" id="failCausasTitle">Causas más frecuentes de paro</h2>
-        <p class="sub">Agrupadas por tipo de causa, con la solución más usada para cada una.</p>
+        <p class="sub">Son las causas del catálogo del mantenimiento prescriptivo, con la solución más usada para cada una.</p>
         <ul class="rank" id="failCausas"></ul>
       </div>
       <div>
@@ -861,9 +861,8 @@ function classify(text, cats, fallback){
   return null;
 }
 function causaLabelStrict(r){
-  const raw = [cl(r.prob), cl(r.obs)].filter(Boolean).join(" — ");
-  if (!raw) return null;
-  return classify(raw, CAUSA_CATS);
+  if (!(cl(r.prob) || cl(r.obs) || cl(r.sol))) return null;
+  return pxCausaNombre(r);
 }
 function causaMatch(r, sel){
   if (!sel) return true;
@@ -889,12 +888,12 @@ function groupByCategory(recs, field, cats, fallback, solConf, pinnedPrimary){
     const primary = cl(r[field]);
     const obsTxt = cl(r.obs);
     const raw = [primary, obsTxt].filter(Boolean).join(" — ");
-    if (!raw && !pinnedPrimary) continue;
+    if (!raw && !pinnedPrimary && !(cats===CAUSA_CATS && cl(r.sol))) continue;
     /* Si el usuario ya filtró exactamente por "Otra causa"/"Otra solución" (el
        cajón genérico), no lo volvemos a fragmentar por palabra clave — todos
        los registros en "recs" ya pertenecen a ese mismo cajón, así que se
        muestran como un solo grupo (100%), no como decenas de sub-grupos de 1. */
-    const label = pinnedPrimary || classify(raw, cats, fallback);
+    const label = pinnedPrimary || (cats===CAUSA_CATS ? (pxCausaNombre(r) || classify(raw, [], fallback)) : classify(raw, cats, fallback));
     let g = map.get(label);
     if (!g){ g = {label, count:0, ts:[], sample:raw, solCounts: solConf ? new Map() : null}; map.set(label, g); }
     g.count++; g.ts.push(r.ts);
@@ -910,7 +909,7 @@ function groupByCategory(recs, field, cats, fallback, solConf, pinnedPrimary){
       } else {
         const solPrimary = cl(r[solConf.field]);
         const solRaw = [solPrimary, obsTxt].filter(Boolean).join(" — ");
-        solLabel = solRaw ? classify(solRaw, solConf.cats, solConf.fallback) : null;
+        solLabel = solConf.cats===CAUSA_CATS ? (pxCausaNombre(r) || classify(solRaw, [], solConf.fallback)) : (solRaw ? classify(solRaw, solConf.cats, solConf.fallback) : null);
       }
       if (solLabel){
         let s = g.solCounts.get(solLabel);
@@ -958,7 +957,7 @@ function refreshFailSelect(){
     const lab = causaLabelStrict(r) || OTRA_CAUSA_VAL;
     causaCounts.set(lab, (causaCounts.get(lab)||0)+1);
   }
-  const causaOpts = CAUSA_CATS.map(c=>c.label).filter(l=>causaCounts.has(l))
+  const causaOpts = [...new Set(PX_RX.map(c=>c[1]+" ("+c[0]+")"))].filter(l=>causaCounts.has(l))
     .sort((a,b)=> (causaCounts.get(b)||0)-(causaCounts.get(a)||0));
   let causaListHtml = causaOpts.map(l=>'<option value="'+esc(l)+'">'+fmt(causaCounts.get(l))+' casos</option>').join("");
   if (causaCounts.has(OTRA_CAUSA_VAL)) causaListHtml += '<option value="'+OTRA_CAUSA_VAL+'">'+fmt(causaCounts.get(OTRA_CAUSA_VAL))+' casos</option>';
@@ -1299,6 +1298,11 @@ function pxDay(ts){ return Math.floor(Date.UTC(+ts.slice(0,4), +ts.slice(5,7)-1,
 function pxIso(n){ return new Date(n*86400000).toISOString().slice(0,10); }
 function pxMed(a){ const s=[...a].sort((x,y)=>x-y), m=s.length>>1; return s.length%2 ? s[m] : (s[m-1]+s[m])/2; }
 function pxModa(map){ let b=null, n=-1; for (const [k,v] of map){ if (v>n){ b=k; n=v; } } return b; }
+/* Causa de un registro según el catálogo, con el mismo texto en el análisis de fallas y en el prescriptivo: "NOMBRE (código)" */
+function pxCausaNombre(r){
+  if (!r._px) r._px = pxClasificar(r.prob, r.obs, r.sol);
+  return r._px.cod ? r._px.nom+" ("+r._px.cod+")" : null;
+}
 function pxCompute(){
   const todayN = Math.floor(Date.now()/86400000)+1;
   let hoy = 0;
