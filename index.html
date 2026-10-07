@@ -166,6 +166,7 @@ input[type=file]{display:none}
       <div class="field"><label for="fFrom">Desde</label><input type="date" id="fFrom"></div>
       <div class="field"><label for="fTo">Hasta</label><input type="date" id="fTo"></div>
       <div class="field"><label for="fPlanta">Planta</label><select id="fPlanta"></select></div>
+      <div class="field"><label for="fSec">Área de trabajo</label><select id="fSec"></select></div>
       <div class="field"><label for="fProceso">Proceso</label><select id="fProceso"></select></div>
       <div class="field"><label for="fTurno">Turno</label><select id="fTurno"></select></div>
       <div class="field"><label for="fMto">Tipo de mantenimiento</label><select id="fMto"></select></div>
@@ -487,7 +488,7 @@ function loadStore(){
 }
 
 /* ---------- Filtros ---------- */
-const F = {from:"",to:"",planta:"",proceso:"",turno:"",mto:"",paro:"",maq:"",tec:"",q:""};
+const F = {from:"",to:"",planta:"",sec:"",proceso:"",turno:"",mto:"",paro:"",maq:"",tec:"",q:""};
 let GROUP = "week", PAGE = 0;
 const PAGE_SIZE = 15;
 
@@ -495,6 +496,7 @@ function resetFilters(keepNothing){
   Object.keys(F).forEach(k=>F[k]="");
   $("fFrom").value=""; $("fTo").value=""; $("q").value="";
   ["fPlanta","fProceso","fTurno","fMto","fParo"].forEach(id=>{ const el=$(id); if(el.options.length) el.value=""; });
+  refreshSecSelect();
   PAGE = 0;
 }
 function uniq(key){ return [...new Set(DATA.map(r=>r[key]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es")); }
@@ -503,8 +505,14 @@ function fillSelect(id, label, values, cur){
   el.innerHTML = '<option value="">'+label+'</option>' + values.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join("");
   el.value = values.includes(cur) ? cur : "";
 }
+function refreshSecSelect(){
+  const vals = [...new Set(DATA.filter(r=>!F.planta || r.planta===F.planta).map(r=>r.sec).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
+  fillSelect("fSec","Todas",vals,F.sec);
+  F.sec = $("fSec").value;
+}
 function refreshSelects(){
   fillSelect("fPlanta","Todas",uniq("planta"),F.planta);
+  refreshSecSelect();
   fillSelect("fProceso","Todos",uniq("proc"),F.proceso);
   fillSelect("fTurno","Todos",uniq("turno"),F.turno);
   fillSelect("fMto","Todos",uniq("mto"),F.mto);
@@ -519,6 +527,7 @@ function getFiltered(ignoreText){
     if (F.from && d < F.from) return false;
     if (F.to && d > F.to) return false;
     if (F.planta && r.planta !== F.planta) return false;
+    if (F.sec && r.sec !== F.sec) return false;
     if (F.proceso && r.proc !== F.proceso) return false;
     if (F.turno && r.turno !== F.turno) return false;
     if (F.mto && r.mto !== F.mto) return false;
@@ -1112,8 +1121,9 @@ $("failChips").addEventListener("click", e=>{
   if (b.dataset.failclear==="maq"){ FAIL_MAQ=""; $("failMaq").value=""; }
   refreshFailSelect(); renderFailureAnalysis();
 });
-const map = {fFrom:"from",fTo:"to",fPlanta:"planta",fProceso:"proceso",fTurno:"turno",fMto:"mto",fParo:"paro"};
+const map = {fFrom:"from",fTo:"to",fPlanta:"planta",fSec:"sec",fProceso:"proceso",fTurno:"turno",fMto:"mto",fParo:"paro"};
 Object.keys(map).forEach(id=> $(id).addEventListener("change", e=>{ F[map[id]] = e.target.value; PAGE=0; renderAll(); }));
+$("fPlanta").addEventListener("change", ()=>{ const prev=F.sec; refreshSecSelect(); if (F.sec!==prev){ PAGE=0; renderAll(); } });
 let qTimer; $("q").addEventListener("input", e=>{ clearTimeout(qTimer); qTimer=setTimeout(()=>{ F.q=e.target.value.trim(); PAGE=0; renderTable(); },180); });
 $("prev").addEventListener("click", ()=>{ PAGE=Math.max(0,PAGE-1); renderTable(); });
 $("next").addEventListener("click", ()=>{ PAGE++; renderTable(); });
@@ -1133,6 +1143,7 @@ function applyRank(li){
   F[f] = F[f]===v ? "" : v;
   const selMap = {planta:"fPlanta",proceso:"fProceso",turno:"fTurno"};
   if (selMap[f]) $(selMap[f]).value = F[f];
+  if (f==="planta") refreshSecSelect();
   PAGE = 0; renderAll();
 }
 document.querySelectorAll(".rank").forEach(ul=>{
