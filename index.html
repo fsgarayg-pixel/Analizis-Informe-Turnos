@@ -140,6 +140,22 @@ tr.open td.clip div{-webkit-line-clamp:unset;display:block}
 .foot{color:var(--muted);font-size:12.5px;margin-top:8px}
 input[type=file]{display:none}
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+/* Mantenimiento prescriptivo */
+.est{display:inline-flex;gap:6px;align-items:center;padding:1px 10px 1px 8px;border-radius:999px;background:var(--soft);border:1px solid var(--line);font-weight:600;font-size:12.5px;white-space:nowrap}
+.px-h3{font-size:16px;margin:0 0 2px;font-family:var(--font-num);font-weight:600}
+.px-act{font-size:13px;color:var(--muted)}
+.px-act b{color:var(--ink);font-weight:600}
+.px-num{font-family:var(--font-num);font-variant-numeric:tabular-nums;white-space:nowrap}
+.rank.px li[data-px]{cursor:pointer}
+.rank.px.static li{cursor:default}
+.rank.px.static li:hover{background:transparent}
+/* Páginas */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:0 0 16px;flex-wrap:wrap}
+.tab{border:0;background:transparent;padding:10px 16px;font-weight:600;font-size:15px;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--btn)}
+.pg-note{margin:0 0 14px;font-size:13.5px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -161,6 +177,10 @@ input[type=file]{display:none}
 </header>
 
 <main>
+  <div class="tabs" role="tablist" aria-label="Páginas">
+    <button type="button" class="tab" id="tabTurnos" role="tab" aria-selected="true">Turnos</button>
+    <button type="button" class="tab" id="tabPresc" role="tab" aria-selected="false">Mantenimiento prescriptivo</button>
+  </div>
   <section aria-label="Filtros">
     <div class="filters">
       <div class="field"><label for="fFrom">Desde</label><input type="date" id="fFrom"></div>
@@ -175,6 +195,7 @@ input[type=file]{display:none}
     <div class="chips" id="chips"></div>
   </section>
 
+  <div id="pgTurnos" role="tabpanel" aria-labelledby="tabTurnos">
   <section class="kpis" aria-label="Indicadores" id="kpis"></section>
 
   <section class="panel" aria-label="Evolución">
@@ -214,7 +235,8 @@ input[type=file]{display:none}
     <section class="panel"><h2>Por turno</h2><p class="sub">Correctivo y preventivo</p><ul class="rank" id="rTurno"></ul></section>
   </div>
 
-  <section class="panel" aria-label="Análisis de fallas por máquina">
+  <div id="slotFallasTurnos">
+  <section class="panel" aria-label="Análisis de fallas por máquina" id="failPanel">
     <div class="ph">
       <div>
         <h2>Análisis de fallas por máquina</h2>
@@ -269,6 +291,8 @@ input[type=file]{display:none}
     </div>
   </section>
 
+
+  </div>
   <section class="panel" aria-label="Registros">
     <div class="ph"><div><h2>Registros</h2><p class="sub" id="tblSub"></p></div></div>
     <div class="tools">
@@ -287,6 +311,62 @@ input[type=file]{display:none}
     </div>
     <p class="foot">Toca una fila para ver el texto completo.</p>
   </section>
+  </div>
+  <div id="pgPresc" role="tabpanel" aria-labelledby="tabPresc" hidden>
+    <p class="pg-note">Esta página analiza las causas de paro y las soluciones más usadas con los registros de turnos, y los cruza con los paros y las ODT de Power BI. Los filtros de arriba valen para las dos páginas.</p>
+    <div id="slotFallasPresc"></div>
+  <section class="panel" aria-label="Mantenimiento prescriptivo" id="pxPanel">
+    <div class="ph">
+      <div>
+        <h2>Mantenimiento prescriptivo</h2>
+        <p class="sub" id="pxSub"></p>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <div class="field" style="min-width:230px">
+          <label for="pxEstado">Mostrar</label>
+          <select id="pxEstado">
+            <option value="act">Activas (2 o más fallas en 30 días)</option>
+            <option value="vig" selected>Activas y por vigilar</option>
+            <option value="rec">Con fallas en los últimos 60 días</option>
+            <option value="all">Todas las recurrentes</option>
+          </select>
+        </div>
+        <div class="field" style="min-width:230px">
+          <label for="pxQ">Buscar máquina o causa</label>
+          <input type="search" id="pxQ" placeholder="Ej. Jet 995, variador" autocomplete="off">
+        </div>
+      </div>
+    </div>
+    <div class="kpis" id="pxKpis" style="margin:14px 0"></div>
+    <div class="grid2" style="margin-bottom:18px">
+      <div>
+        <h3 class="px-h3">Causas del listado más frecuentes</h3>
+        <p class="sub">Correctivos asociados a una causa de tu catálogo. Toca una para filtrar la tabla.</p>
+        <ul class="rank px" id="pxCausas"></ul>
+      </div>
+      <div>
+        <h3 class="px-h3">Fallas sin causa en el listado</h3>
+        <p class="sub">Familias que el catálogo aún no contempla. Para sumarlas, agrégalas en Catalogo_Causas.xlsx.</p>
+        <ul class="rank px static" id="pxCand"></ul>
+      </div>
+    </div>
+    <h3 class="px-h3">Plan de acción por máquina y causa</h3>
+    <p class="sub" id="pxTblSub"></p>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Estado</th><th>Máquina</th><th>Causa</th><th>Días con falla</th><th>Últ. 30 d</th><th>1 falla cada</th><th>Paro 90 d</th><th>ODT preventivas 90 d</th><th>Qué hacer</th><th>Último caso del turno</th><th>Último informe de ODT</th></tr></thead>
+        <tbody id="pxBody"></tbody>
+      </table>
+    </div>
+    <div class="pager">
+      <span id="pxInfo"></span>
+      <button type="button" id="pxMore">Mostrar más</button>
+    </div>
+    <p class="foot" id="pxFoot">La causa se deduce del texto del reporte (problema, observación y solución) con reglas de palabras clave: es una primera asociación, no un código ingresado por el técnico. Activa: 2 o más días con falla en los últimos 30 días. Vigilar: 1 día. La inspección sugerida es la mitad del tiempo promedio entre fallas (entre 7 y 90 días) y es un punto de partida para ajustar con criterio de mantenimiento. Paros y ODT salen de los mismos archivos y con las mismas definiciones de tu Power BI (falla = paro que no es preventivo; MTTR = horas de falla entre número de fallas, meta 3,9 h; MTBF = horas disponibles menos horas de paro, entre fallas) sobre los últimos 90 días de paros cargados. Se cruzan con la máquina por el número después del «#». Las ODT son solo del grupo eléctrico, así que una máquina sin ODT no se marca como «sin preventiva».</p>
+    <p class="foot" id="pxEnrInfo"></p>
+  </section>
+
+  </div>
 </main>
 
 <script>
@@ -297,7 +377,7 @@ const SEED_LABEL = "Última copia guardada (21 sep 2026)";
 
 /* ---------- Fuente de datos en vivo (Google Visualization API, sin CORS) ---------- */
 const SHEET_ID = "1-ijA2fAWpzOVr-NxaxWjHyoozuZaLjfe31cbtcn-xmQ";
-const SHEET_GID = "1148387875";
+const SHEET_GID = "658696998";
 const GVIZ_BASE = "https://docs.google.com/spreadsheets/d/"+SHEET_ID+"/gviz/tq?gid="+SHEET_GID+"&headers=1";
 const REQUIRED_COLS = ["Hora de inicio","Mantenimiento","Máquina","Planta"];
 
@@ -506,7 +586,7 @@ function fillSelect(id, label, values, cur){
   el.value = values.includes(cur) ? cur : "";
 }
 function refreshSecSelect(){
-  const vals = [...new Set(DATA.filter(r=>!F.planta || r.planta===F.planta).map(r=>r.sec).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
+  const vals = [...new Set(DATA.filter(r=>!F.planta || r.planta===F.planta).map(pxArea).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
   fillSelect("fSec","Todas",vals,F.sec);
   F.sec = $("fSec").value;
 }
@@ -527,7 +607,7 @@ function getFiltered(ignoreText){
     if (F.from && d < F.from) return false;
     if (F.to && d > F.to) return false;
     if (F.planta && r.planta !== F.planta) return false;
-    if (F.sec && r.sec !== F.sec) return false;
+    if (F.sec && pxArea(r) !== F.sec) return false;
     if (F.proceso && r.proc !== F.proceso) return false;
     if (F.turno && r.turno !== F.turno) return false;
     if (F.mto && r.mto !== F.mto) return false;
@@ -548,6 +628,7 @@ function renderAll(){
   VIEW = getFiltered(true);
   renderHeader(); renderChips(); renderKpis(); renderTrend(); renderRanks(); renderTable();
   refreshFailSelect(); renderFailureAnalysis();
+  renderPrescriptive();
 }
 function renderHeader(){
   const a = DATA[0].ts, b = DATA[DATA.length-1].ts;
@@ -1065,9 +1146,9 @@ async function syncAndRefresh(){
   btn.disabled = true;
   let aviso = "";
   try{
-    setStatus("Sincronizando el Excel con Google Sheets… (puede tardar hasta 1 minuto)");
+    setStatus("Sincronizando el Excel con Google Sheets… (puede tardar hasta 2 minutos)");
     const ctl = new AbortController();
-    const t = setTimeout(()=>ctl.abort(), 180000);
+    const t = setTimeout(()=>ctl.abort(), 240000);
     const r = await fetch("http://127.0.0.1:8765/sync", {signal: ctl.signal});
     clearTimeout(t);
     const j = await r.json();
@@ -1077,6 +1158,7 @@ async function syncAndRefresh(){
   }finally{
     btn.disabled = false;
   }
+  pxLoadEnr(); pxLoadCatalogo();
   await fetchLive(false);
   if (aviso){
     $("status").insertAdjacentHTML("beforeend", ' <span class="err">Aviso: '+esc(aviso)+'</span>');
@@ -1152,13 +1234,271 @@ document.querySelectorAll(".rank").forEach(ul=>{
 });
 let rT; window.addEventListener("resize", ()=>{ clearTimeout(rT); rT=setTimeout(renderTrend,120); });
 
+
+/* ---------- Mantenimiento prescriptivo: reglas (generadas desde causas_catalogo.py) ---------- */
+function pxCompilar(l){ const out=[]; for (const [c,n,s] of l){ try{ out.push([c,n,new RegExp(s)]); }catch(e){ console.warn("Regla de causa inválida", c, e); } } return out; }
+const PX_CAUSAS_ARR = [["62", "FALLA CORTADOR LASER", "(?:cortador (de )?laser|corte laser|laser (de )?corte)"], ["63", "FALLA ENRROLLADOR AUXILIAR", "(?:enrollador( auxiliar)?|enrolladora)"], ["64", "FALLA ENDEREZADOR DE TRAMA", "(?:enderezador)"], ["65", "FALLA CORTADOR DE ORILLOS", "(?:cortador(es)? de orillo|corta ?orillo|cortaorillo)"], ["67", "FALLA MARCADOR DE ORILLO", "(?:marcador (de )?orillo|marcador)"], ["68", "FALLA EVAC", "(?:\\bevac\\b)"], ["69", "FALLA LAVADORA BANCO", "(?:lavadora.{0,15}banco|banco.{0,15}lavadora)"], ["58", "REBOBINAR MOTOR", "(?:rebobin|bobinar (el )?motor|bobinado (de|del) motor|motor.{0,40}(a|al) taller.{0,30}bobin)"], ["55", "DAÑO CONVERTIDOR CELDA CARGA", "(?:convertidor.{0,20}celda|celda.{0,20}convertidor|transmisor de celda)"], ["48", "CELDA DE CARGA", "(?:celda de carga|celdas de carga|\\bcelda\\b)"], ["40", "DAÑO ENCODER ANCHO", "(?:encoder.{0,25}ancho|ancho.{0,25}encoder)"], ["39", "DAÑO ENCODER MOTORES", "(?:encoder)"], ["41", "DAÑO TRANSFORMADOR", "(?:transformador)"], ["37", "DAÑO VARIADOR", "(?:variador|inverter|\\bdrive\\b|driver)"], ["43", "BLOQUEO PLC", "(?:plc.{0,40}(bloque|trab|congel|pega|colg)|(bloque|trab|congel|colg).{0,40}plc)"], ["45", "DAÑO MODULO PLC", "(?:modulo.{0,25}(plc|entrada|salida|analog|digital|comunic)|\\bmodulo\\b)"], ["42", "DAÑO PLC", "(?:\\bplc\\b|\\bcpu\\b|controlador logico)"], ["44", "DAÑO PANTALLA", "(?:pantalla|\\bhmi\\b|\\btouch\\b|panel (de )?(operador|view|tactil)|display)"], ["46", "BLOQUEO COMUNICACIONES", "(?:comunicaci|profibus|profinet|ethernet|modbus|can ?bus|\\bswitch de red|\\bred\\b|fibra optica)"], ["47", "DAÑO FUENTE VOLTAJE", "(?:fuente( de)? (voltaje|poder|alimentaci|24|dc)|\\bfuente\\b)"], ["49", "DAÑO SENSOR INDUCTIVO", "(?:inductivo)"], ["50", "DAÑO SENSOR CAPACITIVO", "(?:capacitivo)"], ["51", "DAÑO SENSOR LASER", "(?:sensor.{0,15}laser|laser.{0,15}sensor)"], ["52", "DAÑO SENSOR OPTICO", "(?:sensor.{0,15}optic|optico)"], ["53", "DAÑO SENSOR FOTOCELDA", "(?:fotocelda|fotocelula|fotoelectric|foto celda|barrera)"], ["56", "DAÑO SENSOR REVOLUCIONES", "(?:sensor.{0,20}revolucion|revoluciones|tacometro|\\brpm\\b)"], ["54", "DAÑO MICRO ELECTRICO", "(?:micro ?(switch|electric|interruptor|suiche)|final de carrera|limit switch|microsuiche|micro\\b)"], ["84", "DAÑO RELEVO MANDO", "(?:\\brele\\b|\\breles\\b|relevo|relay|\\brele de mando)"], ["83", "DAÑO CONTACTOR", "(?:contactor)"], ["86", "DANO TARJETA ELECTRONICA", "(?:tarjeta|\\bboard\\b|circuito impreso|placa electronica)"], ["87", "DANO ELECTROFRENO", "(?:electro ?freno|freno)"], ["88", "DAÑO EN RODAMIENTOS", "(?:rodamiento|balinera|rodami|cojinete|balero)"], ["85", "DAÑO CABLEADO", "(?:cableado|cable (roto|cortado|pelado|danado|quemado|averiado)|\\bcables?\\b|alambr)"], ["82", "CONEXIONES FLOJAS", "(?:flojo|floja|suelt[oa]|conexion(es)?|conector|bornera|borne|falso contacto|mal apretad)"], ["36", "DAÑO MOTOR", "(?:motor.{0,40}(quem|dana|dano|pega|cortocircuit|aislamiento|malo|falla|ruido|recalent|gripad)|(quem|dano|falla).{0,25}motor|\\bmotor\\b)"], ["70", "FALLA NEUMATICA (válvula, electroválvula, cilindro, regulador)", "\\bvalvula|\\belectrovalvula|\\bcilindro|\\bneumatic|\\bregulador|\\bpresion de aire"], ["71", "FALLA SENSOR DE TEMPERATURA (PT100, termopar)", "\\bpt100|\\bpt 100|\\btermopar|\\btermocupla"], ["72", "FALLA PRESOSTATO / PRESION", "\\bpresostato|\\bmanometro|\\btransmisor de presion"], ["73", "FALLA QUEMADOR / GAS", "\\bquemador|\\bllama|\\bgas"], ["74", "FALLA BOMBA", "\\bbomba"], ["75", "FALLA DE NIVEL (tubo, flotador)", "\\bnivel|\\bflotador|\\btubo de nivel"], ["76", "FUGA", "\\bfuga"], ["77", "FALLA CONTADOR / CUENTAMETROS", "\\bcontador|\\bcuentametros|\\bcuenta metros"], ["78", "ATASCO / ENREDO / OBSTRUCCION", "\\batasc|\\benred|\\btapon|\\bobstruc|\\btrabad"], ["79", "FALLA SENSOR (SIN ESPECIFICAR TIPO)", "\\bsensor|\\bsensa"], ["80", "FALLA MECANICA (banda, cadena, polea, eje)", "\\bbanda|\\bcadena|\\bpolea|\\beje|\\bcorrea|\\btension|\\bengranaje|\\brodillo"], ["19", "ALUMBRADO", "(?:alumbrado|luminaria|lampara|iluminaci|bombill|reflector|\\bluces\\b|\\bluz\\b|balasto|led\\b)"], ["13", "FALLA PROTECCION", "(?:proteccion|breaker|\\btermico|guardamotor|fusible|disparo|disparad|salto el|se disparo|interruptor)"], ["4", "HUMEDAD", "(?:humedad|mojad|filtracion|ingreso de agua|entro agua|agua en el|goteras?|condensaci)"], ["5", "TEMPERATURA", "(?:temperatura|sobrecalent|recalent|calentamiento|calentad|caliente)"], ["11", "DESCALIBRACION", "(?:descalibr|calibraci|calibrar|desajust|desconfigur)"], ["35", "MTTO MAL EJECUTADO", "(?:mal (ejecutad|instalad|montad|conectad|armad|ajustad|apretad|cambiad|realizad)|error de mantenimiento|mal mantenimiento)"], ["7", "VIDA UTIL", "(?:vida util|desgaste|desgastad|desgastado|fin de vida|obsolet|cumplio (su )?vida|deteriorad|deterioro|fatiga|cansad)"], ["1", "MAL MANEJO", "(?:mal manejo|mala operaci|mal uso|golpe|golpead|descuido|error (del )?oper|operario (golpe|mal|dano)|uso inadecuado)"], ["81", "AJUSTE DE PARAMETROS / PROGRAMACION", "\\bparametro|\\bprograma|\\bfrecuencia|\\breinici|\\breset"]];
+let PX_RX = pxCompilar(PX_CAUSAS_ARR);
+const PX_CAND = [["Neumática (válvula, electroválvula, cilindro, regulador)", "valvula|electrovalvula|cilindro|neumatic|regulador|\\baire\\b"], ["Temperatura: PT100 / termopar / resistencia", "pt ?100|termopar|termocupla|resistencia"], ["Presión: presostato / manómetro", "presostato|presion|manometro"], ["Quemador / gas / llama", "quemador|\\bgas\\b|llama"], ["Bomba", "\\bbomba"], ["Nivel (tubo, flotador, tanque)", "nivel|flotador|tubo de nivel"], ["Fuga", "\\bfuga"], ["Contador / cuentametros", "contador|cuenta ?metros"], ["Atasco / enredo / obstrucción", "atasc|enred|tapon|obstruc|trabad|bloque"], ["Sensor sin especificar tipo", "sensor|sensa"], ["Ajuste de parámetros / programación / frecuencia", "parametro|programa|frecuencia|reinici|reset|ajust"], ["Mecánica (banda, cadena, polea, eje, tensión)", "banda|cadena|polea|\\beje\\b|correa|tensi|engranaje|rodillo"]].map(([n,s])=>[n,new RegExp(s)]);
+const PX_ACC = [["Cambio de repuesto / pieza", "cambi|reemplaz|se instal|repuesto|\\bmont|desmont"], ["Ajuste / calibración", "ajust|calibr|regul"], ["Revisión de conexiones / apriete", "conexion|conect|aprie|tornill|bornera"], ["Reinicio / reprogramación", "reinici|reset|reprogram|program"], ["Limpieza", "limpi"], ["Lubricación", "lubric|engras"], ["Envío a taller / bobinado", "taller|bobinad"], ["Soldadura", "soldad"], ["Reparación", "repar|arregl"], ["Seguimiento pendiente", "pendiente|seguir revisando"]].map(([n,s])=>[n,new RegExp(s)]);
+let PX_SINTOMAS = new Set(["44", "5"]), PX_GENERICAS = new Set(["11", "82", "85"]);
+const pxNorm = t => String(t==null?"":t).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s+/g," ").trim();
+function pxClasificar(prob, obs, sol){
+  const segu = pxNorm(sol);
+  for (const [fuente, texto] of [["problema", pxNorm((prob||"")+" "+(obs||""))], ["solucion", segu]]){
+    if (!texto) continue;
+    const hall = PX_RX.filter(x=>x[2].test(texto));
+    if (hall.length){
+      if (fuente==="problema" && PX_SINTOMAS.has(hall[0][0])){
+        const s = PX_RX.filter(x=>x[2].test(segu) && !PX_SINTOMAS.has(x[0]) && !PX_GENERICAS.has(x[0]));
+        if (s.length) return {cod:s[0][0], nom:s[0][1], fuente:"solucion"};
+      }
+      return {cod:hall[0][0], nom:hall[0][1], fuente};
+    }
+  }
+  return {cod:"", nom:"", fuente:""};
+}
+function pxCandidata(prob, obs, sol){
+  const t = pxNorm((prob||"")+" "+(obs||"")+" "+(sol||""));
+  for (const [n,rx] of PX_CAND){ if (rx.test(t)) return n; }
+  return "Otra (revisar manualmente)";
+}
+function pxAccion(sol, obs){
+  const t = pxNorm((sol||"")+" "+(obs||""));
+  for (const [n,rx] of PX_ACC){ if (rx.test(t)) return n; }
+  return "Otra / sin detalle";
+}
+/* Maquina_Limpia: la misma llave del Power BI (sin # - ` ’, recortada y en mayúsculas) para cruzar turnos, paros y ODT */
+function pxLimpia(nombre){
+  if (nombre==null || nombre==="") return "";
+  return String(nombre).replace(/[#\-`’]/g,"").trim().toUpperCase();
+}
+
+const PX = {estado:"vig", q:"", limit:25, res:null, enr:null, enrInfo:null, ver:1};
+/* Área de trabajo según el Power BI: la del equipo en paros/ODT (p. ej. "TINTORERIA PROD.");
+   si la máquina no está allí, la sección del turno cuando coincide con un área del Power BI; si no, la sección tal cual. */
+let PX_AREA_MAPA = null, PX_AREA_VER = 0;
+function pxAreaMapa(){
+  if (PX_AREA_MAPA && PX_AREA_VER===PX.ver) return PX_AREA_MAPA;
+  const m = new Map();
+  if (PX.enr) for (const e of PX.enr.values()){ if (e.area_pbi) m.set(pxNorm(String(e.area_pbi).replace(/\s*PROD\.$/i,"")), e.area_pbi); }
+  PX_AREA_MAPA = m; PX_AREA_VER = PX.ver; return m;
+}
+function pxArea(r){
+  if (r._areaV===PX.ver) return r._area;
+  const e = PX.enr && PX.enr.get(pxLimpia(r.maq));
+  const a = (e && e.area_pbi) || pxAreaMapa().get(pxNorm(r.sec)) || r.sec || "(sin área)";
+  r._area = a; r._areaV = PX.ver; return a;
+}
+const PX_ORDEN = {act:0, vig:1, rec:2, sin:3};
+const PX_ESTADO = {
+  act:{t:"Activa", c:"var(--paro)"}, vig:{t:"Vigilar", c:"var(--corr)"},
+  rec:{t:"Reciente (30-60 d)", c:"var(--muted)"}, sin:{t:"Sin fallas en 60 d", c:"var(--line)"}
+};
+function pxDay(ts){ return Math.floor(Date.UTC(+ts.slice(0,4), +ts.slice(5,7)-1, +ts.slice(8,10))/86400000); }
+function pxIso(n){ return new Date(n*86400000).toISOString().slice(0,10); }
+function pxMed(a){ const s=[...a].sort((x,y)=>x-y), m=s.length>>1; return s.length%2 ? s[m] : (s[m-1]+s[m])/2; }
+function pxModa(map){ let b=null, n=-1; for (const [k,v] of map){ if (v>n){ b=k; n=v; } } return b; }
+function pxCompute(){
+  const todayN = Math.floor(Date.now()/86400000)+1;
+  let hoy = 0;
+  for (const r of DATA){ const d = pxDay(r.ts); if (d<=todayN && d>hoy) hoy = d; }
+  const fallas = VIEW.filter(r=> /correctiv/i.test(r.mto) && (cl(r.prob) || cl(r.sol)));
+  const groups = new Map(), causas = new Map(), cand = new Map();
+  let clasif = 0;
+  for (const r of fallas){
+    if (!r._px) r._px = pxClasificar(r.prob, r.obs, r.sol);
+    const p = r._px;
+    if (!p.cod){ const c = pxCandidata(r.prob, r.obs, r.sol); cand.set(c, (cand.get(c)||0)+1); continue; }
+    clasif++;
+    const cs = causas.get(p.cod) || {cod:p.cod, nom:p.nom, n:0, paro:0};
+    cs.n++; if (r.paro==="Si") cs.paro++; causas.set(p.cod, cs);
+    const d = pxDay(r.ts);
+    if (d>todayN || !r.maq) continue;
+    const k = r.maq+"|"+p.cod;
+    let g = groups.get(k);
+    if (!g){ g = {maq:r.maq, cod:p.cod, nom:p.nom, sec:r.sec, planta:r.planta, dias:new Set(), rows:0, paro:0, acc:new Map(), last:null}; groups.set(k, g); }
+    g.dias.add(d); g.rows++; if (r.paro==="Si") g.paro++;
+    const a = pxAccion(r.sol, r.obs); g.acc.set(a, (g.acc.get(a)||0)+1);
+    if (!g.last || r.ts > g.last.ts) g.last = r;
+  }
+  const rows = [];
+  for (const g of groups.values()){
+    const dias = [...g.dias].sort((a,b)=>a-b);
+    if (dias.length < 3) continue;
+    const ints = dias.slice(1).map((d,i)=>d-dias[i]);
+    const d30 = dias.filter(d=>hoy-d<=30).length, d3060 = dias.filter(d=>hoy-d>30 && hoy-d<=60).length;
+    const est = d30>=2 ? "act" : d30===1 ? "vig" : d3060>=1 ? "rec" : "sin";
+    const cada = Math.max(hoy-dias[0],1)/dias.length;
+    rows.push({maq:g.maq, cod:g.cod, nom:g.nom, sec:g.sec, planta:g.planta, n:dias.length, d30, d3060, est,
+      cada, med:pxMed(ints), insp:Math.min(90, Math.max(7, Math.round(cada*0.5))), desde:hoy-dias[dias.length-1], ultima:dias[dias.length-1],
+      acc:pxModa(g.acc), paroN:g.paro, last:g.last, enr:(PX.enr && PX.enr.get(pxLimpia(g.maq))) || null,
+      score:(d30*3 + d3060*1.5 + dias.length*0.5) * (1 + g.paro/g.rows)});
+  }
+  rows.sort((a,b)=> PX_ORDEN[a.est]-PX_ORDEN[b.est] || b.score-a.score);
+  return {hoy, nFallas:fallas.length, clasif, rows,
+    causas:[...causas.values()].sort((a,b)=>b.n-a.n),
+    cand:[...cand.entries()].sort((a,b)=>b[1]-a[1])};
+}
+function pxFiltradas(){
+  const rows = PX.res.rows;
+  const okEst = {act:["act"], vig:["act","vig"], rec:["act","vig","rec"], all:["act","vig","rec","sin"]}[PX.estado];
+  const q = pxNorm(PX.q);
+  return rows.filter(r=> okEst.includes(r.est) && (!q || pxNorm(r.maq+" "+r.nom+" "+r.cod+" "+r.sec).includes(q)));
+}
+function pxRecomendar(r){
+  const l = ["Inspección cada "+r.insp+" d"+(r.acc && r.acc!=="Otra / sin detalle" ? " · acción habitual: "+r.acc.toLowerCase() : "")];
+  const e = r.enr;
+  if (e){
+    if (+e.sin_prev_90===1) l.push("Sin preventiva cumplida en 90 d: programar ODT preventiva");
+    if (+e.odt_atrasadas_abiertas>0) l.push("Cerrar "+(+e.odt_atrasadas_abiertas)+" ODT atrasada(s)");
+    if (r.est==="act" && +e.odt_prev_ok_90>=1) l.push((+e.odt_prev_ok_90)+" preventiva(s) cumplida(s) en 90 d y la falla persiste: revisar el alcance del plan preventivo");
+    if (+e.mttr_sobre_meta===1) l.push("MTTR de "+(+e.mttr_h).toFixed(1).replace(".",",")+" h sobre la meta de 3,9 h: asegurar repuesto crítico");
+  }
+  return l;
+}
+function pxRenderTabla(){
+  const res = PX.res, lista = pxFiltradas();
+  const vis = lista.slice(0, PX.limit);
+  $("pxTblSub").textContent = fmt(lista.length)+" combinación(es) de máquina y causa con 3 o más días de falla"+(PX.q ? " que coinciden con «"+PX.q+"»" : "")+". Ordenadas por actividad reciente y paros.";
+  $("pxBody").innerHTML = vis.length ? vis.map(r=>{
+    const e = PX_ESTADO[r.est], x = r.enr;
+    const caso = r.last ? cl(r.last.sol) || cl(r.last.prob) : "";
+    const dec = v => (+v).toFixed(1).replace(".",",");
+    const paro = x && x.fallo_horas_90!=="" && x.fallo_horas_90!=null
+      ? '<b>'+fmt(Math.round(+x.fallo_horas_90))+' h</b><div class="px-act">'+fmt(+x.fallo_n_90||0)+' paros por falla</div>'
+        +(x.mttr_h!=="" && x.mttr_h!=null ? '<div class="px-act">MTTR '+dec(x.mttr_h)+' h'+(x.mtbf_h!=="" && x.mtbf_h!=null ? ' · MTBF '+fmt(Math.round(+x.mtbf_h))+' h' : '')+'</div>' : '')
+        +(x.disponibilidad_pct!=="" && x.disponibilidad_pct!=null ? '<div class="px-act">disponibilidad '+dec(x.disponibilidad_pct)+'%</div>' : '')
+      : '<span class="px-act">sin datos</span>';
+    const odt = x && +x.tiene_odt===1
+      ? '<b>'+fmt(+x.odt_prev_ok_90||0)+'</b> cumplidas<div class="px-act">'+fmt(+x.odt_atrasadas_abiertas||0)+' atrasadas abiertas · cumplimiento '+fmt(+x.odt_cumplimiento_pct||0)+'%</div>'
+        +(x.desv_paros_odt!=="" && x.desv_paros_odt!=null ? '<div class="px-act">'+dec(x.desv_paros_odt)+' paros por ODT correctiva</div>' : '')
+      : (x ? '<span class="px-act">sin ODT registradas</span>' : '<span class="px-act">sin datos</span>');
+    const inf = x && cl(x.odt_informe) ? '<div>'+esc(cl(x.odt_informe))+'</div><div class="px-act">'+esc(x.odt_informe_fecha ? fdate(x.odt_informe_fecha) : "")+'</div>' : '<span class="px-act">sin informe de ODT</span>';
+    return '<tr style="cursor:default">'
+      +'<td><span class="est"><i class="dot" style="background:'+e.c+'"></i>'+esc(e.t)+'</span></td>'
+      +'<td>'+esc(r.maq)+'<div class="px-act">'+esc((x && x.area_pbi) || r.sec || r.planta || "")+'</div></td>'
+      +'<td>'+esc(r.nom)+'<div class="px-act">código '+esc(r.cod)+'</div></td>'
+      +'<td class="px-num">'+fmt(r.n)+(r.paroN ? '<div class="px-act">'+fmt(r.paroN)+' con paro</div>' : '')+'</td>'
+      +'<td class="px-num">'+fmt(r.d30)+'</td>'
+      +'<td class="px-num">'+r.cada.toFixed(1).replace(".",",")+' d</td>'
+      +'<td class="px-num">'+paro+'</td>'
+      +'<td class="px-num">'+odt+'</td>'
+      +'<td>'+pxRecomendar(r).map((t,i)=>'<div'+(i ? ' class="px-act"' : '')+'>'+(i ? '' : '<b>')+esc(t)+(i ? '' : '</b>')+'</div>').join("")+'</td>'
+      +'<td class="clip"><div>'+esc(caso)+'</div><div class="px-act">'+(r.last ? esc(fdate(r.last.ts)) : "")+'</div></td>'
+      +'<td class="clip">'+inf+'</td></tr>';
+  }).join("") : '<tr style="cursor:default"><td colspan="11" class="empty">No hay combinaciones en este estado con los filtros actuales.</td></tr>';
+  $("pxInfo").textContent = "Mostrando "+fmt(vis.length)+" de "+fmt(lista.length);
+  $("pxMore").hidden = vis.length >= lista.length;
+}
+function pxRenderListas(){
+  const res = PX.res, maxC = res.causas.length ? res.causas[0].n : 1;
+  $("pxCausas").innerHTML = res.causas.length ? res.causas.slice(0,12).map(c=>
+    '<li tabindex="0" role="button" data-px="'+esc(c.nom)+'" class="'+(PX.q===c.nom?"on":"")+'"><span class="nm">'+esc(c.nom)+' <span class="px-act">('+esc(c.cod)+')</span></span><span class="ct">'+fmt(c.n)+'</span>'
+    +'<span class="bar"><i style="width:'+(c.n/maxC*100).toFixed(1)+'%;background:var(--corr)"></i></span></li>').join("")
+    : '<li class="empty">Sin correctivos con causa asociada en estos filtros.</li>';
+  const maxK = res.cand.length ? res.cand[0][1] : 1;
+  $("pxCand").innerHTML = res.cand.length ? res.cand.slice(0,12).map(([n,c])=>
+    '<li><span class="nm">'+esc(n)+'</span><span class="ct">'+fmt(c)+'</span><span class="bar"><i style="width:'+(c/maxK*100).toFixed(1)+'%;background:var(--muted)"></i></span></li>').join("")
+    : '<li class="empty">Todas las fallas quedaron asociadas a una causa del listado.</li>';
+}
+function renderPrescriptive(){
+  PX.res = pxCompute();
+  const res = PX.res;
+  const act = res.rows.filter(r=>r.est==="act"), vig = res.rows.filter(r=>r.est==="vig");
+  const maqAct = new Set(act.map(r=>r.maq)).size;
+  const sinPrev = act.filter(r=> r.enr && +r.enr.sin_prev_90===1).length;
+  const conPrev = act.filter(r=> r.enr && +r.enr.odt_prev_ok_90>=1).length;
+  const items = [
+    [fmt(res.nFallas), "Correctivos analizados", ""],
+    [pct(res.clasif, res.nFallas)+"%", "Con causa del listado", fmt(res.clasif)+" de "+fmt(res.nFallas)],
+    [fmt(act.length), "Combinaciones activas", '<i class="dot" style="background:var(--paro)"></i>en '+fmt(maqAct)+' máquinas'],
+    PX.enr ? [fmt(conPrev), "Activas con preventiva cumplida", '<i class="dot" style="background:var(--paro)"></i>la falla persiste · sin preventiva: '+fmt(sinPrev)]
+           : [fmt(maqAct), "Máquinas con alerta activa", '<i class="dot" style="background:var(--paro)"></i>al menos una causa activa'],
+    [fmt(vig.length), "Por vigilar", '<i class="dot" style="background:var(--corr)"></i>1 día con falla en 30 d']
+  ];
+  const ei = PX.enrInfo;
+  $("pxEnrInfo").textContent = ei ? "Datos de Power BI: paros hasta el "+fdate(ei.p)+" y ODT hasta el "+fdate(ei.o)+" ("+fmt(ei.n)+" máquinas en la base)." : "No se pudo leer la pestaña con paros y ODT; se muestra solo lo que sale del informe de turnos.";
+  $("pxKpis").innerHTML = items.map(i=>'<div class="kpi"><div class="n">'+i[0]+'</div><div class="l">'+i[1]+'</div><div class="p">'+i[2]+'</div></div>').join("");
+  $("pxSub").textContent = "Qué falla se repite en cada máquina y cada cuánto inspeccionarla. Usa los filtros de arriba y toma como fecha de hoy el "+fdate(pxIso(res.hoy))+".";
+  pxRenderListas(); pxRenderTabla();
+}
+/* Paros y ODT (Power BI): pestaña "Prescriptivo_Maquinas" del mismo Google Sheet, una fila por máquina */
+function pxJsonp(hoja){
+  return new Promise((resolve, reject)=>{
+    const cb = "__px_"+Date.now()+"_"+Math.floor(Math.random()*1e6);
+    const s = document.createElement("script"); let done = false;
+    const fin = (fn, a)=>{ if (done) return; done = true; delete window[cb]; s.remove(); clearTimeout(t); fn(a); };
+    const t = setTimeout(()=>fin(reject, new Error("timeout")), 15000);
+    window[cb] = resp => fin(resolve, resp);
+    s.onerror = ()=>fin(reject, new Error("script_error"));
+    s.src = "https://docs.google.com/spreadsheets/d/"+SHEET_ID+"/gviz/tq?sheet="+encodeURIComponent(hoja)+"&headers=1&tqx=out:json;responseHandler:"+cb+"&_="+Date.now();
+    document.head.appendChild(s);
+  });
+}
+/* Catálogo de causas editable (Catalogo_Causas.xlsx -> pestaña "Catalogo_Causas" del Sheet): al cambiar, se reclasifica todo */
+const pxFirma = (c,n,s,t)=> [c,n,s].join("|")+"|"+t;
+PX.catFirma = PX_CAUSAS_ARR.map(([c,n,s])=>pxFirma(c,n,s, PX_SINTOMAS.has(c) ? "sintoma" : PX_GENERICAS.has(c) ? "generica" : "")).join("\n");
+function pxLoadCatalogo(){
+  return pxJsonp("Catalogo_Causas").then(resp=>{
+    if (!resp || resp.status==="error" || !resp.table) throw new Error("sin pestaña");
+    const {rows} = gvizToRows(resp), l = [], s = new Set(), g = new Set(), f = [];
+    for (const r of rows){
+      if (r.cod==="" || r.cod==null || !r.regex) continue;
+      const cod = String(r.cod); l.push([cod, String(r.causa), String(r.regex)]);
+      if (r.tipo==="sintoma") s.add(cod); if (r.tipo==="generica") g.add(cod);
+      f.push(pxFirma(cod, String(r.causa), String(r.regex), r.tipo||""));
+    }
+    const rx = pxCompilar(l);
+    if (!rx.length) throw new Error("vacío");
+    if (f.join("\n")===PX.catFirma) return;
+    PX_RX = rx; PX_SINTOMAS = s; PX_GENERICAS = g; PX.catFirma = f.join("\n");
+    for (const r of DATA) delete r._px;
+    renderAll();
+  }).catch(e=>console.warn("Catálogo de causas: se usa el incluido en la página", e));
+}
+function pxLoadEnr(){
+  return pxJsonp("Prescriptivo_Maquinas").then(resp=>{
+    if (!resp || resp.status==="error" || !resp.table) throw new Error("sin pestaña");
+    const {rows} = gvizToRows(resp), m = new Map();
+    for (const r of rows){ if (r.maquina_limpia!=="" && r.maquina_limpia!=null) m.set(String(r.maquina_limpia), r); }
+    if (!m.size) throw new Error("vacía");
+    PX.enr = m; PX.enrInfo = {p:rows[0].paros_hasta, o:rows[0].odt_hasta, n:rows.length}; PX.ver++;
+    refreshSelects(); renderAll();
+  }).catch(e=>{ console.warn("Prescriptivo: sin paros/ODT", e); if (PX.res) renderPrescriptive(); });
+}
+/* Dos páginas: Turnos y Mantenimiento prescriptivo (los filtros de arriba valen para las dos) */
+function setPage(p){
+  const presc = p==="prescriptivo";
+  $("pgTurnos").hidden = presc; $("pgPresc").hidden = !presc;
+  ($(presc ? "slotFallasPresc" : "slotFallasTurnos")).appendChild($("failPanel"));   // el análisis de fallas por máquina vive en las dos páginas
+  $("tabTurnos").setAttribute("aria-selected", String(!presc)); $("tabPresc").setAttribute("aria-selected", String(presc));
+  try{ history.replaceState(null, "", "#"+(presc ? "prescriptivo" : "turnos")); }catch(e){}
+  if (!presc) renderTrend();
+}
+$("tabTurnos").addEventListener("click", ()=> setPage("turnos"));
+$("tabPresc").addEventListener("click", ()=> setPage("prescriptivo"));
+setTimeout(()=>{ if (location.hash==="#prescriptivo") setPage("prescriptivo"); }, 0);
+$("pxEstado").addEventListener("change", e=>{ PX.estado = e.target.value; PX.limit = 25; pxRenderTabla(); });
+let pxTimer; $("pxQ").addEventListener("input", e=>{ clearTimeout(pxTimer); pxTimer = setTimeout(()=>{ PX.q = e.target.value.trim(); PX.limit = 25; pxRenderListas(); pxRenderTabla(); }, 180); });
+$("pxMore").addEventListener("click", ()=>{ PX.limit += 25; pxRenderTabla(); });
+function pxPickCausa(li){
+  if (!li || li.dataset.px==null) return;
+  PX.q = PX.q===li.dataset.px ? "" : li.dataset.px; $("pxQ").value = PX.q; PX.limit = 25; pxRenderListas(); pxRenderTabla();
+}
+$("pxCausas").addEventListener("click", e=> pxPickCausa(e.target.closest("li[data-px]")));
+$("pxCausas").addEventListener("keydown", e=>{ if (e.key==="Enter"||e.key===" "){ const li=e.target.closest("li[data-px]"); if (li){ e.preventDefault(); pxPickCausa(li); } } });
+
 /* ---------- Inicio ---------- */
 const hadCache = loadStore();
 refreshSelects();
 renderAll();
 if (hadCache) setStatus("Mostrando la última copia guardada en este navegador. Conectando con la hoja de Google…");
 fetchLive(true);
+pxLoadEnr();
+pxLoadCatalogo();
 setInterval(()=> fetchLive(true), 5*60*1000);
+setInterval(()=>{ pxLoadEnr(); pxLoadCatalogo(); }, 15*60*1000);
 </script>
 </body>
 </html>
