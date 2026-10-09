@@ -84,13 +84,14 @@ details.ms{display:block;width:100%;min-width:0}
 
 .kpis{display:grid;grid-template-columns:repeat(5,1fr);margin:0 0 16px;background:var(--surface);border:1px solid var(--line);border-radius:8px}
 .kpis.k3{grid-template-columns:repeat(3,1fr)}
+.kpis.k4{grid-template-columns:repeat(4,1fr)}
 .kpi{padding:14px 18px;border-left:1px solid var(--line);position:relative}
 .kpi:first-child{border-left:0}
 .kpi::before{content:"";position:absolute;left:18px;right:18px;top:0;height:3px;border-radius:0 0 3px 3px;background:var(--k,transparent)}
 .kpi .n{font-family:var(--font-num);font-weight:700;font-size:34px;line-height:1.05;font-variant-numeric:tabular-nums}
 .kpi .l{font-size:13.5px;color:var(--muted);margin-top:2px}
 .kpi .p{font-size:12.5px;margin-top:6px;color:var(--muted)}
-@media (max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}.kpis.k3{grid-template-columns:1fr 1fr}.kpi{border-left:0;border-top:1px solid var(--line)}.kpi:nth-child(-n+2){border-top:0}.kpi:nth-child(even){border-left:1px solid var(--line)}}
+@media (max-width:900px){.kpis,.kpis.k4{grid-template-columns:repeat(2,1fr)}.kpis.k3{grid-template-columns:1fr 1fr}.kpi{border-left:0;border-top:1px solid var(--line)}.kpi:nth-child(-n+2){border-top:0}.kpi:nth-child(even){border-left:1px solid var(--line)}}
 
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px 18px;margin-bottom:16px;min-width:0}
 .panel h2{margin:0 0 2px;font-family:var(--font-num);font-size:20px;font-weight:600}
@@ -206,9 +207,10 @@ details.guia dd{margin:0;color:var(--muted)}
     <button type="button" class="tab" role="tab" id="tab-cmi" data-tab="cmi" aria-selected="true">CMI ODTs</button>
     <button type="button" class="tab" role="tab" id="tab-detalle" data-tab="detalle" aria-selected="false">ODTs</button>
   </div>
+  <p class="foot" id="tab-note" style="margin:-8px 0 14px"></p>
 
   <div id="pg-cmi" role="tabpanel" aria-labelledby="tab-cmi">
-    <section class="kpis" id="kpis-cmi" aria-label="Indicadores por estado"></section>
+    <section class="kpis k4" id="kpis-cmi" aria-label="Indicadores por estado"></section>
 
     <div class="grid2">
       <section class="panel" aria-label="ODTs por área">
@@ -224,17 +226,6 @@ details.guia dd{margin:0;color:var(--muted)}
       </section>
     </div>
 
-    <section class="panel" aria-label="Paros vs ODTs">
-      <div class="ph">
-        <div>
-          <h2>Paros vs ODTs correctivas por área</h2>
-          <p class="sub">Desviación = paros ÷ ODTs correctivas (medida 38). En rojo cuando hay más paros que ODTs correctivas.</p>
-        </div>
-        <div class="field" style="min-width:210px"><span class="lbl" id="l-clparo">Clasificación del paro</span><div class="msw" data-k="clparo"></div></div>
-      </div>
-      <div class="legend"><span><i class="dot" style="background:var(--paro)"></i>Paros (sin preventivos)</span><span><i class="dot" style="background:var(--corr)"></i>ODTs correctivas</span></div>
-      <div class="bars" id="b-paros"></div>
-    </section>
 
     <section class="panel" aria-label="ODTs por técnico">
       <h2>ODTs por técnico y estado</h2>
@@ -300,12 +291,12 @@ details.guia dd{margin:0;color:var(--muted)}
   <details class="guia">
     <summary>¿Cómo leer este tablero? (y en qué se parece a Power BI)</summary>
     <dl>
-      <dt>Filtros iniciales</dt><dd>Arranca con los mismos segmentadores guardados en tu Power BI: estado Pendiente, Pausado y Proceso, y clasificación 2, 13 y 34. "Restablecer filtros" vuelve a ellos.</dd>
+      <dt>Filtros por página</dt><dd>Como en Power BI, cada página tiene sus propios filtros. CMI ODTs arranca con estado Pendiente, Pausado y Proceso y clasificación 2, 13 y 34. ODTs arranca con lo mismo más las 6 áreas de Planta Acabados. "Restablecer filtros de Power BI" vuelve a esos valores en la página que estés viendo.</dd>
       <dt>ODTs</dt><dd>Órdenes del CMMS sin canceladas que cumplen los filtros (medida 21.Cantidad_ODT).</dd>
-      <dt>Tarjetas de estado</dt><dd>Terminadas, Pendientes, En pausa y En proceso ignoran el filtro de estado, como las medidas 31 a 34 de Power BI (CALCULATE reemplaza ese filtro).</dd>
+      <dt>Tarjetas de estado</dt><dd>Terminadas, Pendientes, En pausa y En proceso (página CMI) ignoran el filtro de estado, como las medidas 31 a 34 de Power BI (CALCULATE reemplaza ese filtro).</dd>
       <dt>Preventivas / correctivas</dt><dd>Ignoran el filtro "Tipo de ODT", como las medidas 22 y 23.</dd>
       <dt>Planta Acabados</dt><dd>Termofijación y Secado, Tintorería, Efectos y Acabados, Revisión Terminado, Estampación y Estampación Digital (la selección guardada en la página ODTs de Power BI).</dd>
-      <dt>Año y mes</dt><dd>Aquí filtran por la fecha de captura de la ODT (y la fecha inicial del paro). En tu Power BI la tabla Calendario no está relacionada con ODT ni con paros, así que allá esos segmentadores no cambian estas cifras.</dd>
+      <dt>Año y mes</dt><dd>Aquí filtran por la fecha de captura de la ODT. En tu Power BI la tabla Calendario no está relacionada con ODT ni con paros, así que allá esos segmentadores no cambian estas cifras.</dd>
       <dt>Datos</dt><dd>Mismo archivo que tu Power BI (ODT_JUNIOV2_26-fgaray.xlsx, hoja ODT), con las mismas reglas de máquina, responsable y área. Se suben con el botón "Actualizar datos", igual que el informe de turnos.</dd>
     </dl>
   </details>
@@ -318,7 +309,6 @@ details.guia dd{margin:0;color:var(--muted)}
 /* ---------- Fuente de datos: el mismo Google Sheet del informe de turnos ---------- */
 const SHEET_ID = "1-ijA2fAWpzOVr-NxaxWjHyoozuZaLjfe31cbtcn-xmQ";
 const TAB_ODTS = "ODTs_Tablero";
-const TAB_PAROS = "Paros_Tablero";
 const SYNC_URL = "http://127.0.0.1:8765/sync";
 const SNAPSHOT_URL = "odts-data.json";
 const SNAPSHOT_LABEL = "copia guardada del 8 oct 2026";
@@ -326,7 +316,6 @@ const SNAPSHOT_LABEL = "copia guardada del 8 oct 2026";
 /* Segmentadores guardados en el Power BI (RAM_ODTs_Costos_V10) */
 const PBI_ESTADO = ["Pendiente", "Pausado", "Proceso"];
 const PBI_CLASIF = ["2", "13", "34"];
-const PBI_CLPARO = "Mto.Electrico";
 const ACABADOS = ["TERMOFIJACION Y SECADO PROD.", "TINTORERIA PROD.", "EFECTOS Y ACABADOS PROD.", "REVISION TERMINADO PROD.", "ESTAMPACION PROD.", "ESTAMPACION DIGITAL PROD."];
 
 /* ---------- Utilidades ---------- */
@@ -406,20 +395,20 @@ function normOdts(raw) {
   }
   return out;
 }
-function normParos(raw) {
-  return raw.map((r) => {
-    const area = s(r.area).trim() || "SIN ÁREA";
-    return { y: +s(r.anio) || null, m: +s(r.mes) || null, area, acabados: ACABADOS.includes(area), maquina: s(r.maquina).trim(), clasif: cl(r.clasificacion), paros: +s(r.paros) || 0 };
-  }).filter((d) => d.paros > 0);
-}
 
 /* ---------- Estado de filtros (cada filtro es una lista: vacía = todos) ---------- */
-let ALL = [], PAROS = [];
+let ALL = [];
 const KEYS = ["anio", "mes", "planta", "area", "maquina", "resp", "estado", "clasif", "tipo", "odt"];
-const DEF = () => ({ anio: [], mes: [], planta: [], area: [], maquina: [], resp: [], tipo: [], odt: [], estado: PBI_ESTADO.slice(), clasif: PBI_CLASIF.slice(), clparo: [PBI_CLPARO] });
-let F = DEF();
+/* Cada página tiene sus filtros, igual que las páginas del Power BI */
+const DEF_TAB = {
+  cmi: () => ({ anio: [], mes: [], planta: [], area: [], maquina: [], resp: [], tipo: [], odt: [], estado: PBI_ESTADO.slice(), clasif: PBI_CLASIF.slice() }),
+  detalle: () => ({ anio: [], mes: [], planta: [], area: ACABADOS.slice(), maquina: [], resp: [], tipo: [], odt: [], estado: PBI_ESTADO.slice(), clasif: PBI_CLASIF.slice() }),
+};
 const UI = { tab: location.hash === "#detalle" ? "detalle" : "cmi", todos: false, q: "", open: new Set(), auto: true };
-const FLABEL = { anio:"Año", mes:"Mes", planta:"Planta", area:"Área", maquina:"Máquina", resp:"Técnico", tipo:"Tipo", estado:"Estado", clasif:"Clasificación", odt:"ODT", clparo:"Paro" };
+const FT = { cmi: DEF_TAB.cmi(), detalle: DEF_TAB.detalle() };
+const DEF = () => DEF_TAB[UI.tab]();
+let F = FT[UI.tab];
+const FLABEL = { anio:"Año", mes:"Mes", planta:"Planta", area:"Área", maquina:"Máquina", resp:"Técnico", tipo:"Tipo", estado:"Estado", clasif:"Clasificación", odt:"ODT" };
 const PLANTAS = { acabados: "Planta Acabados", otras: "Otras áreas" };
 const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
 const has = (k, v) => !F[k].length || F[k].includes(v);
@@ -435,13 +424,7 @@ function filt(skip = []) {
     (sk.has("tipo") || has("tipo", d.tipo)) && (sk.has("estado") || has("estado", d.estado)) &&
     (sk.has("clasif") || has("clasif", d.clasif)) && (sk.has("odt") || has("odt", d.codigo)));
 }
-function filtParos() {
-  return PAROS.filter((d) =>
-    has("anio", String(d.y)) && has("mes", String(d.m)) && plantaOk(d) &&
-    has("area", d.area) && has("maquina", d.maquina) &&
-    !/prevent/i.test(d.clasif) && has("clparo", d.clasif));
-}
-function setF(k, v) { F[k] = v; UI.auto = true; render(); }
+function setF(k, v) { F[k] = v; FT[UI.tab] = F; UI.auto = true; render(); }
 /* clic en una barra: filtra solo por ese valor; otro clic lo quita */
 const toggleF = (k, v) => setF(k, F[k].length === 1 && F[k][0] === v ? [] : [v]);
 const one = (k) => (F[k].length === 1 ? F[k][0] : null);
@@ -528,7 +511,6 @@ function optionsFor(k) {
       const codes = keep(pool.map((d) => d.codigo)).sort((a, b) => b - a);
       return codes.map((c) => { const d = byCode.get(c) || {}; return [c, c, (d.descripcion || "").slice(0, 90), d.maquina || ""]; });
     }
-    case "clparo": return [...new Set(PAROS.map((d) => d.clasif))].filter((c) => c && !/prevent/i.test(c)).sort().map((v) => [v, v]);
   }
   return [];
 }
@@ -601,13 +583,14 @@ function chips() {
   };
   for (const k of KEYS) {
     if (!F[k].length) continue;
-    const pbi = (k === "estado" && sameSet(F.estado, PBI_ESTADO)) || (k === "clasif" && sameSet(F.clasif, PBI_CLASIF));
+    const pbi = (k === "estado" && sameSet(F.estado, PBI_ESTADO)) || (k === "clasif" && sameSet(F.clasif, PBI_CLASIF)) || (k === "area" && sameSet(F.area, ACABADOS));
     add(FLABEL[k] + ": " + summaryText(k, MS[k] ? MS[k].opts : []), () => setF(k, []), pbi ? "pbi" : "");
   }
   const isDef = JSON.stringify(F) === JSON.stringify(DEF());
   const r = el("button", "linkbtn", isDef ? "Ver todo (sin filtros)" : "Restablecer filtros de Power BI"); r.type = "button";
   r.addEventListener("click", () => {
-    if (isDef) { F = DEF(); F.estado = []; F.clasif = []; F.clparo = []; } else F = DEF();
+    if (isDef) { F = DEF(); F.estado = []; F.clasif = []; F.area = []; } else F = DEF();
+    FT[UI.tab] = F;
     UI.auto = true; render();
   });
   box.append(r);
@@ -616,10 +599,7 @@ function chips() {
 /* ---------- Página CMI ---------- */
 function drawCMI(rows) {
   const sinEstado = filt(["estado"]), e = countEst(sinEstado);
-  kpis($("kpis-cmi"), [
-    { n: NF.format(rows.length), l: "ODTs", p: "con los filtros (medida 21)" },
-    ...["Terminado", "Pendiente", "Pausado", "Proceso"].map((st) => ({ n: NF.format(e[st]), l: ESTL[st], c: ESTC[st], p: "sin filtro de estado" })),
-  ]);
+  kpis($("kpis-cmi"), ["Terminado", "Pendiente", "Pausado", "Proceso"].map((st) => ({ n: NF.format(e[st]), l: ESTL[st], c: ESTC[st], p: "medida " + { Terminado: 31, Proceso: 32, Pausado: 33, Pendiente: 34 }[st] })));
   const byArea = [...groupBy(rows, (d) => d.area)].map(([k, v]) => ({ key: k, label: short(k), total: v.length, rows: v, vals: { n: v.length } }))
     .sort((a, b) => b.total - a.total);
   const top = byArea.slice(0, 12);
@@ -643,19 +623,6 @@ function drawCMI(rows) {
     mode: "group", series: [{ k: "n", c: "var(--proc)" }, { k: "t", c: "var(--term)" }], sel: F.area, click: areaClick,
     value: (d) => NF.format(d.vals.n) + " / " + NF.format(d.vals.t),
     tip: (d) => [{ t: d.label }, { c: "var(--proc)", t: "Cantidad ODT: " + NF.format(d.vals.n) }, { c: "var(--term)", t: "Terminadas: " + NF.format(d.vals.t) }],
-  });
-
-  const pr = filtParos(), pa = groupBy(pr, (d) => d.area);
-  const corr = groupBy(filt(["tipo"]).filter((d) => d.tipo === "CORRECTIVO"), (d) => d.area);
-  const pitems = [...new Set([...pa.keys(), ...corr.keys()])].map((k) => {
-    const p = (pa.get(k) || []).reduce((a, d) => a + d.paros, 0), c = (corr.get(k) || []).length;
-    return { key: k, label: short(k), total: p + c, vals: { p, c }, ratio: c ? p / c : 0 };
-  }).filter((d) => d.total > 0).sort((a, b) => b.vals.p - a.vals.p || b.vals.c - a.vals.c).slice(0, 15);
-  bars($("b-paros"), pitems, {
-    mode: "group", series: [{ k: "p", c: "var(--paro)" }, { k: "c", c: "var(--corr)" }], sel: F.area, click: areaClick,
-    empty: PAROS.length ? "Sin paros ni ODTs correctivas con estos filtros." : "Los paros aún no están en la hoja: pulsa «Actualizar datos».",
-    value: (d) => DF.format(d.ratio), bad: (d) => d.ratio > 1,
-    tip: (d) => [{ t: d.label }, { c: "var(--paro)", t: "Paros: " + NF.format(d.vals.p) }, { c: "var(--corr)", t: "ODTs correctivas: " + NF.format(d.vals.c) }, { t: "Desviación: " + DF.format(d.ratio) }],
   });
 
   const series = ESTADOS.filter((st) => has("estado", st)).map((k) => ({ k, l: ESTL[k], c: ESTC[k] }));
@@ -830,11 +797,12 @@ function render() {
     if (old) lead.append(" ", el("b", null, NF.format(old)), " llevan más de 30 días abiertas.");
   }
   document.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === UI.tab)));
+  $("tab-note").textContent = "Los filtros son propios de esta página, como en Power BI" + (UI.tab === "detalle" ? " (arranca con las 6 áreas de Planta Acabados)." : ".");
   $("pg-cmi").hidden = UI.tab !== "cmi"; $("pg-detalle").hidden = UI.tab !== "detalle";
   if (UI.tab === "cmi") drawCMI(rows); else drawDetalle(rows);
   drawMatrix(rows);
 }
-document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => { UI.tab = b.dataset.tab; history.replaceState(null, "", "#" + UI.tab); render(); }));
+document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => { FT[UI.tab] = F; UI.tab = b.dataset.tab; F = FT[UI.tab]; UI.auto = true; history.replaceState(null, "", "#" + UI.tab); render(); }));
 $("btn-todos").addEventListener("click", () => { UI.todos = !UI.todos; render(); });
 
 /* ---------- Datos: en vivo, copia y botón "Actualizar datos" (igual que el informe de turnos) ---------- */
@@ -845,7 +813,7 @@ function setRange() {
 async function loadSnapshot() {
   try {
     const j = await (await fetch(SNAPSHOT_URL, { cache: "no-store" })).json();
-    ALL = normOdts(j.odts || []); PAROS = normParos(j.paros || []);
+    ALL = normOdts(j.odts || []);
     return true;
   } catch (e) { return false; }
 }
@@ -854,10 +822,8 @@ async function fetchLive(isAuto) {
   try {
     const odts = normOdts(gvizRows(await loadGviz(TAB_ODTS)));
     if (!odts.length) throw new Error("vacia");
-    let paros = PAROS;
-    try { paros = normParos(gvizRows(await loadGviz(TAB_PAROS))); } catch (e) { /* se conservan los anteriores */ }
     const before = ALL.length;
-    ALL = odts; PAROS = paros;
+    ALL = odts;
     setRange(); render();
     const d = new Date(), diff = ALL.length - before;
     setStatus("Datos en vivo · actualizado a las " + p2(d.getHours()) + ":" + p2(d.getMinutes()) +
