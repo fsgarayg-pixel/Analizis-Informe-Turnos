@@ -88,6 +88,37 @@ details.ms{display:block;width:100%;min-width:0}
 .kpis.k6{grid-template-columns:repeat(6,1fr)}
 .kpi .n small{font-size:18px;font-weight:600;color:var(--muted);margin-left:2px}
 .chk{display:inline-flex;gap:6px;align-items:center;font-size:13.5px;cursor:pointer}
+.exec{background:linear-gradient(180deg,var(--surface),var(--surface));border:1px solid var(--line);border-left:5px solid var(--band);border-radius:8px;padding:18px 22px;margin-bottom:16px}
+.exec-h{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:flex-start}
+.exec-k{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--band);font-weight:700}
+.exec h2{margin:2px 0 0;font-family:var(--font-num);font-size:24px;font-weight:700;line-height:1.2}
+.btn.sec{background:var(--soft);color:var(--ink);border:1px solid var(--line);font-weight:600}
+.exec-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0 10px}
+.ek{border:1px solid var(--line);border-radius:8px;padding:12px 14px;position:relative;overflow:hidden}
+.ek .n{font-family:var(--font-num);font-weight:700;font-size:32px;line-height:1}
+.ek .l{font-size:13px;color:var(--muted);margin-top:4px}
+.ek .d{font-size:12.5px;margin-top:6px;font-weight:600}
+.ek .d.up{color:var(--paus)}.ek .d.down{color:#1F8A5B}.ek .d.ok{color:#1F8A5B}
+.ek .ring{position:absolute;right:12px;top:12px}
+.exec-notes{margin:6px 0 0;padding-left:18px;font-size:14.5px;line-height:1.55}
+.exec-notes li{margin:2px 0}
+.exec-notes b{font-family:var(--font-num);font-size:15.5px}
+.am{border-collapse:separate;border-spacing:3px;font-size:12.5px;min-width:max-content}
+.am th{font-weight:600;color:var(--muted);padding:4px 6px;white-space:nowrap;position:sticky;top:0;background:var(--surface);z-index:1;text-align:center}
+.am th.tn,.am td.tn{text-align:left;position:sticky;left:0;background:var(--surface);z-index:2}
+.am td.tn{font-weight:600;padding-right:10px;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.am td.c{width:66px;height:40px;border-radius:5px;text-align:center;font-family:var(--font-num);font-weight:700;font-size:14px;vertical-align:middle;padding:3px 4px}
+.am td.c .mb{display:flex;height:5px;border-radius:3px;overflow:hidden;margin-top:3px;background:rgba(127,127,127,.25)}
+.am td.c .mb i{display:block;height:100%}
+.am td.e{background:var(--soft)}
+.am td.tot{font-family:var(--font-num);font-weight:700;text-align:right;padding:0 8px;white-space:nowrap}
+@media (max-width:900px){.exec-kpis{grid-template-columns:repeat(2,1fr)}}
+@media print{
+  .band .actions,.filters,.chips,.tabs,#tab-note,#btn-print,#matriz,details.guia,.lead{display:none!important}
+  body{background:#fff}.band{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .panel,.exec,.kpis{break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  main{padding:8px}
+}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
 .seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13.5px}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
@@ -260,21 +291,48 @@ details.guia dd{margin:0;color:var(--muted)}
   <div id="pg-cmi" role="tabpanel" aria-labelledby="tab-cmi">
     <section class="kpis k4" id="kpis-cmi" aria-label="Indicadores por estado"></section>
 
-    <div class="grid2">
-      <section class="panel" aria-label="ODTs por área">
-        <h2>Cantidad de ODTs por área</h2>
-        <p class="sub">Pasa el cursor para ver preventivas y correctivas por mes. Toca un área para filtrar.</p>
-        <div class="bars" id="b-area"></div>
-      </section>
-      <section class="panel" aria-label="ODTs vs terminadas">
-        <h2>Cantidad de ODTs vs terminadas por área</h2>
-        <p class="sub">"Terminadas" ignora el filtro de estado, igual que la medida 31 de Power BI.</p>
-        <div class="legend"><span><i class="dot" style="background:var(--proc)"></i>Cantidad ODT</span><span><i class="dot" style="background:var(--term)"></i>Terminadas</span></div>
-        <div class="bars" id="b-cumpl"></div>
-      </section>
-    </div>
+    <section class="exec" id="exec" aria-label="Resumen ejecutivo">
+      <div class="exec-h">
+        <div>
+          <span class="exec-k">Informe ejecutivo de ODTs</span>
+          <h2 id="exec-title">—</h2>
+        </div>
+        <button class="btn sec" id="btn-print" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="6" y="14" width="12" height="7" rx="1"/><path d="M6 18H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-2"/></svg>
+          Imprimir / PDF
+        </button>
+      </div>
+      <div class="exec-kpis" id="exec-kpis"></div>
+      <ul class="exec-notes" id="exec-notes"></ul>
+    </section>
 
+    <section class="panel" aria-label="Entradas por mes">
+      <h2>ODTs que entran cada mes y cómo están hoy</h2>
+      <p class="sub">Cada barra son las ODTs creadas en ese mes, divididas según su estado actual. Línea: % de esas ODTs que ya están terminadas.</p>
+      <div class="legend" id="lg-cmi-mes"></div>
+      <div class="chart" id="c-cmi-mes"></div>
+    </section>
 
+    <section class="panel" aria-label="Áreas: entradas, terminadas y abiertas">
+      <h2>Por área: entradas, terminadas y abiertas</h2>
+      <p class="sub">Total del periodo por área. A la derecha, % terminado y abiertas que quedan. Toca un área para filtrar todo el informe.</p>
+      <div class="legend" id="lg-cmi-area"></div>
+      <div class="bars" id="b-cmi-area"></div>
+    </section>
+
+    <section class="panel" aria-label="Área por mes">
+      <div class="ph">
+        <div>
+          <h2>Área × mes</h2>
+          <p class="sub">Cada celda: ODTs que entraron ese mes al área. La barra muestra la parte terminada (verde) y la que sigue abierta. Últimos 12 meses.</p>
+        </div>
+        <div class="seg" role="group" aria-label="Valor de la celda" id="am-seg">
+          <button type="button" data-m="ent" aria-pressed="true">Entradas</button>
+          <button type="button" data-m="abi" aria-pressed="false">Abiertas</button>
+        </div>
+      </div>
+      <div class="tw hmw"><table class="am" id="t-am"></table></div>
+    </section>
   </div>
 
   <div id="pg-detalle" role="tabpanel" aria-labelledby="tab-detalle" hidden>
@@ -511,7 +569,7 @@ const DEF_TAB = {
 };
 /* Responsables de ODT que no son técnicos (se ocultan en el rendimiento con "Solo técnicos") */
 const NO_TECNICOS = ["JAVIER GAMEZ BLANCO", "RODRIGUEZ PENA JAIME ALFONSO", "BRIANDA BETANCOURT SANCHEZ", "JOSE SANTIAGO CASTAÑEDA BUITRAGO", "FABIAN STEVEN GARAY GOMEZ"];
-const UI = { tab: ["#detalle", "#rend"].includes(location.hash) ? location.hash.slice(1) : "cmi", todos: false, q: "", open: new Set(), auto: true, soloTec: true, hm: "rend", sortK: "asig", sortDir: -1 };
+const UI = { tab: ["#detalle", "#rend"].includes(location.hash) ? location.hash.slice(1) : "cmi", todos: false, q: "", open: new Set(), auto: true, soloTec: true, hm: "rend", am: "ent", sortK: "asig", sortDir: -1 };
 const FT = { cmi: DEF_TAB.cmi(), detalle: DEF_TAB.detalle(), rend: DEF_TAB.rend() };
 const DEF = () => DEF_TAB[UI.tab]();
 let F = FT[UI.tab];
@@ -707,32 +765,106 @@ function chips() {
 function drawCMI(rows) {
   const sinEstado = filt(["estado"]), e = countEst(sinEstado);
   kpis($("kpis-cmi"), ["Terminado", "Pendiente", "Pausado", "Proceso"].map((st) => ({ n: NF.format(e[st]), l: ESTL[st], c: ESTC[st], p: "medida " + { Terminado: 31, Proceso: 32, Pausado: 33, Pendiente: 34 }[st] })));
-  const byArea = [...groupBy(rows, (d) => d.area)].map(([k, v]) => ({ key: k, label: short(k), total: v.length, rows: v, vals: { n: v.length } }))
-    .sort((a, b) => b.total - a.total);
-  const top = byArea.slice(0, 12);
-  const areaClick = (d) => toggleF("area", d.key);
-  bars($("b-area"), top, {
-    series: [{ k: "n", c: "var(--proc)" }], sel: F.area, click: areaClick,
-    tip: (d) => {
-      const ms = [...groupBy(d.rows.filter((r) => r.y), (r) => r.y * 100 + r.m)].sort((a, b) => b[0] - a[0]).slice(0, 6).reverse();
-      return [{ t: d.label + " · " + NF.format(d.total) + " ODTs" },
-        ...ms.map(([ym, v]) => ({ t: MES[ym % 100 - 1] + " " + Math.floor(ym / 100) + ": " + NF.format(v.filter((r) => r.tipo === "PREVENTIVO").length) + " prev. · " + NF.format(v.filter((r) => r.tipo === "CORRECTIVO").length) + " corr." }))];
-    },
-  });
-  if (byArea.length > 12) $("b-area").append(el("p", "empty", "Se muestran las 12 áreas con más ODTs de " + byArea.length + "."));
 
-  const term = groupBy(sinEstado.filter((d) => d.estado === "Terminado"), (d) => d.area);
-  const cumpl = [...new Set([...byArea.map((d) => d.key), ...term.keys()])].map((k) => {
-    const n = (byArea.find((d) => d.key === k) || { total: 0 }).total, t = (term.get(k) || []).length;
-    return { key: k, label: short(k), total: n + t, vals: { n, t } };
-  }).sort((a, b) => b.vals.n - a.vals.n || b.vals.t - a.vals.t).slice(0, 12);
-  bars($("b-cumpl"), cumpl, {
-    mode: "group", series: [{ k: "n", c: "var(--proc)" }, { k: "t", c: "var(--term)" }], sel: F.area, click: areaClick,
-    value: (d) => NF.format(d.vals.n) + " / " + NF.format(d.vals.t),
-    tip: (d) => [{ t: d.label }, { c: "var(--proc)", t: "Cantidad ODT: " + NF.format(d.vals.n) }, { c: "var(--term)", t: "Terminadas: " + NF.format(d.vals.t) }],
+  /* Informe: ODTs que entran (todas, sin importar su estado) y cómo están hoy */
+  const R = sinEstado.filter((d) => d.y);
+  const all = stats(R), abiertas = all.proc + all.paus + all.pend;
+  const months = [...new Set(R.map((d) => ymOf(d.y, d.m)))].sort((a, b) => a - b);
+  const per = months.length ? MESL[months[0] % 100 - 1].toLowerCase() + " " + Math.floor(months[0] / 100) + " a " + MESL[months[months.length - 1] % 100 - 1].toLowerCase() + " " + Math.floor(months[months.length - 1] / 100) : "";
+  const scope = F.area.length === 1 ? short(F.area[0]) : F.area.length > 1 ? F.area.length + " áreas" : F.planta.length === 1 ? PLANTAS[F.planta[0]] : "Toda la planta";
+  $("exec-title").textContent = scope + (per ? " · " + per : "");
+  /* últimos dos meses completos para comparar */
+  const curYM = now0.getFullYear() * 100 + now0.getMonth() + 1;
+  const full = months.filter((ym) => ym < curYM);
+  const byM = groupBy(R, (d) => ymOf(d.y, d.m));
+  const mA = full[full.length - 1], mB = full[full.length - 2];
+  const sA = mA ? stats(byM.get(mA) || []) : null, sB = mB ? stats(byM.get(mB) || []) : null;
+  const delta = (a, b) => (a == null || b == null || !b ? null : (a - b) / b);
+  const dTxt = (x, goodDown) => { if (x == null) return ["", ""]; const up = x > 0; return [(up ? "▲ " : "▼ ") + Math.abs(Math.round(x * 100)) + " % vs " + (mB ? MES[mB % 100 - 1] : ""), (up ? (goodDown ? "up" : "ok") : (goodDown ? "down" : "up"))]; };
+  const box = $("exec-kpis"); box.replaceChildren();
+  const card = (n, l, d, dc, ring) => {
+    const c = el("div", "ek"); c.append(el("div", "n", n), el("div", "l", l)); if (d) c.append(el("div", "d " + dc, d));
+    if (ring != null) c.append(ringSvg(ring)); box.append(c);
+  };
+  const ringSvg = (x) => {
+    const NS = "http://www.w3.org/2000/svg", r = 20, C = 2 * Math.PI * r;
+    const s0 = document.createElementNS(NS, "svg"); s0.setAttribute("viewBox", "0 0 50 50"); s0.setAttribute("width", "50"); s0.setAttribute("class", "ring");
+    const a = document.createElementNS(NS, "circle"); a.setAttribute("cx", 25); a.setAttribute("cy", 25); a.setAttribute("r", r); a.setAttribute("fill", "none"); a.setAttribute("stroke", "var(--soft)"); a.setAttribute("stroke-width", 6);
+    const b = document.createElementNS(NS, "circle"); b.setAttribute("cx", 25); b.setAttribute("cy", 25); b.setAttribute("r", r); b.setAttribute("fill", "none"); b.setAttribute("stroke", x >= 0.85 ? "#1F8A5B" : x >= 0.6 ? "#C98A00" : "#C0392B");
+    b.setAttribute("stroke-width", 6); b.setAttribute("stroke-linecap", "round"); b.setAttribute("stroke-dasharray", (C * Math.max(0, Math.min(1, x))) + " " + C); b.setAttribute("transform", "rotate(-90 25 25)");
+    s0.append(a, b); return s0;
+  };
+  const [d1, c1] = sA && sB ? dTxt(delta(sA.asig, sB.asig), true) : ["", ""];
+  card(NF.format(all.asig), "ODTs entraron en el periodo", sA ? "Último mes completo (" + MES[mA % 100 - 1] + "): " + NF.format(sA.asig) + (d1 ? " · " + d1 : "") : "", c1 && c1 === "up" ? "" : "");
+  card(NF.format(all.term), "Terminadas", fmtPct(all.rend) + " de lo que entró", "ok", all.rend);
+  card(NF.format(abiertas), "Siguen abiertas", NF.format(all.pend) + " pendientes · " + NF.format(all.paus) + " en pausa · " + NF.format(all.proc) + " en proceso", abiertas ? "up" : "ok");
+  card(NF.format(all.venc), "Abiertas vencidas", all.venc ? fmtPct(ratio(all.venc, abiertas)) + " de las abiertas ya pasó su plazo" : "Ninguna vencida", all.venc ? "up" : "ok");
+
+  /* notas automáticas */
+  const notes = $("exec-notes"); notes.replaceChildren();
+  const li = (...parts) => { const l = el("li"); parts.forEach((p) => l.append(typeof p === "string" ? document.createTextNode(p) : p)); notes.append(l); };
+  const b = (x) => el("b", null, x);
+  if (sA && sB) li("En ", b(MESL[mA % 100 - 1].toLowerCase()), " entraron ", b(NF.format(sA.asig)), " ODTs (" + (sA.asig >= sB.asig ? "+" : "") + NF.format(sA.asig - sB.asig) + " frente a " + MESL[mB % 100 - 1].toLowerCase() + ") y ya están terminadas ", b(fmtPct(sA.rend)), ".");
+  const areasS = [...groupBy(R, (d) => d.area)].map(([k, v]) => ({ k, s: stats(v) }));
+  const topOpen = areasS.map((a) => ({ k: a.k, n: a.s.proc + a.s.paus + a.s.pend })).sort((x, y) => y.n - x.n).filter((x) => x.n).slice(0, 3);
+  if (topOpen.length) li("Más abiertas: ", ...topOpen.flatMap((a, i) => [i ? (i === topOpen.length - 1 ? " y " : ", ") : "", b(short(a.k)), " (" + NF.format(a.n) + ")"]), ".");
+  const low = areasS.filter((a) => a.s.asig >= 20).sort((x, y) => x.s.rend - y.s.rend)[0];
+  if (low && low.s.rend < 0.9) li("Área con menor % terminado: ", b(short(low.k)), " con ", b(fmtPct(low.s.rend)), " de " + NF.format(low.s.asig) + " ODTs.");
+  const old = R.filter((d) => !d.term && d.dias > 30).length;
+  if (old) li(b(NF.format(old)), " ODTs llevan más de 30 días abiertas.");
+  if (F.estado.length || F.resp.length || F.tipo.length) li("El informe cuenta todas las ODTs que entraron (todos los estados), con el resto de filtros activos.");
+
+  /* entradas por mes y estado actual */
+  const MB = [{ k: "term", l: "Terminadas", c: "var(--term)" }, { k: "proc", l: "En proceso", c: "var(--proc)" }, { k: "paus", l: "En pausa", c: "var(--paus)" }, { k: "pend", l: "Pendientes", c: "var(--pend)" }];
+  const ML = [{ k: "rend", l: "% terminadas", c: "var(--ink)" }];
+  legend($("lg-cmi-mes"), [...MB, ...ML]);
+  svgChart($("c-cmi-mes"), months.map((ym) => ({ key: ym, label: mlabel(ym), v: stats(byM.get(ym) || []) })), {
+    bars: MB, stacked: true, lines: ML, totalLabel: true, label: "ODTs que entran por mes según su estado actual",
+    tip: (c) => [{ t: MESL[c.key % 100 - 1] + " " + Math.floor(c.key / 100) + " · " + NF.format(c.v.asig) + " entraron" }, ...MB.map((x) => ({ c: x.c, t: x.l + ": " + NF.format(c.v[x.k]) })), { t: "Terminadas: " + fmtPct(c.v.rend) }],
   });
 
+  /* por área */
+  const AB = [{ k: "term", l: "Terminadas", c: "var(--term)" }, { k: "proc", l: "En proceso", c: "var(--proc)" }, { k: "paus", l: "En pausa", c: "var(--paus)" }, { k: "pend", l: "Pendientes", c: "var(--pend)" }];
+  legend($("lg-cmi-area"), AB);
+  const ai = areasS.map((a) => ({ key: a.k, label: short(a.k), total: a.s.asig, vals: a.s, s: a.s })).sort((x, y) => y.total - x.total);
+  bars($("b-cmi-area"), ai.slice(0, 15), {
+    series: AB, sel: F.area, click: (d) => toggleF("area", d.key),
+    value: (d) => fmtPct(d.s.rend) + " · " + NF.format(d.s.proc + d.s.paus + d.s.pend) + " ab.",
+    tip: (d) => [{ t: d.label + " · " + NF.format(d.total) + " entraron" }, ...AB.map((x) => ({ c: x.c, t: x.l + ": " + NF.format(d.s[x.k]) })), { t: "Terminado: " + fmtPct(d.s.rend) + " · vencidas: " + NF.format(d.s.venc) }],
+  });
+  if (ai.length > 15) $("b-cmi-area").append(el("p", "empty", "Se muestran las 15 áreas con más ODTs de " + ai.length + "."));
+
+  /* área × mes */
+  document.querySelectorAll("#am-seg button").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.m === UI.am)));
+  const last = months.slice(-12), areasTop = ai.slice(0, 15);
+  const tbl = $("t-am"); tbl.replaceChildren();
+  const hr = el("tr"); hr.append(el("th", "tn", "Área")); last.forEach((ym) => hr.append(el("th", "", mlabel(ym)))); hr.append(el("th", "", "Total"), el("th", "", "% term.")); tbl.append(hr);
+  const cellsMax = Math.max(1, ...areasTop.flatMap((a) => last.map((ym) => { const v = R.filter((d) => d.area === a.key && ymOf(d.y, d.m) === ym); return UI.am === "abi" ? v.filter((d) => !d.term).length : v.length; })));
+  const blue = [47, 111, 219], amber = [217, 130, 43];
+  for (const a of areasTop) {
+    const tr = el("tr"); const tn = el("td", "tn", a.label); tn.title = a.key; tn.addEventListener("click", () => toggleF("area", a.key)); tr.append(tn);
+    const va = R.filter((d) => d.area === a.key);
+    const bm = groupBy(va, (d) => ymOf(d.y, d.m));
+    for (const ym of last) {
+      const v = bm.get(ym) || [], s0 = stats(v), ab = s0.asig - s0.term;
+      const td = el("td", "c");
+      if (!v.length) { td.classList.add("e"); tr.append(td); continue; }
+      const val = UI.am === "abi" ? ab : s0.asig, x = val / cellsMax, base = UI.am === "abi" ? amber : blue;
+      const rgb = [0, 1, 2].map((i) => Math.round(244 + (base[i] - 244) * Math.min(1, 0.12 + x * 0.88)));
+      td.style.background = `rgb(${rgb})`; td.style.color = x > 0.55 ? "#fff" : "#14213D";
+      td.append(document.createTextNode(NF.format(val)));
+      const mb = el("div", "mb"); const g1 = el("i"); g1.style.flex = s0.term + " 0 0"; g1.style.background = "#1F8A5B"; const g2 = el("i"); g2.style.flex = ab + " 0 0"; g2.style.background = "#E9A800"; mb.append(g1, g2); td.append(mb);
+      td.addEventListener("mousemove", (ev) => showTip(ev, [{ t: a.label + " · " + MESL[ym % 100 - 1] + " " + Math.floor(ym / 100) }, { t: "Entraron: " + NF.format(s0.asig) }, ...MB.map((x2) => ({ c: x2.c, t: x2.l + ": " + NF.format(s0[x2.k]) }))]));
+      td.addEventListener("mouseleave", hideTip);
+      tr.append(td);
+    }
+    const tot = el("td", "tot", NF.format(a.s.asig)); const pc = el("td", "tot"); pc.append(el("span", "pill " + pillCls(a.s.rend), fmtPct(a.s.rend)));
+    tr.append(tot, pc); tbl.append(tr);
+  }
+  if (!areasTop.length) { const tr = el("tr"); tr.append(el("td", "empty", "Sin datos con estos filtros.")); tbl.append(tr); }
 }
+document.querySelectorAll("#am-seg button").forEach((x) => x.addEventListener("click", () => { UI.am = x.dataset.m; render(); }));
+$("btn-print").addEventListener("click", () => window.print());
 
 /* ---------- Página ODTs ---------- */
 function drawDetalle(rows) {
@@ -1093,10 +1225,6 @@ function render() {
     lead.append(el("b", null, NF.format(rows.length)), " ODTs con los filtros: ");
     lead.append(ESTADOS.filter((st) => e[st]).map((st) => NF.format(e[st]) + " " + ESTL[st].toLowerCase()).join(", ") + ".");
     const open = rows.filter((d) => d.estado !== "Terminado");
-    if (open.length && F.resp.length !== 1) {
-      const [who, v] = [...groupBy(open, (d) => d.responsable)].sort((a, b) => b[1].length - a[1].length)[0];
-      lead.append(" Mayor carga abierta: ", el("b", null, who), " con " + NF.format(v.length) + ".");
-    }
     const old = open.filter((d) => d.dias > 30).length;
     if (old) lead.append(" ", el("b", null, NF.format(old)), " llevan más de 30 días abiertas.");
   }
