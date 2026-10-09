@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tablero de ODTs - Mantenimiento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  --bg:#F2F4F8; --surface:#FFFFFF; --ink:#14213D; --muted:#5A6478; --line:#D8DDE6;
+  --band:#E20020; --band-ink:#FFFFFF; --btn:#F2B544; --btn-ink:#1B1A14; --focus:#E20020; --soft:#EAEEF5;
+  --pend:#D99A00; --paus:#B8372B; --proc:#2F6FDB; --term:#1C8C90; --corr:#D9822B; --prev:#1C8C90; --mute:#C9D0DC;
+  --font-ui:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --font-num:"Barlow Semi Condensed","Barlow",system-ui,"Arial Narrow",Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1320; --surface:#161D2E; --ink:#E7EBF3; --muted:#9AA6BA; --line:#283249;
+    --band:#4A000C; --focus:#FF4D6D; --soft:#1D2740;
+    --pend:#F2B544; --paus:#F07A6C; --proc:#6EA0FF; --term:#4FC3C8; --corr:#F0A048; --prev:#4FC3C8; --mute:#3A465F;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1320; --surface:#161D2E; --ink:#E7EBF3; --muted:#9AA6BA; --line:#283249;
+  --band:#4A000C; --focus:#FF4D6D; --soft:#1D2740;
+  --pend:#F2B544; --paus:#F07A6C; --proc:#6EA0FF; --term:#4FC3C8; --corr:#F0A048; --prev:#4FC3C8; --mute:#3A465F;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-ui);font-size:15px;line-height:1.45}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+[hidden]{display:none!important}
+
+.band{background:repeating-linear-gradient(90deg,rgba(255,255,255,.055) 0 1px,transparent 1px 7px),var(--band);color:var(--band-ink)}
+.band-in{max-width:1240px;margin:0 auto;padding:22px 20px 20px;display:flex;flex-wrap:wrap;gap:16px 24px;align-items:flex-end;justify-content:space-between}
+.band h1{margin:0;font-family:var(--font-num);font-weight:700;font-size:clamp(26px,4vw,38px);line-height:1.05}
+.band p{margin:6px 0 0;font-size:14px;opacity:.85}
+.actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{border:0;border-radius:6px;padding:10px 16px;font-weight:600;cursor:pointer;background:var(--btn);color:var(--btn-ink);display:inline-flex;gap:8px;align-items:center;text-decoration:none}
+.btn:hover{filter:brightness(1.06)}
+.btn:disabled{opacity:.6;cursor:progress}
+.btn.ghost{background:transparent;color:var(--band-ink);border:1px solid rgba(255,255,255,.4);font-weight:500}
+.btn svg{width:16px;height:16px}
+.status{max-width:1240px;margin:0 auto;padding:0 20px 14px;font-size:13.5px;min-height:20px}
+main{max-width:1240px;margin:0 auto;padding:18px 20px 40px}
+
+.lead{margin:0 0 14px;font-size:16px;max-width:80ch}
+.lead b{font-family:var(--font-num);font-weight:700;font-size:18px}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;align-items:end}
+.field label{display:block;font-size:12.5px;color:var(--muted);margin:0 0 3px}
+.field select,.field input{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-height:38px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0;min-height:4px}
+.chip{background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:3px 6px 3px 12px;font-size:13px;display:inline-flex;align-items:center;gap:6px}
+.chip button{border:0;background:transparent;cursor:pointer;width:22px;height:22px;border-radius:50%;color:var(--muted)}
+.chip button:hover{background:var(--line)}
+.linkbtn{background:none;border:0;color:var(--focus);cursor:pointer;padding:3px 4px;font-size:13px}
+
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:16px 0;flex-wrap:wrap}
+.tab{border:0;background:transparent;padding:10px 16px;font-weight:600;font-size:15px;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--btn)}
+
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);margin:0 0 16px;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.kpis.k4{grid-template-columns:repeat(4,1fr)}
+.kpi{padding:14px 18px;border-left:1px solid var(--line);position:relative}
+.kpi:first-child{border-left:0}
+.kpi::before{content:"";position:absolute;left:18px;right:18px;top:0;height:3px;border-radius:0 0 3px 3px;background:var(--k,transparent)}
+.kpi .n{font-family:var(--font-num);font-weight:700;font-size:34px;line-height:1.05;font-variant-numeric:tabular-nums}
+.kpi .l{font-size:13.5px;color:var(--muted);margin-top:2px}
+.kpi .p{font-size:13px;margin-top:6px;color:var(--muted)}
+@media (max-width:900px){.kpis,.kpis.k4{grid-template-columns:repeat(2,1fr)}.kpi{border-left:0;border-top:1px solid var(--line)}.kpi:nth-child(-n+2){border-top:0}.kpi:nth-child(even){border-left:1px solid var(--line)}}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px 18px;margin-bottom:16px;min-width:0}
+.panel h2{margin:0 0 2px;font-family:var(--font-num);font-size:20px;font-weight:600}
+.panel .sub{margin:0 0 12px;font-size:13.5px;color:var(--muted)}
+.ph{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:flex-start}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13.5px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.legend{display:flex;gap:16px;font-size:13.5px;color:var(--muted);margin-bottom:8px;flex-wrap:wrap}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+.dot{width:10px;height:10px;border-radius:2px;display:inline-block;flex:none}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.grid2>.panel{margin-bottom:0}
+@media (max-width:980px){.grid2{grid-template-columns:1fr}}
+
+.bars{display:flex;flex-direction:column;gap:2px}
+.br{display:grid;grid-template-columns:minmax(6rem,34%) 1fr minmax(3.2rem,auto);gap:10px;align-items:center;padding:5px 6px;border-radius:6px;cursor:pointer;font-size:14px}
+.br.nc{cursor:default}
+.br:hover,.br:focus-visible{background:var(--soft)}
+.br.on{background:var(--soft);box-shadow:inset 3px 0 0 var(--focus);font-weight:600}
+.br.dim{opacity:.55}
+.br .lb{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.br .vl{font-family:var(--font-num);font-weight:600;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.br .vl small{font-family:var(--font-ui);font-weight:400;color:var(--muted);font-size:12px}
+.trk{height:12px;position:relative}
+.stk{display:flex;gap:1px;height:100%;border-radius:3px;overflow:hidden;min-width:2px}
+.stk i{display:block;height:100%;min-width:2px}
+.ov i{position:absolute;left:0;top:0;height:100%;border-radius:3px}
+.more{margin-top:8px}
+
+.cols{display:flex;gap:4px;height:200px;overflow-x:auto;padding-bottom:2px}
+.cg{flex:1 0 30px;display:flex;flex-direction:column}
+.cb{flex:1;display:flex;align-items:flex-end;gap:2px;border-bottom:1px solid var(--line)}
+.cb i{display:block;flex:1;border-radius:3px 3px 0 0}
+.cg:hover .cb i{filter:brightness(1.1)}
+.cl{font-size:12px;color:var(--muted);text-align:center;white-space:nowrap;padding-top:3px}
+
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--surface);padding:7px 10px;border-radius:6px;font-size:13px;line-height:1.4;z-index:20;max-width:300px}
+.tip .t{opacity:.75;margin-bottom:2px}
+.tip .dot{margin-right:6px}
+
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.tools input{max-width:320px;width:100%;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+.tw{overflow:auto;max-height:560px;border:1px solid var(--line);border-radius:6px}
+table{border-collapse:collapse;width:100%;min-width:1080px;font-size:13.5px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--soft);position:sticky;top:0;white-space:nowrap;padding:0;z-index:1}
+th button{border:0;background:none;padding:8px 10px;font-weight:600;cursor:pointer;width:100%;text-align:left}
+td.clip{min-width:240px;max-width:380px;overflow-wrap:anywhere}
+.est{display:inline-flex;gap:6px;align-items:center;white-space:nowrap;font-weight:600;font-size:12.5px}
+.est::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--c)}
+.age{font-variant-numeric:tabular-nums;white-space:nowrap}
+.age.old{color:var(--paus);font-weight:600}
+.empty{color:var(--muted);font-size:14px;padding:12px 0}
+.foot{color:var(--muted);font-size:12.5px;margin-top:8px}
+details.guia{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 18px;margin-bottom:16px}
+details.guia summary{cursor:pointer;font-weight:600}
+details.guia dl{display:grid;grid-template-columns:minmax(120px,auto) 1fr;gap:6px 16px;margin:10px 0 0;font-size:14px}
+details.guia dt{font-weight:600}
+details.guia dd{margin:0;color:var(--muted)}
+.chk{display:inline-flex;gap:6px;align-items:center;font-size:13.5px;cursor:pointer}
+@media (max-width:560px){.br{grid-template-columns:minmax(4.5rem,38%) 1fr minmax(2.8rem,auto);font-size:13px}main{padding:14px 16px 32px}.band-in{padding:18px 16px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="band">
+  <div class="band-in">
+    <div>
+      <h1>Tablero de ODTs</h1>
+      <p id="range">Cargando datos…</p>
+    </div>
+    <div class="actions">
+      <a class="btn ghost" href="./">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+        Informe de turnos
+      </a>
+      <button class="btn" id="btnUpdate" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+        Actualizar datos
+      </button>
+    </div>
+  </div>
+  <div class="status" id="status" role="status" aria-live="polite"></div>
+</header>
+
+<main>
+  <p class="lead" id="lead"></p>
+
+  <section aria-label="Filtros">
+    <div class="filters">
+      <div class="field"><label for="f-anio">Año</label><select id="f-anio" data-k="anio"></select></div>
+      <div class="field"><label for="f-mes">Mes</label><select id="f-mes" data-k="mes"></select></div>
+      <div class="field"><label for="f-area">Área</label><select id="f-area" data-k="area"></select></div>
+      <div class="field"><label for="f-maquina">Máquina</label><select id="f-maquina" data-k="maquina"></select></div>
+      <div class="field"><label for="f-resp">Técnico / responsable</label><select id="f-resp" data-k="resp"></select></div>
+      <div class="field"><label for="f-estado">Estado</label><select id="f-estado" data-k="estado"></select></div>
+      <div class="field"><label for="f-tipo">Tipo de ODT</label><select id="f-tipo" data-k="tipo"></select></div>
+    </div>
+    <div class="chips" id="chips"></div>
+  </section>
+
+  <div class="tabs" role="tablist" aria-label="Páginas">
+    <button type="button" class="tab" role="tab" id="tab-cmi" data-tab="cmi" aria-selected="true">CMI ODTs</button>
+    <button type="button" class="tab" role="tab" id="tab-detalle" data-tab="detalle" aria-selected="false">Detalle ODTs</button>
+  </div>
+
+  <div id="pg-cmi" role="tabpanel" aria-labelledby="tab-cmi">
+    <section class="kpis" id="kpis-cmi" aria-label="Indicadores por estado"></section>
+
+    <section class="panel" aria-label="ODTs por técnico">
+      <div class="ph">
+        <div>
+          <h2>ODTs por técnico y estado</h2>
+          <p class="sub">La carga de cada técnico. Toca una barra para filtrar todo el tablero por ese técnico.</p>
+        </div>
+        <label class="chk"><input type="checkbox" id="chk-abiertas" checked> Solo abiertas</label>
+      </div>
+      <div class="legend" id="lg-tec"></div>
+      <div class="bars" id="b-tec"></div>
+      <button class="linkbtn more" id="btn-todos" type="button" hidden></button>
+    </section>
+
+    <div class="grid2">
+      <section class="panel" aria-label="ODTs por área">
+        <h2>Cantidad de ODTs por área</h2>
+        <p class="sub">Pasa el cursor para ver preventivas, correctivas y las máquinas con más ODTs. Toca para filtrar.</p>
+        <div class="bars" id="b-area"></div>
+      </section>
+      <section class="panel" aria-label="ODTs vs terminadas">
+        <h2>ODTs vs terminadas por área</h2>
+        <p class="sub">Barra gris: total. Barra de color: terminadas. A la derecha, el % terminado.</p>
+        <div class="legend"><span><i class="dot" style="background:var(--mute)"></i>Total ODTs</span><span><i class="dot" style="background:var(--term)"></i>Terminadas</span></div>
+        <div class="bars" id="b-cumpl"></div>
+      </section>
+    </div>
+
+    <section class="panel" aria-label="Antigüedad de ODTs abiertas">
+      <h2>¿Hace cuánto están abiertas?</h2>
+      <p class="sub">Días desde la captura de las ODTs que no están terminadas. Las de más de 30 días merecen revisión: repuesto, permiso de producción o una orden que se quedó sin cerrar.</p>
+      <div class="legend" id="lg-age"></div>
+      <div class="bars" id="b-age"></div>
+    </section>
+  </div>
+
+  <div id="pg-detalle" role="tabpanel" aria-labelledby="tab-detalle" hidden>
+    <section class="kpis k4" id="kpis-det" aria-label="Indicadores por tipo"></section>
+    <div class="grid2">
+      <section class="panel" aria-label="ODTs por mes">
+        <h2>Preventivas y correctivas por mes</h2>
+        <p class="sub">Según la fecha de captura de la ODT.</p>
+        <div class="legend"><span><i class="dot" style="background:var(--prev)"></i>Preventivas</span><span><i class="dot" style="background:var(--corr)"></i>Correctivas</span></div>
+        <div id="b-mes"></div>
+      </section>
+      <section class="panel" aria-label="Máquinas con más ODTs">
+        <h2>Máquinas con más ODTs</h2>
+        <p class="sub">Las 15 con más órdenes. Toca una para filtrar.</p>
+        <div class="bars" id="b-maq"></div>
+      </section>
+    </div>
+    <section class="panel" aria-label="Listado de ODTs">
+      <div class="tools">
+        <div>
+          <h2>Listado de ODTs</h2>
+          <p class="sub" id="cnt" style="margin:0"></p>
+        </div>
+        <div class="actions">
+          <input type="search" id="q" placeholder="Buscar código, máquina, descripción…" aria-label="Buscar ODT">
+          <button class="linkbtn" id="btn-csv" type="button">Descargar CSV</button>
+        </div>
+      </div>
+      <div class="tw">
+        <table>
+          <thead><tr>
+            <th><button type="button" data-s="codigo">Código</button></th>
+            <th><button type="button" data-s="area">Área</button></th>
+            <th><button type="button" data-s="maquina">Máquina</button></th>
+            <th><button type="button" data-s="descripcion">Descripción</button></th>
+            <th><button type="button" data-s="estado">Estado</button></th>
+            <th><button type="button" data-s="fecha">Captura</button></th>
+            <th><button type="button" data-s="dias">Días</button></th>
+            <th><button type="button" data-s="responsable">Responsable</button></th>
+            <th><button type="button" data-s="tipo">Tipo</button></th>
+            <th><button type="button" data-s="mensaje">Mensaje falta</button></th>
+          </tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <p class="foot">"Días" cuenta desde la captura hasta hoy para las abiertas, y hasta la finalización para las terminadas.</p>
+    </section>
+  </div>
+
+  <details class="guia">
+    <summary>¿Cómo leer este tablero?</summary>
+    <dl>
+      <dt>ODTs</dt><dd>Órdenes de trabajo del CMMS, sin las canceladas (igual que la medida 21.Cantidad_ODT de Power BI).</dd>
+      <dt>Abiertas</dt><dd>Pendientes + en pausa + en proceso: el trabajo que todavía está en manos del equipo.</dd>
+      <dt>En pausa</dt><dd>ODTs iniciadas y detenidas, normalmente por repuesto, permiso de producción o falta de información (ver "Mensaje falta").</dd>
+      <dt>Área</dt><dd>Se homologa igual que en Power BI (por ejemplo, "FAMILIA JETS" pasa a "TINTORERIA").</dd>
+      <dt>Año y mes</dt><dd>Usan la fecha de captura de la ODT.</dd>
+      <dt>Datos</dt><dd>Se leen en vivo de la hoja de Google "ODTs - Tablero de mantenimiento". Si la hoja no responde, se muestra la última copia guardada.</dd>
+    </dl>
+  </details>
+</main>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+(() => {
+"use strict";
+/* ---------- Fuente de datos ---------- */
+const SHEET_ID = "1CE3XaCwzS_lq6eFJqKWiY_xMksAdpobvTuiyS6IE8bE";
+const CSV_URL = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:csv&headers=1";
+const GVIZ_URL = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?headers=1";
+const SNAPSHOT_URL = "odts-data.json";
+const SNAPSHOT_LABEL = "copia guardada del 3 oct 2026";
+
+/* Homologación de áreas del CMMS a área principal (misma tabla que usa Power BI) */
+const HOMOL = {"ADMINISTRATIVO SEGURIDAD":"ADMINISTRATIVO SEGURIDAD PROD.","ALMACEN GENERAL":"ALMACEN GENERAL PROD.","ARQUITECTURA":"ARQUITECTURA PROD.","ASEGURAMIENTO CALIDAD ACABADOS":"ASEGURAMIENTO CALIDAD ACABADOS PROD.","AVENIDA BOYACA PDV":"AVENIDA BOYACA PDV PROD.","BIENESTAR SOCIAL":"BIENESTAR SOCIAL PROD.","CARPINTERIA":"CARPINTERIA PROD.","CASINO":"CASINO PROD.","CEDI":"CEDI PROD.","CLUB DEPORTIVO":"CLUB DEPORTIVO PROD.","COMEDOR EJECUTIVO":"COMEDOR EJECUTIVO PROD.","COMUNICACIONES":"COMUNICACIONES PROD.","CONS Y RESINAS":"CONS Y RESINAS PROD.","CONSULTORIO MEDICO":"CONSULTORIO MEDICO PROD.","CORPORATIVO BRANDING":"CORPORATIVO BRANDING PROD.","COSTOS":"COSTOS PROD.","DANIEL KOPEC":"DANIEL KOPEC PROD.","DESPACHOS":"DESPACHOS PROD.","EFECTOS Y ACABADOS":"EFECTOS Y ACABADOS PROD.","ESTAMPACION":"ESTAMPACION PROD.","ESTAMPACION DIGITAL":"ESTAMPACION DIGITAL PROD.","FAMILIA  AUX REVISION":"REVISION TERMINADO PROD.","FAMILIA  AUX TERMOFIJADORAS":"TERMOFIJACION Y SECADO PROD.","FAMILIA  AUX TINTORERIA":"TINTORERIA PROD.","FAMILIA APERTURA":"TINTORERIA PROD.","FAMILIA AUX EFECTOS Y ACABADOS":"EFECTOS Y ACABADOS PROD.","FAMILIA AUX ESTAMPACION":"ESTAMPACION PROD.","FAMILIA CALANDRAS":"EFECTOS Y ACABADOS PROD.","FAMILIA CALANDRAS MONTEANTONIO":"ESTAMPACION DIGITAL PROD.","FAMILIA CEPILLADORAS":"EFECTOS Y ACABADOS PROD.","FAMILIA COCINAS":"TINTORERIA PROD.","FAMILIA CORTADORAS":"EFECTOS Y ACABADOS PROD.","FAMILIA EMPACADORAS TESTAS":"REVISION TERMINADO PROD.","FAMILIA ENRROLLADORES":"TERMOFIJACION Y SECADO PROD.","FAMILIA ESTAMPADORAS":"ESTAMPACION PROD.","FAMILIA ESTAMPADORAS DIGITALES":"ESTAMPACION DIGITAL PROD.","FAMILIA JETS":"TINTORERIA PROD.","FAMILIA LAVADORAS":"TINTORERIA PROD.","FAMILIA LIJADORAS":"EFECTOS Y ACABADOS PROD.","FAMILIA MEZCLADORES":"EFECTOS Y ACABADOS PROD.","FAMILIA NAPEADORAS":"EFECTOS Y ACABADOS PROD.","FAMILIA PLEGADORAS":"TINTORERIA PROD.","FAMILIA PRECIPITADORES":"TERMOFIJACION Y SECADO PROD.","FAMILIA RELAJADORAS":"TERMOFIJACION Y SECADO PROD.","FAMILIA RESINADORAS":"EFECTOS Y ACABADOS PROD.","FAMILIA REVISADORA AUTOMATICA":"REVISION TERMINADO PROD.","FAMILIA REVISADORAS":"REVISION TERMINADO PROD.","FAMILIA SECADORAS":"TERMOFIJACION Y SECADO PROD.","FAMILIA TERMOFIJADORAS":"TERMOFIJACION Y SECADO PROD.","FAMILIA VAPORIZADO":"ESTAMPACION PROD.","FOTOGRABADO":"FOTOGRABADO PROD.","GEOMATRIX":"GEOMATRIX PROD.","GESTION AMBIENTAL":"GESTION AMBIENTAL PROD.","GESTION DEL TALENTO":"GESTION DEL TALENTO PROD.","GRABACION":"GRABACION PROD.","LABORATORIO ASEGURAMIENTO HILO":"LABORATORIO ASEGURAMIENTO HILO PROD.","LABORATORIO ASEGURAMIENTO METROLOGICO":"LABORATORIO ASEGURAMIENTO METROLOGICO PROD.","LABORATORIO ASEGURAMIENTO TEXTIL":"LABORATORIO ASEGURAMIENTO TEXTIL PROD.","LABORATORIO DE COLOR":"LABORATORIO DE COLOR PROD.","MANTENIMIENTO ACABADOS":"MANTENIMIENTO ACABADOS PROD.","MANTENIMIENTO AUTOMOTRIZ":"MANTENIMIENTO AUTOMOTRIZ PROD.","MANTENIMIENTO CALDERAS":"MANTENIMIENTO CALDERAS PROD.","MANTENIMIENTO COMPRESORES":"MANTENIMIENTO COMPRESORES PROD.","MANTENIMIENTO HIDRAULICO":"MANTENIMIENTO HIDRAULICO PROD.","MANTENIMIENTO HILATURA Y TEJEDURIA":"MANTENIMIENTO HILATURA Y TEJEDURIA PROD.","MANTENIMIENTO LOCATIVO":"MANTENIMIENTO LOCATIVO PROD.","MANTENIMIENTO SERVICIOS":"MANTENIMIENTO SERVICIOS PROD.","MANTENIMIENTO SERVICIOS INDUSTRIALES":"MANTENIMIENTO SERVICIOS INDUSTRIALES PROD.","MENSAJERIA Y CORRESPONDENCIA":"MENSAJERIA Y CORRESPONDENCIA PROD.","MERCADEO BTL":"MERCADEO BTL PROD.","MUESTRAS":"MUESTRAS PROD.","NOMINA":"NOMINA PROD.","PLANTA ACABADOS":"PLANTA ACABADOS PROD.","PLANTA DE TRATAMIENTO AGUAS RESIDUALE":"PLANTA DE TRATAMIENTO AGUAS RESIDUALE PROD.","PLANTA DE TRATAMIENTO DE AGUA POTABLE":"PLANTA DE TRATAMIENTO DE AGUA POTABLE PROD.","PRODUCCION GEOSINTETICOS":"PRODUCCION GEOSINTETICOS PROD.","PROYECTOS MANTENIMIENTO":"PROYECTOS MANTENIMIENTO PROD.","RECICLOS INDUSTRIALES":"RECICLOS INDUSTRIALES PROD.","REVISION TERMINADO":"REVISION TERMINADO PROD.","SEGURIDAD":"SEGURIDAD PROD.","SERVICIO AL CLIENTE":"SERVICIO AL CLIENTE PROD.","SOPORTE TECNICO TEXTIL":"SOPORTE TECNICO TEXTIL PROD.","SST":"SST PROD.","SUBGERENCIA DE GESTION HUMANA":"SUBGERENCIA DE GESTION HUMANA PROD.","SUBGERENCIA INNOVACION Y DESARROLLO":"SUBGERENCIA INNOVACION Y DESARROLLO PROD.","SUBGERENCIA MANTENIMIENTO Y AUTOMATIZACION":"SUBGERENCIA MANTENIMIENTO Y AUTOMATIZACION PROD.","SUBGERENCIA PUNTOS DE VENTA":"SUBGERENCIA PUNTOS DE VENTA PROD.","SUBGERENCIA TECNOLOGIA DE LA INFORMACION":"SUBGERENCIA TECNOLOGIA DE LA INFORMACION PROD.","SUBGERENCIA UN FASHION E INDUSTRIA":"SUBGERENCIA UN FASHION E INDUSTRIA PROD.","SUBGERENCIA UN SPORTS":"SUBGERENCIA UN SPORTS PROD.","TALLER MAQUINAS HERRAMIENTAS":"TALLER MAQUINAS HERRAMIENTAS PROD.","TERMOFIJACION Y SECADO":"TERMOFIJACION Y SECADO PROD.","TINTORERIA":"TINTORERIA PROD."};
+
+/* ---------- Utilidades ---------- */
+const $ = (id) => document.getElementById(id);
+const NF = new Intl.NumberFormat("es-CO");
+const pct = (a, b) => (b ? (Math.round(a * 1000 / b) / 10).toLocaleString("es-CO") + " %" : "—");
+const MES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const MESL = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const ESTADOS = ["Pendiente","Pausado","Proceso","Terminado"];
+const ESTL = { Pendiente:"Pendientes", Pausado:"En pausa", Proceso:"En proceso", Terminado:"Terminadas" };
+const ESTC = { Pendiente:"var(--pend)", Pausado:"var(--paus)", Proceso:"var(--proc)", Terminado:"var(--term)" };
+const short = (a) => (a ? a.replace(/\s+PROD\.?$/i, "") : a);
+const cl = (t) => String(t == null ? "" : t).replace(/\s+/g, " ").trim();
+const keyName = (s) => cl(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, "");
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const p2 = (n) => String(n).padStart(2, "0");
+const fdate = (iso) => (iso ? +iso.slice(8, 10) + " " + MES[+iso.slice(5, 7) - 1] + " " + iso.slice(0, 4) : "");
+const today = new Date(); const TODAY = today.getFullYear() + "-" + p2(today.getMonth() + 1) + "-" + p2(today.getDate());
+const daysBetween = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
+
+/* ---------- Lectura de CSV ---------- */
+function parseCSV(text) {
+  const rows = []; let row = [], f = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; }
+      else f += c;
+    } else if (c === '"') q = true;
+    else if (c === ",") { row.push(f); f = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(f); rows.push(row); row = []; f = ""; }
+    else f += c;
+  }
+  if (f !== "" || row.length) { row.push(f); rows.push(row); }
+  const head = (rows.shift() || []).map(cl);
+  return rows.filter((r) => r.some((x) => cl(x) !== "")).map((r) => { const o = {}; head.forEach((h, i) => { if (h) o[h] = r[i]; }); return o; });
+}
+
+/* ---------- Carga ---------- */
+function loadGviz() {
+  return new Promise((resolve, reject) => {
+    const cb = "__gvizOdt_" + Date.now();
+    const s = document.createElement("script");
+    const timer = setTimeout(() => done(reject, new Error("timeout")), 15000);
+    let fin = false;
+    function done(fn, arg) { if (fin) return; fin = true; clearTimeout(timer); delete window[cb]; s.remove(); fn(arg); }
+    window[cb] = (resp) => done(resolve, resp);
+    s.onerror = () => done(reject, new Error("script_error"));
+    s.src = GVIZ_URL + "&tqx=out:json;responseHandler:" + cb + "&_=" + Date.now();
+    document.head.appendChild(s);
+  });
+}
+function gvizRows(resp) {
+  if (!resp || !resp.table) return [];
+  const cols = resp.table.cols.map((c) => cl(c.label || c.id));
+  return resp.table.rows.map((r) => {
+    const o = {};
+    (r.c || []).forEach((cell, i) => {
+      if (!cols[i]) return;
+      let v = cell ? (cell.v != null ? cell.v : cell.f) : "";
+      if (typeof v === "string") {
+        const m = v.match(/^Date\((\d+),(\d+),(\d+)/);
+        if (m) v = m[1] + "-" + p2(+m[2] + 1) + "-" + p2(m[3]);
+      }
+      o[cols[i]] = v == null ? "" : v;
+    });
+    return o;
+  });
+}
+async function loadLive() {
+  try {
+    const r = await fetch(CSV_URL + "&_=" + Date.now(), { cache: "no-store" });
+    if (!r.ok) throw new Error("http " + r.status);
+    const t = await r.text();
+    if (/^\s*</.test(t)) throw new Error("no_publica");
+    return parseCSV(t);
+  } catch (e) {
+    return gvizRows(await loadGviz());
+  }
+}
+
+/* ---------- Normalización (replica la consulta ODT de Power BI) ---------- */
+function getter(rows) {
+  const keys = rows.length ? Object.keys(rows[0]) : [];
+  const map = {}; keys.forEach((k) => { map[keyName(k)] = k; });
+  return (row, ...names) => { for (const n of names) { const k = map[keyName(n)]; if (k != null && cl(row[k]) !== "") return row[k]; } return ""; };
+}
+function dateOrder(values) {
+  let dmy = 0, mdy = 0;
+  for (const v of values) {
+    const m = String(v).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (!m) continue;
+    if (+m[1] > 12) dmy++; else if (+m[2] > 12) mdy++;
+  }
+  return mdy > dmy ? "mdy" : "dmy";
+}
+function toISO(v, order) {
+  if (v == null) return null;
+  if (typeof v === "number" && v > 20000 && v < 80000) { const d = new Date(Date.UTC(1899, 11, 30) + v * 864e5); return d.toISOString().slice(0, 10); }
+  const s = cl(v); if (!s) return null;
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return m[1] + "-" + p2(m[2]) + "-" + p2(m[3]);
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return order === "mdy" ? m[3] + "-" + p2(m[1]) + "-" + p2(m[2]) : m[3] + "-" + p2(m[2]) + "-" + p2(m[1]);
+  return null;
+}
+const ESTMAP = { TERMINADO:"Terminado", PENDIENTE:"Pendiente", PAUSADO:"Pausado", PROCESO:"Proceso", ENPROCESO:"Proceso" };
+function limpiarMaquina(n) { return cl(String(n).replace(/[#\-`’]/g, "")).toUpperCase(); }
+function areaPrincipal(raw, area) {
+  const a = cl(raw).toUpperCase();
+  if (a) return a;
+  const u = cl(area).toUpperCase();
+  return HOMOL[u] || (u ? u : "SIN ÁREA");
+}
+function normalize(rows) {
+  const g = getter(rows);
+  const order = dateOrder(rows.map((r) => g(r, "FechaCaptura", "fecha")));
+  const out = [];
+  for (const r of rows) {
+    const est0 = keyName(g(r, "EstadoOrden", "estado")).toUpperCase();
+    if (est0 === "CANCELADO") continue;
+    const codigo = cl(g(r, "CodigoAlterno", "codigo"));
+    if (!codigo) continue;
+    const fecha = toISO(g(r, "FechaCaptura", "fecha"), order);
+    const fin = toISO(g(r, "FechaFinalizacion", "fin"), order);
+    const estado = ESTMAP[est0] || (est0 ? est0.charAt(0) + est0.slice(1).toLowerCase() : "Sin estado");
+    const maq = cl(g(r, "Maquina_Limpia", "maquina")) || limpiarMaquina(g(r, "NombreEquipo")) || "SIN MÁQUINA";
+    out.push({
+      codigo: codigo.replace(/\.0+$/, ""),
+      estado,
+      tipo: cl(g(r, "TipoProcedimientoNombre", "tipo")).toUpperCase() || "SIN TIPO",
+      responsable: cl(g(r, "Responsable")).toUpperCase().replace(/\.0+$/, "") || "SIN RESPONSABLE",
+      area: areaPrincipal(g(r, "Area_Principal", "Area_Pricnipal", "area_principal", "areaprincipal"), g(r, "UbicacionNombre", "Area")),
+      maquina: maq.toUpperCase(),
+      fecha, fin,
+      descripcion: cl(g(r, "DescripcionInicial", "descripcion")),
+      mensaje: cl(g(r, "MensajeFalta", "mensaje")),
+      y: fecha ? +fecha.slice(0, 4) : null,
+      m: fecha ? +fecha.slice(5, 7) : null,
+    });
+  }
+  for (const d of out) d.dias = d.fecha ? Math.max(0, daysBetween(d.fecha, d.estado === "Terminado" ? (d.fin || d.fecha) : TODAY)) : null;
+  return out;
+}
+
+/* ---------- Estado ---------- */
+let ALL = [];
+const F = { anio: null, mes: null, area: null, maquina: null, resp: null, estado: null, tipo: null };
+const FLABEL = { anio:"Año", mes:"Mes", area:"Área", maquina:"Máquina", resp:"Técnico", estado:"Estado", tipo:"Tipo" };
+const UI = { tab: "cmi", abiertas: true, todos: false, q: "", sortK: "fecha", sortDir: -1 };
+const showVal = (k, v) => (k === "mes" ? MESL[v - 1] : k === "area" ? short(v) : k === "estado" ? ESTL[v] : String(v));
+
+function filt(skip) {
+  return ALL.filter((d) =>
+    (F.anio == null || d.y === F.anio) && (F.mes == null || d.m === F.mes) &&
+    (F.area == null || d.area === F.area) && (F.maquina == null || d.maquina === F.maquina) &&
+    (skip === "resp" || F.resp == null || d.responsable === F.resp) &&
+    (F.estado == null || d.estado === F.estado) && (F.tipo == null || d.tipo === F.tipo));
+}
+const countEst = (v) => { const o = { Pendiente: 0, Pausado: 0, Proceso: 0, Terminado: 0 }; for (const d of v) o[d.estado] = (o[d.estado] || 0) + 1; return o; };
+function groupBy(rows, f) { const m = new Map(); for (const d of rows) { const k = f(d); if (!m.has(k)) m.set(k, []); m.get(k).push(d); } return m; }
+function setF(k, v) { F[k] = v; if (k === "area") F.maquina = null; render(); }
+const toggleF = (k, v) => setF(k, F[k] === v ? null : v);
+
+/* ---------- Tooltip ---------- */
+const tip = $("tip");
+function showTip(ev, lines) {
+  tip.replaceChildren(...lines.map((l, i) => {
+    const d = el("div", i === 0 ? "t" : "");
+    if (l.c) { const s = el("i", "dot"); s.style.background = l.c; d.append(s); }
+    d.append(document.createTextNode(l.t)); return d;
+  }));
+  tip.hidden = false;
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = ev.pageX + 14, y = ev.pageY + 14;
+  if (x + w > window.scrollX + document.documentElement.clientWidth - 8) x = ev.pageX - w - 14;
+  if (y + h > window.scrollY + window.innerHeight - 8) y = ev.pageY - h - 14;
+  tip.style.left = Math.max(8, x) + "px"; tip.style.top = Math.max(8, y) + "px";
+}
+const hideTip = () => { tip.hidden = true; };
+tip.style.position = "absolute";
+
+/* ---------- Barras ---------- */
+function bars(box, items, o) {
+  box.replaceChildren();
+  if (!items.length) { box.append(el("p", "empty", o.empty || "No hay ODTs con estos filtros.")); return; }
+  const max = Math.max(1, ...items.map((d) => d.total));
+  for (const d of items) {
+    const row = el("div", "br" + (o.sel != null ? (o.sel === d.key ? " on" : " dim") : ""));
+    const lb = el("div", "lb", d.label); lb.title = d.label;
+    const trk = el("div", "trk" + (o.mode === "overlay" ? " ov" : ""));
+    if (o.mode === "overlay") {
+      const a = el("i"); a.style.width = (d.total / max * 100) + "%"; a.style.background = "var(--mute)";
+      const b = el("i"); b.style.width = (d.part / max * 100) + "%"; b.style.background = o.color;
+      trk.append(a, b);
+    } else {
+      const s = el("div", "stk"); s.style.width = (d.total / max * 100) + "%";
+      for (const sr of o.series) { const v = d.vals[sr.k] || 0; if (!v) continue; const i = el("i"); i.style.flex = v + " 0 0"; i.style.background = sr.c; s.append(i); }
+      trk.append(s);
+    }
+    const vl = el("div", "vl", o.value ? o.value(d) : NF.format(d.total));
+    row.append(lb, trk, vl);
+    row.addEventListener("mousemove", (e) => showTip(e, o.tip(d)));
+    row.addEventListener("mouseleave", hideTip);
+    if (o.click) {
+      row.tabIndex = 0; row.setAttribute("role", "button"); row.setAttribute("aria-label", d.label + ": " + vl.textContent);
+      const go = () => { hideTip(); o.click(d); };
+      row.addEventListener("click", go);
+      row.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+    } else row.classList.add("nc");
+    box.append(row);
+  }
+}
+function legend(box, series) {
+  box.replaceChildren(...series.map((s) => { const sp = el("span"); const i = el("i", "dot"); i.style.background = s.c; sp.append(i, document.createTextNode(s.l)); return sp; }));
+}
+function kpis(box, list) {
+  box.replaceChildren(...list.map((k) => {
+    const d = el("div", "kpi"); if (k.c) d.style.setProperty("--k", k.c);
+    d.append(el("div", "n", k.n), el("div", "l", k.l), el("div", "p", k.p || ""));
+    return d;
+  }));
+}
+
+/* ---------- Filtros ---------- */
+function fillSelect(sel, opts, cur, all) {
+  sel.replaceChildren(new Option(all, ""), ...opts.map(([v, l]) => new Option(l, String(v))));
+  sel.value = cur == null ? "" : String(cur);
+}
+function fillFilters() {
+  const uniq = (f, rows = ALL) => [...new Set(rows.map(f).filter((x) => x != null))];
+  fillSelect($("f-anio"), uniq((d) => d.y).sort().map((v) => [v, v]), F.anio, "Todos");
+  fillSelect($("f-mes"), uniq((d) => d.m).sort((a, b) => a - b).map((v) => [v, MESL[v - 1]]), F.mes, "Todos");
+  fillSelect($("f-area"), uniq((d) => d.area).sort().map((v) => [v, short(v)]), F.area, "Todas");
+  fillSelect($("f-maquina"), uniq((d) => d.maquina, F.area ? ALL.filter((d) => d.area === F.area) : ALL).sort().map((v) => [v, v]), F.maquina, "Todas");
+  fillSelect($("f-resp"), uniq((d) => d.responsable).sort().map((v) => [v, v]), F.resp, "Todos");
+  fillSelect($("f-estado"), ESTADOS.map((v) => [v, ESTL[v]]), F.estado, "Todos");
+  fillSelect($("f-tipo"), uniq((d) => d.tipo).sort().map((v) => [v, v]), F.tipo, "Todos");
+}
+document.querySelectorAll(".filters select").forEach((s) => s.addEventListener("change", () => {
+  const k = s.dataset.k; let v = s.value || null;
+  if (v != null && (k === "anio" || k === "mes")) v = +v;
+  setF(k, v);
+}));
+function chips() {
+  const box = $("chips"); const act = Object.keys(F).filter((k) => F[k] != null);
+  box.replaceChildren(...act.map((k) => {
+    const c = el("span", "chip", FLABEL[k] + ": " + showVal(k, F[k]));
+    const b = el("button", "", "×"); b.type = "button"; b.setAttribute("aria-label", "Quitar filtro " + FLABEL[k]);
+    b.addEventListener("click", () => setF(k, null)); c.append(b); return c;
+  }));
+  if (act.length > 1) { const b = el("button", "linkbtn", "Quitar todos"); b.type = "button"; b.addEventListener("click", () => { for (const k in F) F[k] = null; render(); }); box.append(b); }
+}
+
+/* ---------- Página CMI ---------- */
+function drawCMI(rows) {
+  const e = countEst(rows), tot = rows.length;
+  kpis($("kpis-cmi"), [
+    { n: NF.format(tot), l: "ODTs", p: "sin canceladas" },
+    ...ESTADOS.map((s) => ({ n: NF.format(e[s]), l: ESTL[s], p: pct(e[s], tot) + " del total", c: ESTC[s] })),
+  ]);
+
+  const series = (UI.abiertas ? ESTADOS.slice(0, 3) : ESTADOS).map((k) => ({ k, l: ESTL[k], c: ESTC[k] }));
+  legend($("lg-tec"), series);
+  const base = filt("resp");
+  let items = [...groupBy(base, (d) => d.responsable)].map(([k, v]) => {
+    const vals = countEst(v); return { key: k, label: k, vals, total: series.reduce((a, s) => a + vals[s.k], 0), all: v.length };
+  }).filter((d) => d.total > 0).sort((a, b) => b.total - a.total || a.label.localeCompare(b.label));
+  const n = items.length, LIM = 15, btn = $("btn-todos");
+  btn.hidden = n <= LIM; btn.textContent = UI.todos ? "Ver solo los 15 primeros" : "Ver los " + n + " responsables";
+  if (!UI.todos) items = items.slice(0, LIM);
+  if (F.resp != null && !items.some((d) => d.key === F.resp)) {
+    const v = base.filter((d) => d.responsable === F.resp), vals = countEst(v);
+    items.push({ key: F.resp, label: F.resp, vals, total: series.reduce((a, s) => a + vals[s.k], 0), all: v.length });
+  }
+  bars($("b-tec"), items, {
+    series, sel: F.resp, empty: UI.abiertas ? "No hay ODTs abiertas con estos filtros." : null,
+    tip: (d) => [{ t: d.label }, ...ESTADOS.map((s) => ({ c: ESTC[s], t: ESTL[s] + ": " + NF.format(d.vals[s]) })), { t: "Total: " + NF.format(d.all) }],
+    click: (d) => toggleF("resp", d.key),
+  });
+
+  const areas = [...groupBy(rows, (d) => d.area)].map(([k, v]) => ({
+    key: k, label: short(k), total: v.length, part: v.filter((d) => d.estado === "Terminado").length, rows: v, vals: { n: v.length },
+  })).sort((a, b) => b.total - a.total);
+  const top = areas.slice(0, 12);
+  const areaClick = (d) => toggleF("area", d.key);
+  bars($("b-area"), top, {
+    series: [{ k: "n", c: "var(--proc)" }], sel: F.area, click: areaClick,
+    tip: (d) => {
+      const prev = d.rows.filter((r) => r.tipo === "PREVENTIVO").length, corr = d.rows.filter((r) => r.tipo === "CORRECTIVO").length;
+      const maq = [...groupBy(d.rows, (r) => r.maquina)].map(([m, v]) => [m, v.length]).sort((a, b) => b[1] - a[1]).slice(0, 3);
+      return [{ t: d.label }, { t: "ODTs: " + NF.format(d.total) }, { c: "var(--prev)", t: "Preventivas: " + NF.format(prev) }, { c: "var(--corr)", t: "Correctivas: " + NF.format(corr) }, ...maq.map(([m, c]) => ({ t: m + ": " + NF.format(c) }))];
+    },
+  });
+  if (areas.length > 12) $("b-area").append(el("p", "empty", "Se muestran las 12 áreas con más ODTs de " + areas.length + "."));
+  bars($("b-cumpl"), top, {
+    mode: "overlay", color: "var(--term)", sel: F.area, click: areaClick,
+    value: (d) => pct(d.part, d.total),
+    tip: (d) => [{ t: d.label }, { t: "Total: " + NF.format(d.total) }, { c: "var(--term)", t: "Terminadas: " + NF.format(d.part) }, { t: "Abiertas: " + NF.format(d.total - d.part) }],
+  });
+
+  const BK = [
+    { k: "a", l: "0 a 7 días", c: "var(--term)", f: (x) => x <= 7 },
+    { k: "b", l: "8 a 30 días", c: "var(--pend)", f: (x) => x > 7 && x <= 30 },
+    { k: "c", l: "31 a 90 días", c: "var(--corr)", f: (x) => x > 30 && x <= 90 },
+    { k: "d", l: "Más de 90 días", c: "var(--paus)", f: (x) => x > 90 },
+  ];
+  legend($("lg-age"), BK);
+  const open = rows.filter((d) => d.estado !== "Terminado" && d.dias != null);
+  const ageItems = ESTADOS.slice(0, 3).map((s) => {
+    const v = open.filter((d) => d.estado === s); const vals = {};
+    BK.forEach((b) => { vals[b.k] = v.filter((d) => b.f(d.dias)).length; });
+    return { key: s, label: ESTL[s], vals, total: v.length };
+  }).filter((d) => d.total > 0);
+  bars($("b-age"), ageItems, {
+    series: BK, sel: F.estado, empty: "No hay ODTs abiertas con estos filtros.",
+    tip: (d) => [{ t: d.label }, ...BK.map((b) => ({ c: b.c, t: b.l + ": " + NF.format(d.vals[b.k]) }))],
+    click: (d) => toggleF("estado", d.key),
+  });
+}
+
+/* ---------- Página Detalle ---------- */
+let TROWS = [];
+function drawDetalle(rows) {
+  const prev = rows.filter((d) => d.tipo === "PREVENTIVO").length, corr = rows.filter((d) => d.tipo === "CORRECTIVO").length, tot = rows.length;
+  kpis($("kpis-det"), [
+    { n: NF.format(tot), l: "ODTs", p: "sin canceladas" },
+    { n: NF.format(prev), l: "Preventivas", p: pct(prev, tot) + " del total", c: "var(--prev)" },
+    { n: NF.format(corr), l: "Correctivas", p: pct(corr, tot) + " del total", c: "var(--corr)" },
+    { n: NF.format(tot - prev - corr), l: "Otros tipos", p: "tra. menor, imprevisto, fabricación, predictivo" },
+  ]);
+
+  const box = $("b-mes"); box.replaceChildren();
+  const months = [...groupBy(rows.filter((d) => d.y), (d) => d.y * 100 + d.m)].sort((a, b) => a[0] - b[0]);
+  if (!months.length) box.append(el("p", "empty", "No hay ODTs con estos filtros."));
+  else {
+    const vals = months.map(([ym, v]) => ({ ym, prev: v.filter((d) => d.tipo === "PREVENTIVO").length, corr: v.filter((d) => d.tipo === "CORRECTIVO").length }));
+    const max = Math.max(1, ...vals.map((v) => Math.max(v.prev, v.corr)));
+    const wrap = el("div", "cols");
+    for (const v of vals) {
+      const y = Math.floor(v.ym / 100), m = v.ym % 100;
+      const g = el("div", "cg"), cb = el("div", "cb");
+      for (const [k, c] of [["prev", "var(--prev)"], ["corr", "var(--corr)"]]) { const i = el("i"); i.style.height = (v[k] / max * 100) + "%"; i.style.background = c; cb.append(i); }
+      g.append(cb, el("div", "cl", MES[m - 1] + " " + String(y).slice(2)));
+      g.addEventListener("mousemove", (e) => showTip(e, [{ t: MESL[m - 1] + " " + y }, { c: "var(--prev)", t: "Preventivas: " + NF.format(v.prev) }, { c: "var(--corr)", t: "Correctivas: " + NF.format(v.corr) }]));
+      g.addEventListener("mouseleave", hideTip);
+      wrap.append(g);
+    }
+    box.append(wrap);
+  }
+
+  const mq = [...groupBy(rows, (d) => d.maquina)].map(([k, v]) => ({ key: k, label: k, total: v.length, vals: { n: v.length }, rows: v }))
+    .sort((a, b) => b.total - a.total).slice(0, 15);
+  bars($("b-maq"), mq, {
+    series: [{ k: "n", c: "var(--proc)" }], sel: F.maquina,
+    tip: (d) => { const e = countEst(d.rows); return [{ t: d.label }, ...ESTADOS.map((s) => ({ c: ESTC[s], t: ESTL[s] + ": " + NF.format(e[s]) }))]; },
+    click: (d) => toggleF("maquina", d.key),
+  });
+
+  TROWS = rows; drawTable();
+}
+function tableRows() {
+  let r = TROWS;
+  const q = UI.q;
+  if (q) r = r.filter((d) => [d.codigo, d.maquina, d.descripcion, d.mensaje, d.responsable, d.area].some((x) => x && x.toLowerCase().includes(q)));
+  const k = UI.sortK, s = UI.sortDir;
+  return r.slice().sort((a, b) => {
+    const x = a[k], y = b[k];
+    if (k === "codigo" || k === "dias") return ((+x || 0) - (+y || 0)) * s;
+    return String(x == null ? "" : x).localeCompare(String(y == null ? "" : y), "es") * s;
+  });
+}
+function drawTable() {
+  const r = tableRows(), LIM = 600;
+  $("cnt").textContent = r.length > LIM ? "Mostrando " + NF.format(LIM) + " de " + NF.format(r.length) + " ODTs. Usa filtros o la búsqueda para acotar." : NF.format(r.length) + " ODTs";
+  document.querySelectorAll("th button").forEach((b) => {
+    const on = b.dataset.s === UI.sortK;
+    b.parentElement.setAttribute("aria-sort", on ? (UI.sortDir > 0 ? "ascending" : "descending") : "none");
+    b.textContent = b.textContent.replace(/ [↑↓]$/, "") + (on ? (UI.sortDir > 0 ? " ↑" : " ↓") : "");
+  });
+  const frag = document.createDocumentFragment();
+  for (const d of r.slice(0, LIM)) {
+    const tr = el("tr");
+    const td = (t, c) => { const x = el("td", c || "", t); tr.append(x); return x; };
+    td(d.codigo); td(short(d.area)); td(d.maquina); td(d.descripcion, "clip");
+    const te = el("td"); const sp = el("span", "est", ESTL[d.estado] ? ESTL[d.estado].replace(/s$/, "") : d.estado); sp.style.setProperty("--c", ESTC[d.estado] || "var(--mute)"); te.append(sp); tr.append(te);
+    td(fdate(d.fecha)); td(d.dias == null ? "" : NF.format(d.dias), "age" + (d.estado !== "Terminado" && d.dias > 30 ? " old" : ""));
+    td(d.responsable); td(d.tipo); td(d.mensaje, "clip");
+    frag.append(tr);
+  }
+  $("tbody").replaceChildren(frag);
+}
+$("q").addEventListener("input", (e) => { UI.q = e.target.value.trim().toLowerCase(); drawTable(); });
+document.querySelectorAll("th button").forEach((b) => b.addEventListener("click", () => {
+  const k = b.dataset.s;
+  if (UI.sortK === k) UI.sortDir = -UI.sortDir; else { UI.sortK = k; UI.sortDir = (k === "fecha" || k === "dias") ? -1 : 1; }
+  drawTable();
+}));
+$("btn-csv").addEventListener("click", () => {
+  const cols = ["codigo","area","maquina","descripcion","estado","fecha","fin","dias","responsable","tipo","mensaje"];
+  const q = (v) => '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
+  const csv = "﻿" + cols.join(",") + "\n" + tableRows().map((d) => cols.map((c) => q(d[c])).join(",")).join("\n");
+  const a = el("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  a.download = "odts_filtradas.csv"; document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+});
+
+/* ---------- Render ---------- */
+function render() {
+  hideTip();
+  fillFilters(); chips();
+  const rows = filt();
+  const e = countEst(rows), ab = e.Pendiente + e.Pausado + e.Proceso;
+  const lead = $("lead"); lead.replaceChildren();
+  if (!rows.length) lead.textContent = "No hay ODTs con estos filtros.";
+  else {
+    lead.append(el("b", null, NF.format(ab)), " ODTs abiertas de " + NF.format(rows.length) + ": " + NF.format(e.Pendiente) + " pendientes, " + NF.format(e.Pausado) + " en pausa y " + NF.format(e.Proceso) + " en proceso.");
+    const open = rows.filter((d) => d.estado !== "Terminado");
+    if (open.length && F.resp == null) {
+      const [who, v] = [...groupBy(open, (d) => d.responsable)].sort((a, b) => b[1].length - a[1].length)[0];
+      lead.append(" Mayor carga abierta: ", el("b", null, who), " con " + NF.format(v.length) + " (" + pct(v.length, open.length) + ").");
+    }
+    const old = open.filter((d) => d.dias > 30).length;
+    if (old) lead.append(" ", el("b", null, NF.format(old)), " llevan más de 30 días abiertas.");
+  }
+  document.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === UI.tab)));
+  $("pg-cmi").hidden = UI.tab !== "cmi"; $("pg-detalle").hidden = UI.tab !== "detalle";
+  if (UI.tab === "cmi") drawCMI(rows); else drawDetalle(rows);
+}
+document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => {
+  UI.tab = b.dataset.tab; history.replaceState(null, "", "#" + UI.tab); render();
+}));
+$("chk-abiertas").addEventListener("change", (e) => { UI.abiertas = e.target.checked; render(); });
+$("btn-todos").addEventListener("click", () => { UI.todos = !UI.todos; render(); });
+if (location.hash === "#detalle") UI.tab = "detalle";
+
+function setRange(source) {
+  const ds = ALL.map((d) => d.fecha).filter(Boolean).sort();
+  $("range").textContent = ds.length ? NF.format(ALL.length) + " ODTs · captura del " + fdate(ds[0]) + " al " + fdate(ds[ds.length - 1]) : "Sin datos";
+  $("status").textContent = source;
+}
+async function load(manual) {
+  const btn = $("btnUpdate"); btn.disabled = true;
+  $("status").textContent = "Consultando la hoja de Google…";
+  try {
+    const raw = await loadLive();
+    const rows = normalize(raw);
+    if (!rows.length) throw new Error("vacia");
+    ALL = rows;
+    const now = new Date();
+    setRange("Datos en vivo de Google Sheets · actualizado " + now.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" }));
+  } catch (err) {
+    if (!ALL.length || manual) {
+      try {
+        const snap = await (await fetch(SNAPSHOT_URL, { cache: "no-store" })).json();
+        if (!ALL.length) ALL = normalize(snap);
+      } catch (e2) { /* sin copia */ }
+    }
+    const why = err && err.message === "vacia" ? "La hoja de Google todavía no tiene ODTs" : "No se pudo leer la hoja de Google";
+    setRange(ALL.length ? why + ". Mostrando la " + SNAPSHOT_LABEL + "." : why + " y no hay copia guardada.");
+  }
+  btn.disabled = false;
+  render();
+}
+$("btnUpdate").addEventListener("click", () => load(true));
+load(false);
+})();
+</script>
+</body>
+</html>
