@@ -60,10 +60,16 @@ details.ms{display:block;width:100%;min-width:0}
 .ms summary::-webkit-details-marker{display:none}
 .ms summary::after{content:"";position:absolute;right:11px;top:50%;width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-70%) rotate(45deg)}
 .ms[open] summary{border-color:var(--focus)}
-.ms-list{position:absolute;z-index:30;left:0;right:0;max-height:300px;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.16);padding:6px;margin-top:4px}
-.ms-list label{display:flex;gap:8px;align-items:center;padding:5px 6px;border-radius:4px;cursor:pointer;font-size:14px;color:var(--ink);margin:0}
+.ms-list{position:absolute;z-index:30;left:0;width:max(100%,260px);max-width:calc(100vw - 32px);background:var(--surface);border:1px solid var(--line);border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.16);padding:6px;margin-top:4px}
+.ms summary.on{border-color:var(--ink);font-weight:600}
+.ms-q{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:7px 9px;margin-bottom:6px}
+.ms-acts{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:0 4px 4px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.ms-acts button{background:none;border:0;color:var(--focus);cursor:pointer;padding:2px 0;font-size:12.5px}
+.ms-opts{max-height:260px;overflow:auto}
+.ms-opts .note{font-size:12.5px;color:var(--muted);padding:6px}
+.ms-list label span.s2{color:var(--muted);font-size:12.5px}
+.ms-list label{display:flex;gap:8px;align-items:flex-start;line-height:1.3;padding:5px 6px;border-radius:4px;cursor:pointer;font-size:14px;color:var(--ink);margin:0}
 .ms-list label:hover{background:var(--soft)}
-.ms-list .all{border-bottom:1px solid var(--line);margin-bottom:4px;padding-bottom:7px;font-weight:600}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0;min-height:4px;align-items:center}
 .chip{background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:3px 6px 3px 12px;font-size:13px;display:inline-flex;align-items:center;gap:6px}
 .chip.pbi{background:transparent;border-style:dashed}
@@ -136,7 +142,8 @@ details.ms{display:block;width:100%;min-width:0}
 .mx tr.g2 td{font-weight:600;cursor:pointer}
 .mx tr.g2:hover td{background:var(--soft)}
 .mx tr.g2 td:first-child{padding-left:28px}
-.mx tr.od td:first-child{padding-left:50px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.mx tr.od td:first-child{padding-left:50px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:600}
+.mx tr.od td:first-child small{display:block;font-weight:400;color:var(--muted);font-size:11.5px}
 .mx .tg{display:inline-block;width:14px;color:var(--muted);transition:transform .15s}
 .mx .open>td .tg{transform:rotate(90deg)}
 .mx .cnt{font-family:var(--font-num);color:var(--muted);font-weight:600;margin-left:6px}
@@ -181,15 +188,16 @@ details.guia dd{margin:0;color:var(--muted)}
 
   <section aria-label="Filtros">
     <div class="filters">
-      <div class="field"><label for="f-anio">Año</label><select id="f-anio" data-k="anio"></select></div>
-      <div class="field"><label for="f-mes">Mes</label><select id="f-mes" data-k="mes"></select></div>
-      <div class="field"><label for="f-planta">Planta</label><select id="f-planta" data-k="planta"></select></div>
-      <div class="field"><label for="f-area">Área</label><select id="f-area" data-k="area"></select></div>
-      <div class="field"><label for="f-maquina">Máquina</label><select id="f-maquina" data-k="maquina"></select></div>
-      <div class="field"><label for="f-resp">Técnico / responsable</label><select id="f-resp" data-k="resp"></select></div>
-      <div class="field"><span class="lbl" id="l-estado">Estado</span><details class="ms" id="ms-estado" aria-labelledby="l-estado"><summary></summary><div class="ms-list"></div></details></div>
-      <div class="field"><span class="lbl" id="l-clasif">Clasificación ODT</span><details class="ms" id="ms-clasif" aria-labelledby="l-clasif"><summary></summary><div class="ms-list"></div></details></div>
-      <div class="field"><label for="f-tipo">Tipo de ODT</label><select id="f-tipo" data-k="tipo"></select></div>
+      <div class="field"><span class="lbl" id="l-anio">Año</span><div class="msw" data-k="anio"></div></div>
+      <div class="field"><span class="lbl" id="l-mes">Mes</span><div class="msw" data-k="mes"></div></div>
+      <div class="field"><span class="lbl" id="l-planta">Planta</span><div class="msw" data-k="planta"></div></div>
+      <div class="field"><span class="lbl" id="l-area">Área</span><div class="msw" data-k="area"></div></div>
+      <div class="field"><span class="lbl" id="l-maquina">Máquina</span><div class="msw" data-k="maquina"></div></div>
+      <div class="field"><span class="lbl" id="l-resp">Técnico / responsable</span><div class="msw" data-k="resp"></div></div>
+      <div class="field"><span class="lbl" id="l-estado">Estado</span><div class="msw" data-k="estado"></div></div>
+      <div class="field"><span class="lbl" id="l-clasif">Clasificación ODT</span><div class="msw" data-k="clasif"></div></div>
+      <div class="field"><span class="lbl" id="l-tipo">Tipo de ODT</span><div class="msw" data-k="tipo"></div></div>
+      <div class="field"><span class="lbl" id="l-odt">N° de ODT</span><div class="msw" data-k="odt"></div></div>
     </div>
     <div class="chips" id="chips"></div>
   </section>
@@ -222,7 +230,7 @@ details.guia dd{margin:0;color:var(--muted)}
           <h2>Paros vs ODTs correctivas por área</h2>
           <p class="sub">Desviación = paros ÷ ODTs correctivas (medida 38). En rojo cuando hay más paros que ODTs correctivas.</p>
         </div>
-        <label class="lbl">Clasificación del paro <select id="f-clparo" aria-label="Clasificación del paro"></select></label>
+        <div class="field" style="min-width:210px"><span class="lbl" id="l-clparo">Clasificación del paro</span><div class="msw" data-k="clparo"></div></div>
       </div>
       <div class="legend"><span><i class="dot" style="background:var(--paro)"></i>Paros (sin preventivos)</span><span><i class="dot" style="background:var(--corr)"></i>ODTs correctivas</span></div>
       <div class="bars" id="b-paros"></div>
@@ -282,7 +290,7 @@ details.guia dd{margin:0;color:var(--muted)}
     </div>
     <div class="tw">
       <table class="mx">
-        <thead><tr><th>Área ▸ Máquina ▸ Código</th><th>Descripción inicial</th><th>Estado</th><th>Fecha captura</th><th>Días</th><th>Responsable</th><th>Mensaje falta</th></tr></thead>
+        <thead><tr><th>Área ▸ Máquina ▸ N° de ODT</th><th>Descripción de la ODT</th><th>Estado</th><th>Fecha captura</th><th>Días</th><th>Responsable</th><th>Mensaje falta</th></tr></thead>
         <tbody id="mx-body"></tbody>
       </table>
     </div>
@@ -405,41 +413,38 @@ function normParos(raw) {
   }).filter((d) => d.paros > 0);
 }
 
-/* ---------- Estado de filtros ---------- */
+/* ---------- Estado de filtros (cada filtro es una lista: vacía = todos) ---------- */
 let ALL = [], PAROS = [];
-const DEF = () => ({ anio: null, mes: null, planta: null, area: null, maquina: null, resp: null, tipo: null, estado: PBI_ESTADO.slice(), clasif: PBI_CLASIF.slice(), clparo: PBI_CLPARO });
+const KEYS = ["anio", "mes", "planta", "area", "maquina", "resp", "estado", "clasif", "tipo", "odt"];
+const DEF = () => ({ anio: [], mes: [], planta: [], area: [], maquina: [], resp: [], tipo: [], odt: [], estado: PBI_ESTADO.slice(), clasif: PBI_CLASIF.slice(), clparo: [PBI_CLPARO] });
 let F = DEF();
 const UI = { tab: location.hash === "#detalle" ? "detalle" : "cmi", todos: false, q: "", open: new Set(), auto: true };
-const FLABEL = { anio:"Año", mes:"Mes", planta:"Planta", area:"Área", maquina:"Máquina", resp:"Técnico", tipo:"Tipo", estado:"Estado", clasif:"Clasificación" };
+const FLABEL = { anio:"Año", mes:"Mes", planta:"Planta", area:"Área", maquina:"Máquina", resp:"Técnico", tipo:"Tipo", estado:"Estado", clasif:"Clasificación", odt:"ODT", clparo:"Paro" };
 const PLANTAS = { acabados: "Planta Acabados", otras: "Otras áreas" };
 const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
+const has = (k, v) => !F[k].length || F[k].includes(v);
+const plantaOk = (d) => !F.planta.length || F.planta.includes(d.acabados ? "acabados" : "otras");
 
 /* filt(skip): aplica todos los filtros menos los nombrados en skip (para imitar CALCULATE de Power BI) */
 function filt(skip = []) {
   const sk = new Set(skip);
   return ALL.filter((d) =>
-    (F.anio == null || d.y === F.anio) && (F.mes == null || d.m === F.mes) &&
-    (F.planta == null || (F.planta === "acabados") === d.acabados) &&
-    (F.area == null || d.area === F.area) && (F.maquina == null || d.maquina === F.maquina) &&
-    (sk.has("resp") || F.resp == null || d.responsable === F.resp) &&
-    (sk.has("tipo") || F.tipo == null || d.tipo === F.tipo) &&
-    (sk.has("estado") || F.estado.includes(d.estado)) &&
-    (F.clasif.includes(d.clasif)));
+    (sk.has("anio") || has("anio", String(d.y))) && (sk.has("mes") || has("mes", String(d.m))) &&
+    (sk.has("planta") || plantaOk(d)) && (sk.has("area") || has("area", d.area)) &&
+    (sk.has("maquina") || has("maquina", d.maquina)) && (sk.has("resp") || has("resp", d.responsable)) &&
+    (sk.has("tipo") || has("tipo", d.tipo)) && (sk.has("estado") || has("estado", d.estado)) &&
+    (sk.has("clasif") || has("clasif", d.clasif)) && (sk.has("odt") || has("odt", d.codigo)));
 }
 function filtParos() {
   return PAROS.filter((d) =>
-    (F.anio == null || d.y === F.anio) && (F.mes == null || d.m === F.mes) &&
-    (F.planta == null || (F.planta === "acabados") === d.acabados) &&
-    (F.area == null || d.area === F.area) && (F.maquina == null || d.maquina === F.maquina) &&
-    !/prevent/i.test(d.clasif) && (F.clparo == null || d.clasif === F.clparo));
+    has("anio", String(d.y)) && has("mes", String(d.m)) && plantaOk(d) &&
+    has("area", d.area) && has("maquina", d.maquina) &&
+    !/prevent/i.test(d.clasif) && has("clparo", d.clasif));
 }
-function setF(k, v) {
-  F[k] = v;
-  if (k === "area" || k === "planta") F.maquina = null;
-  if (k === "planta" && F.area && v != null && (v === "acabados") !== ACABADOS.includes(F.area)) F.area = null;
-  UI.auto = true; render();
-}
-const toggleF = (k, v) => setF(k, F[k] === v ? null : v);
+function setF(k, v) { F[k] = v; UI.auto = true; render(); }
+/* clic en una barra: filtra solo por ese valor; otro clic lo quita */
+const toggleF = (k, v) => setF(k, F[k].length === 1 && F[k][0] === v ? [] : [v]);
+const one = (k) => (F[k].length === 1 ? F[k][0] : null);
 
 /* ---------- Tooltip ---------- */
 const tip = $("tip");
@@ -464,7 +469,8 @@ function bars(box, items, o) {
   if (!items.length) { box.append(el("p", "empty", o.empty || "No hay ODTs con estos filtros.")); return; }
   const max = Math.max(1, ...items.map((d) => o.mode === "group" ? Math.max(...o.series.map((sr) => d.vals[sr.k] || 0)) : d.total));
   for (const d of items) {
-    const row = el("div", "br" + (o.sel != null ? (o.sel === d.key ? " on" : " dim") : ""));
+    const sel = o.sel && o.sel.length ? o.sel : null;
+    const row = el("div", "br" + (sel ? (sel.includes(d.key) ? " on" : " dim") : ""));
     const lb = el("div", "lb", d.label); lb.title = d.label;
     let trk;
     if (o.mode === "group") {
@@ -500,58 +506,91 @@ function kpis(box, list) {
   }));
 }
 
-/* ---------- Filtros ---------- */
-function fillSelect(sel, opts, cur, all) {
-  sel.replaceChildren(new Option(all, ""), ...opts.map(([v, l]) => new Option(l, String(v))));
-  sel.value = cur == null ? "" : String(cur);
-}
-function msFill(id, key, opts, label) {
-  const det = $(id), list = det.querySelector(".ms-list"), sum = det.querySelector("summary");
-  const cur = F[key];
-  const sel = opts.filter(([v]) => cur.includes(v));
-  sum.textContent = sel.length === opts.length ? "Todos" : sel.length === 0 ? "Ninguno" : sel.map(([, l]) => l).join(", ");
-  if (det.open && list.childElementCount) { // no redibujar mientras el usuario marca
-    list.querySelectorAll("input[data-v]").forEach((c) => { c.checked = cur.includes(c.dataset.v); });
-    const a = list.querySelector("input.all"); if (a) a.checked = sel.length === opts.length;
-    return;
+/* ---------- Filtros con buscador y selección múltiple ---------- */
+const MS = {};
+const norm = (x) => String(x).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+function optionsFor(k) {
+  const uniq = (f, rows) => [...new Set(rows.map(f).filter((x) => x != null && x !== "null"))];
+  const pool = filt([k]); // opciones disponibles según los demás filtros
+  const keep = (vals) => [...new Set([...vals, ...F[k]])];
+  switch (k) {
+    case "anio": return keep(uniq((d) => d.y && String(d.y), ALL)).sort().map((v) => [v, v]);
+    case "mes": return keep(uniq((d) => d.m && String(d.m), ALL)).sort((a, b) => a - b).map((v) => [v, MESL[v - 1]]);
+    case "planta": return Object.entries(PLANTAS);
+    case "area": return keep(uniq((d) => d.area, pool)).sort().map((v) => [v, short(v)]);
+    case "maquina": return keep(uniq((d) => d.maquina, pool)).sort().map((v) => [v, v]);
+    case "resp": return keep(uniq((d) => d.responsable, pool)).sort().map((v) => [v, v]);
+    case "estado": return ESTADOS.map((v) => [v, EST1[v]]);
+    case "clasif": return uniq((d) => d.clasif, ALL).sort((a, b) => (+a || 9e9) - (+b || 9e9)).map((v) => [v, v]);
+    case "tipo": return keep(uniq((d) => d.tipo, ALL)).sort().map((v) => [v, v]);
+    case "odt": {
+      const byCode = new Map(ALL.map((d) => [d.codigo, d]));
+      const codes = keep(pool.map((d) => d.codigo)).sort((a, b) => b - a);
+      return codes.map((c) => { const d = byCode.get(c) || {}; return [c, c, (d.descripcion || "").slice(0, 90), d.maquina || ""]; });
+    }
+    case "clparo": return [...new Set(PAROS.map((d) => d.clasif))].filter((c) => c && !/prevent/i.test(c)).sort().map((v) => [v, v]);
   }
-  const allL = el("label", "all"); const allC = el("input", "all"); allC.type = "checkbox"; allC.checked = sel.length === opts.length;
-  allL.append(allC, document.createTextNode("Seleccionar todo"));
-  allC.addEventListener("change", () => setF(key, allC.checked ? opts.map(([v]) => v) : []));
-  const items = opts.map(([v, l]) => {
-    const lb = el("label"); const c = el("input"); c.type = "checkbox"; c.dataset.v = v; c.checked = cur.includes(v);
-    c.addEventListener("change", () => setF(key, c.checked ? [...F[key], v] : F[key].filter((x) => x !== v)));
-    lb.append(c, document.createTextNode(l)); return lb;
-  });
-  list.replaceChildren(allL, ...items);
-  det.setAttribute("aria-label", label);
+  return [];
 }
+function summaryText(k, opts) {
+  const cur = F[k];
+  if (!cur.length) return "Todos";
+  const lab = new Map(opts.map((o) => [o[0], o[1]]));
+  const names = cur.map((v) => lab.get(v) || (k === "area" ? short(v) : v));
+  return names.length <= 3 ? names.join(", ") : names.slice(0, 2).join(", ") + " +" + (names.length - 2);
+}
+function makeMS(wrap) {
+  const k = wrap.dataset.k;
+  const det = el("details", "ms"); const sum = el("summary");
+  const list = el("div", "ms-list");
+  const q = el("input", "ms-q"); q.type = "search"; q.placeholder = k === "odt" ? "Escribe número o descripción…" : "Escribe para buscar…";
+  q.setAttribute("aria-label", "Buscar en " + FLABEL[k]);
+  const acts = el("div", "ms-acts"); const bAll = el("button", "", "Seleccionar resultados"); const bNone = el("button", "", "Limpiar (todos)");
+  bAll.type = bNone.type = "button"; acts.append(bAll, bNone);
+  const box = el("div", "ms-opts");
+  list.append(q, acts, box); det.append(sum, list); wrap.append(det);
+  const lab = document.getElementById("l-" + k); if (lab) { sum.setAttribute("aria-labelledby", "l-" + k); }
+  const st = { k, det, sum, q, box, opts: [], shown: [] };
+  const draw = () => {
+    const term = norm(q.value.trim());
+    const match = term ? st.opts.filter((o) => norm(o.join(" ")).includes(term)) : st.opts;
+    const LIM = 250; st.shown = match;
+    const frag = document.createDocumentFragment();
+    for (const o of match.slice(0, LIM)) {
+      const lb = el("label"); const c = el("input"); c.type = "checkbox"; c.checked = F[k].includes(o[0]);
+      c.addEventListener("change", () => setF(k, c.checked ? [...F[k], o[0]] : F[k].filter((x) => x !== o[0])));
+      const txt = el("span", "", o[1]);
+      if (o[2] || o[3]) { txt.append(el("br")); txt.append(el("span", "s2", [o[3], o[2]].filter(Boolean).join(" · "))); }
+      lb.append(c, txt); frag.append(lb);
+    }
+    if (!match.length) frag.append(el("div", "note", "Sin resultados."));
+    else if (match.length > LIM) frag.append(el("div", "note", "Se muestran " + LIM + " de " + NF.format(match.length) + ". Escribe más para acotar."));
+    box.replaceChildren(frag);
+  };
+  q.addEventListener("input", draw);
+  q.addEventListener("keydown", (e) => { if (e.key === "Enter" && st.shown.length === 1) { e.preventDefault(); setF(k, [...new Set([...F[k], st.shown[0][0]])]); } });
+  bAll.addEventListener("click", () => setF(k, [...new Set([...F[k], ...st.shown.map((o) => o[0])])]));
+  bNone.addEventListener("click", () => { q.value = ""; setF(k, []); });
+  det.addEventListener("toggle", () => {
+    if (!det.open) return;
+    st.opts = optionsFor(k); draw();
+    list.style.left = ""; list.style.right = "";
+    const r = list.getBoundingClientRect();
+    if (r.right > document.documentElement.clientWidth - 8) { list.style.left = "auto"; list.style.right = "0"; }
+    setTimeout(() => q.focus(), 0);
+  });
+  st.refresh = () => {
+    st.opts = optionsFor(k);
+    sum.textContent = summaryText(k, st.opts);
+    sum.classList.toggle("on", F[k].length > 0);
+    if (det.open) draw();
+  };
+  MS[k] = st;
+}
+document.querySelectorAll(".msw").forEach(makeMS);
 document.addEventListener("click", (e) => { document.querySelectorAll("details.ms[open]").forEach((d) => { if (!d.contains(e.target)) d.open = false; }); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") document.querySelectorAll("details.ms[open]").forEach((d) => { d.open = false; }); });
-
-function fillFilters() {
-  const uniq = (f, rows = ALL) => [...new Set(rows.map(f).filter((x) => x != null))];
-  fillSelect($("f-anio"), uniq((d) => d.y).sort().map((v) => [v, v]), F.anio, "Todos");
-  fillSelect($("f-mes"), uniq((d) => d.m).sort((a, b) => a - b).map((v) => [v, MESL[v - 1]]), F.mes, "Todos");
-  fillSelect($("f-planta"), Object.entries(PLANTAS), F.planta, "Todas");
-  const ar = F.planta == null ? ALL : ALL.filter((d) => (F.planta === "acabados") === d.acabados);
-  fillSelect($("f-area"), uniq((d) => d.area, ar).sort().map((v) => [v, short(v)]), F.area, "Todas");
-  const mr = F.area ? ALL.filter((d) => d.area === F.area) : ar;
-  fillSelect($("f-maquina"), uniq((d) => d.maquina, mr).sort().map((v) => [v, v]), F.maquina, "Todas");
-  fillSelect($("f-resp"), uniq((d) => d.responsable).sort().map((v) => [v, v]), F.resp, "Todos");
-  fillSelect($("f-tipo"), uniq((d) => d.tipo).sort().map((v) => [v, v]), F.tipo, "Todos");
-  msFill("ms-estado", "estado", ESTADOS.map((v) => [v, EST1[v]]), "Estado");
-  const cls = uniq((d) => d.clasif).sort((a, b) => (+a || 9e9) - (+b || 9e9));
-  msFill("ms-clasif", "clasif", cls.map((v) => [v, v]), "Clasificación ODT");
-  const cp = [...new Set(PAROS.map((d) => d.clasif))].filter((c) => c && !/prevent/i.test(c)).sort();
-  fillSelect($("f-clparo"), cp.map((v) => [v, v]), F.clparo, "Todas");
-}
-document.querySelectorAll(".filters select").forEach((sel) => sel.addEventListener("change", () => {
-  const k = sel.dataset.k; let v = sel.value || null;
-  if (v != null && (k === "anio" || k === "mes")) v = +v;
-  setF(k, v);
-}));
-$("f-clparo").addEventListener("change", (e) => setF("clparo", e.target.value || null));
+function fillFilters() { Object.values(MS).forEach((m) => m.refresh()); }
 
 function chips() {
   const box = $("chips"); box.replaceChildren();
@@ -560,18 +599,15 @@ function chips() {
     const b = el("button", "", "×"); b.type = "button"; b.setAttribute("aria-label", "Quitar " + txt);
     b.addEventListener("click", onX); c.append(b); box.append(c);
   };
-  for (const k of ["anio", "mes", "planta", "area", "maquina", "resp", "tipo"]) {
-    if (F[k] == null) continue;
-    const v = k === "mes" ? MESL[F[k] - 1] : k === "area" ? short(F[k]) : k === "planta" ? PLANTAS[F[k]] : String(F[k]);
-    add(FLABEL[k] + ": " + v, () => setF(k, null));
+  for (const k of KEYS) {
+    if (!F[k].length) continue;
+    const pbi = (k === "estado" && sameSet(F.estado, PBI_ESTADO)) || (k === "clasif" && sameSet(F.clasif, PBI_CLASIF));
+    add(FLABEL[k] + ": " + summaryText(k, MS[k] ? MS[k].opts : []), () => setF(k, []), pbi ? "pbi" : "");
   }
-  if (!sameSet(F.estado, ESTADOS)) add("Estado: " + (F.estado.length ? F.estado.map((e) => EST1[e]).join(", ") : "ninguno"), () => setF("estado", ESTADOS.slice()), sameSet(F.estado, PBI_ESTADO) ? "pbi" : "");
-  const allCl = [...new Set(ALL.map((d) => d.clasif))];
-  if (!sameSet(F.clasif, allCl)) add("Clasificación: " + (F.clasif.length ? F.clasif.join(", ") : "ninguna"), () => setF("clasif", allCl), sameSet(F.clasif, PBI_CLASIF) ? "pbi" : "");
   const isDef = JSON.stringify(F) === JSON.stringify(DEF());
   const r = el("button", "linkbtn", isDef ? "Ver todo (sin filtros)" : "Restablecer filtros de Power BI"); r.type = "button";
   r.addEventListener("click", () => {
-    if (isDef) { F = DEF(); F.estado = ESTADOS.slice(); F.clasif = allCl; F.clparo = null; } else F = DEF();
+    if (isDef) { F = DEF(); F.estado = []; F.clasif = []; F.clparo = []; } else F = DEF();
     UI.auto = true; render();
   });
   box.append(r);
@@ -622,7 +658,7 @@ function drawCMI(rows) {
     tip: (d) => [{ t: d.label }, { c: "var(--paro)", t: "Paros: " + NF.format(d.vals.p) }, { c: "var(--corr)", t: "ODTs correctivas: " + NF.format(d.vals.c) }, { t: "Desviación: " + DF.format(d.ratio) }],
   });
 
-  const series = ESTADOS.filter((st) => F.estado.includes(st)).map((k) => ({ k, l: ESTL[k], c: ESTC[k] }));
+  const series = ESTADOS.filter((st) => has("estado", st)).map((k) => ({ k, l: ESTL[k], c: ESTC[k] }));
   legend($("lg-tec"), series);
   const base = filt(["resp"]);
   let items = [...groupBy(base, (d) => d.responsable)].map(([k, v]) => ({ key: k, label: k, vals: countEst(v), total: v.length }))
@@ -630,11 +666,11 @@ function drawCMI(rows) {
   const n = items.length, LIM = 15, btn = $("btn-todos");
   btn.hidden = n <= LIM; btn.textContent = UI.todos ? "Ver solo los 15 primeros" : "Ver los " + n + " responsables";
   if (!UI.todos) items = items.slice(0, LIM);
-  if (F.resp != null && !items.some((d) => d.key === F.resp)) { const v = base.filter((d) => d.responsable === F.resp); items.push({ key: F.resp, label: F.resp, vals: countEst(v), total: v.length }); }
+  for (const r0 of F.resp) if (!items.some((d) => d.key === r0)) { const v = base.filter((d) => d.responsable === r0); items.push({ key: r0, label: r0, vals: countEst(v), total: v.length }); }
   bars($("b-tec"), items, {
     series, sel: F.resp,
     tip: (d) => [{ t: d.label }, ...series.map((sr) => ({ c: sr.c, t: sr.l + ": " + NF.format(d.vals[sr.k]) })), { t: "Total: " + NF.format(d.total) }],
-    click: (d) => { toggleF("resp", d.key); if (F.resp) $("matriz").scrollIntoView({ behavior: "smooth", block: "start" }); },
+    click: (d) => { toggleF("resp", d.key); if (F.resp.length) $("matriz").scrollIntoView({ behavior: "smooth", block: "start" }); },
   });
 }
 
@@ -714,8 +750,8 @@ function drawMatrix(rows) {
   if (UI.auto) { // abre solo lo que tiene sentido para la selección
     UI.open = new Set();
     areas.forEach(([a]) => UI.open.add("A|" + a));
-    if (r.length <= 60 || F.maquina || F.resp || UI.q) r.forEach((d) => UI.open.add("M|" + d.area + "|" + d.maquina));
-    if (areas.length > 6 && !(F.maquina || F.resp || UI.q)) UI.open = new Set();
+    if (r.length <= 60 || F.maquina.length || F.resp.length || F.odt.length || UI.q) r.forEach((d) => UI.open.add("M|" + d.area + "|" + d.maquina));
+    if (areas.length > 6 && !(F.maquina.length || F.resp.length || F.odt.length || UI.q)) UI.open = new Set();
     UI.auto = false;
   }
   const frag = document.createDocumentFragment();
@@ -734,7 +770,7 @@ function drawMatrix(rows) {
         if (shown++ >= CAP) break;
         const tr = el("tr", "od");
         const td = (t, c) => { const x = el("td", c || "", t); tr.append(x); return x; };
-        td(d.codigo); td(d.descripcion, "desc");
+        const c0 = td("ODT " + d.codigo); c0.append(el("small", "", d.tipo)); td(d.descripcion || "(sin descripción)", "desc");
         const te = el("td"); const sp = el("span", "est", EST1[d.estado] || d.estado); sp.style.setProperty("--c", ESTC[d.estado] || "var(--mute)"); te.append(sp); tr.append(te);
         td(fdate(d.fecha)); td(d.dias == null ? "" : NF.format(d.dias), "age" + (d.estado !== "Terminado" && d.dias > 30 ? " old" : ""));
         td(d.responsable); td(d.mensaje, "msg");
@@ -786,7 +822,7 @@ function render() {
     lead.append(el("b", null, NF.format(rows.length)), " ODTs con los filtros: ");
     lead.append(ESTADOS.filter((st) => e[st]).map((st) => NF.format(e[st]) + " " + ESTL[st].toLowerCase()).join(", ") + ".");
     const open = rows.filter((d) => d.estado !== "Terminado");
-    if (open.length && F.resp == null) {
+    if (open.length && F.resp.length !== 1) {
       const [who, v] = [...groupBy(open, (d) => d.responsable)].sort((a, b) => b[1].length - a[1].length)[0];
       lead.append(" Mayor carga abierta: ", el("b", null, who), " con " + NF.format(v.length) + ".");
     }
