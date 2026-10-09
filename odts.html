@@ -85,6 +85,48 @@ details.ms{display:block;width:100%;min-width:0}
 .kpis{display:grid;grid-template-columns:repeat(5,1fr);margin:0 0 16px;background:var(--surface);border:1px solid var(--line);border-radius:8px}
 .kpis.k3{grid-template-columns:repeat(3,1fr)}
 .kpis.k4{grid-template-columns:repeat(4,1fr)}
+.kpis.k6{grid-template-columns:repeat(6,1fr)}
+.kpi .n small{font-size:18px;font-weight:600;color:var(--muted);margin-left:2px}
+.chk{display:inline-flex;gap:6px;align-items:center;font-size:13.5px;cursor:pointer}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13.5px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.chart{position:relative;width:100%;min-height:280px}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .ax text{fill:var(--muted);font-size:12px;font-family:var(--font-ui)}
+.chart .grid line{stroke:var(--line)}
+.chart .base{stroke:var(--muted)}
+.chart .hov{fill:transparent;cursor:default}
+.chart .hov:hover{fill:var(--soft);fill-opacity:.6}
+.chart .vlab{font-size:11px;fill:var(--muted);font-family:var(--font-num);font-weight:600}
+.chart .llab{font-size:12px;font-weight:700;font-family:var(--font-num)}
+.sc{max-height:520px}
+.score{border-collapse:collapse;width:100%;min-width:880px;font-size:13.5px}
+.score th,.score td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.score th:first-child,.score td:first-child{text-align:left}
+.score thead th{background:var(--soft);position:sticky;top:0;z-index:1;font-weight:600;padding:0}
+.score thead th button{border:0;background:none;width:100%;padding:8px 10px;font-weight:600;cursor:pointer;text-align:inherit}
+.score tbody tr{cursor:pointer}
+.score tbody tr:hover td{background:var(--soft)}
+.score tbody tr.on td{background:var(--soft);font-weight:600}
+.score tbody tr.on td:first-child{box-shadow:inset 3px 0 0 var(--focus)}
+.score td.num{font-family:var(--font-num);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.score td.bar{width:26%;min-width:180px}
+.score .sb{display:flex;height:12px;border-radius:3px;overflow:hidden;gap:1px;background:var(--soft)}
+.score .sb i{display:block;height:100%}
+.pill{display:inline-block;min-width:58px;text-align:center;padding:2px 8px;border-radius:999px;font-family:var(--font-num);font-weight:700;font-size:14px;color:#fff}
+.pill.g{background:#1F8A5B}.pill.a{background:#C98A00}.pill.r{background:#C0392B}.pill.n{background:var(--mute);color:var(--ink)}
+.hmw{max-height:560px}
+.hm{border-collapse:separate;border-spacing:3px;font-size:12.5px;min-width:max-content}
+.hm th{font-weight:600;color:var(--muted);padding:4px 6px;white-space:nowrap;position:sticky;top:0;background:var(--surface);z-index:1}
+.hm th.tn{text-align:left;position:sticky;left:0;z-index:2}
+.hm td.tn{position:sticky;left:0;background:var(--surface);font-weight:600;padding-right:10px;white-space:nowrap;max-width:240px;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.hm td.c{width:62px;height:38px;text-align:center;border-radius:5px;font-family:var(--font-num);font-weight:600;line-height:1.1;cursor:default}
+.hm td.c small{display:block;font-weight:500;font-size:11px;opacity:.85}
+.hm td.e{background:var(--soft)}
+.hm-scale{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.hm-scale i{display:inline-block;width:160px;height:10px;border-radius:5px}
+@media (max-width:900px){.kpis.k6{grid-template-columns:repeat(2,1fr)}}
 .kpi{padding:14px 18px;border-left:1px solid var(--line);position:relative}
 .kpi:first-child{border-left:0}
 .kpi::before{content:"";position:absolute;left:18px;right:18px;top:0;height:3px;border-radius:0 0 3px 3px;background:var(--k,transparent)}
@@ -206,6 +248,7 @@ details.guia dd{margin:0;color:var(--muted)}
   <div class="tabs" role="tablist" aria-label="Páginas">
     <button type="button" class="tab" role="tab" id="tab-cmi" data-tab="cmi" aria-selected="true">CMI ODTs</button>
     <button type="button" class="tab" role="tab" id="tab-detalle" data-tab="detalle" aria-selected="false">ODTs</button>
+    <button type="button" class="tab" role="tab" id="tab-rend" data-tab="rend" aria-selected="false">Rendimiento</button>
   </div>
   <p class="foot" id="tab-note" style="margin:-8px 0 14px"></p>
 
@@ -259,6 +302,56 @@ details.guia dd{margin:0;color:var(--muted)}
       </section>
   </div>
 
+  <div id="pg-rend" role="tabpanel" aria-labelledby="tab-rend" hidden>
+    <section class="kpis k6" id="kpis-rend" aria-label="Indicadores de rendimiento"></section>
+
+    <section class="panel" aria-label="Entradas y cumplidas por mes">
+      <div class="ph">
+        <div>
+          <h2>ODTs entradas vs cumplidas por mes</h2>
+          <p class="sub">Entradas: ODTs creadas en el mes. Cumplidas: ODTs terminadas en el mes. Línea: cumplidas ÷ entradas y % terminadas dentro del plazo.</p>
+        </div>
+      </div>
+      <div class="legend" id="lg-flujo"></div>
+      <div class="chart" id="c-flujo"></div>
+    </section>
+
+    <section class="panel" aria-label="Rendimiento por técnico">
+      <div class="ph">
+        <div>
+          <h2>Rendimiento por técnico</h2>
+          <p class="sub">ODTs asignadas en el periodo y en qué estado están hoy. Toca una fila para ver su evolución mes a mes y sus ODTs.</p>
+        </div>
+        <label class="chk"><input type="checkbox" id="chk-tec" checked> Solo técnicos</label>
+      </div>
+      <div class="tw sc"><table class="score" id="t-score"><thead></thead><tbody></tbody></table></div>
+      <p class="foot" id="score-foot"></p>
+    </section>
+
+    <section class="panel" aria-label="Mes a mes del técnico">
+      <h2 id="mm-title">Asignadas por mes y estado actual</h2>
+      <p class="sub" id="mm-sub"></p>
+      <div class="legend" id="lg-mm"></div>
+      <div class="chart" id="c-mm"></div>
+    </section>
+
+    <section class="panel" aria-label="Mapa técnico por mes">
+      <div class="ph">
+        <div>
+          <h2>Técnico × mes</h2>
+          <p class="sub">Cada celda: terminadas / asignadas en ese mes. El color muestra la métrica elegida.</p>
+        </div>
+        <div class="seg" role="group" aria-label="Métrica del mapa" id="hm-seg">
+          <button type="button" data-m="rend" aria-pressed="true">Rendimiento</button>
+          <button type="button" data-m="plazo" aria-pressed="false">En plazo</button>
+          <button type="button" data-m="asig" aria-pressed="false">Asignadas</button>
+        </div>
+      </div>
+      <div class="tw hmw"><table class="hm" id="t-hm"></table></div>
+      <div class="hm-scale" id="hm-scale"></div>
+    </section>
+  </div>
+
   <section class="panel" id="matriz" aria-label="Descripción de las ODTs">
     <div class="tools">
       <div>
@@ -288,6 +381,7 @@ details.guia dd{margin:0;color:var(--muted)}
       <dt>ODTs</dt><dd>Órdenes del CMMS sin canceladas que cumplen los filtros (medida 21.Cantidad_ODT).</dd>
       <dt>Tarjetas de estado</dt><dd>Terminadas, Pendientes, En pausa y En proceso (página CMI) ignoran el filtro de estado, como las medidas 31 a 34 de Power BI (CALCULATE reemplaza ese filtro).</dd>
       <dt>Preventivas / correctivas</dt><dd>Ignoran el filtro "Tipo de ODT", como las medidas 22 y 23.</dd>
+      <dt>Rendimiento</dt><dd>Asignadas = ODTs creadas en el periodo para cada técnico; su estado es el de hoy. Rendimiento = terminadas ÷ asignadas. En plazo = terminada antes de la fecha programada + ventana del CMMS. Tiempo estimado = horas dedicadas ≤ horas de la ventana. Entradas por mes usan la fecha de captura; cumplidas, la fecha de finalización.</dd>
       <dt>Planta Acabados</dt><dd>Termofijación y Secado, Tintorería, Efectos y Acabados, Revisión Terminado, Estampación y Estampación Digital (la selección guardada en la página ODTs de Power BI).</dd>
       <dt>Año y mes</dt><dd>Aquí filtran por la fecha de captura de la ODT. En tu Power BI la tabla Calendario no está relacionada con ODT ni con paros, así que allá esos segmentadores no cambian estas cifras.</dd>
       <dt>Datos</dt><dd>Mismo archivo que tu Power BI (ODT_JUNIOV2_26-fgaray.xlsx, hoja ODT), con las mismas reglas de máquina, responsable y área. Se suben con el botón "Actualizar datos", igual que el informe de turnos.</dd>
@@ -329,6 +423,7 @@ const p2 = (n) => String(n).padStart(2, "0");
 const fdate = (iso) => (iso ? +iso.slice(8, 10) + " " + MES[+iso.slice(5, 7) - 1] + " " + iso.slice(0, 4) : "");
 const now0 = new Date(); const TODAY = now0.getFullYear() + "-" + p2(now0.getMonth() + 1) + "-" + p2(now0.getDate());
 const daysBetween = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
+const NOWH = TODAY + " " + p2(now0.getHours()) + ":" + p2(now0.getMinutes());
 function groupBy(rows, f) { const m = new Map(); for (const d of rows) { const k = f(d); if (!m.has(k)) m.set(k, []); m.get(k).push(d); } return m; }
 const countEst = (v) => { const o = { Pendiente: 0, Pausado: 0, Proceso: 0, Terminado: 0 }; for (const d of v) o[d.estado] = (o[d.estado] || 0) + 1; return o; };
 function setStatus(msg, kind) { const s = $("status"); s.replaceChildren(); if (msg) s.append(el("span", kind || "", msg)); }
@@ -384,6 +479,15 @@ function normOdts(raw) {
       y: fecha ? +fecha.slice(0, 4) : null, m: fecha ? +fecha.slice(5, 7) : null,
     };
     d.dias = fecha ? Math.max(0, daysBetween(fecha, estado === "Terminado" ? (fin || fecha) : TODAY)) : null;
+    const hh = (v) => (/^\d{4}-\d{2}-\d{2}/.test(s(v)) ? s(v).slice(0, 16) : null);
+    d.plazo = hh(r.Plazo); d.finHora = hh(r.FinHora);
+    d.hEst = r.HorasEstimadas === "" || r.HorasEstimadas == null ? null : +r.HorasEstimadas;
+    d.hDed = r.HorasDedicadas === "" || r.HorasDedicadas == null ? null : +r.HorasDedicadas;
+    d.term = estado === "Terminado";
+    d.enPlazo = d.term && d.plazo && d.finHora ? d.finHora <= d.plazo : null;
+    d.enTiempo = d.term && d.hEst != null && d.hDed != null ? d.hDed <= d.hEst : null;
+    d.vencida = !d.term && d.plazo ? d.plazo < NOWH : false;
+    d.fy = fin ? +fin.slice(0, 4) : null; d.fm = fin ? +fin.slice(5, 7) : null;
     out.push(d);
   }
   return out;
@@ -396,9 +500,12 @@ const KEYS = ["anio", "mes", "planta", "area", "maquina", "resp", "estado", "cla
 const DEF_TAB = {
   cmi: () => ({ anio: [], mes: [], planta: [], area: [], maquina: [], resp: [], tipo: [], odt: [], estado: PBI_ESTADO.slice(), clasif: PBI_CLASIF.slice() }),
   detalle: () => ({ anio: [], mes: [], planta: [], area: ACABADOS.slice(), maquina: [], resp: [], tipo: [], odt: [], estado: PBI_ESTADO.slice(), clasif: PBI_CLASIF.slice() }),
+  rend: () => ({ anio: [], mes: [], planta: [], area: [], maquina: [], resp: [], tipo: [], odt: [], estado: [], clasif: PBI_CLASIF.slice() }),
 };
-const UI = { tab: location.hash === "#detalle" ? "detalle" : "cmi", todos: false, q: "", open: new Set(), auto: true };
-const FT = { cmi: DEF_TAB.cmi(), detalle: DEF_TAB.detalle() };
+/* Responsables de ODT que no son técnicos (se ocultan en el rendimiento con "Solo técnicos") */
+const NO_TECNICOS = ["JAVIER GAMEZ BLANCO", "RODRIGUEZ PENA JAIME ALFONSO", "BRIANDA BETANCOURT SANCHEZ", "JOSE SANTIAGO CASTAÑEDA BUITRAGO", "FABIAN STEVEN GARAY GOMEZ"];
+const UI = { tab: ["#detalle", "#rend"].includes(location.hash) ? location.hash.slice(1) : "cmi", todos: false, q: "", open: new Set(), auto: true, soloTec: true, hm: "rend", sortK: "asig", sortDir: -1 };
+const FT = { cmi: DEF_TAB.cmi(), detalle: DEF_TAB.detalle(), rend: DEF_TAB.rend() };
 const DEF = () => DEF_TAB[UI.tab]();
 let F = FT[UI.tab];
 const FLABEL = { anio:"Año", mes:"Mes", planta:"Planta", area:"Área", maquina:"Máquina", resp:"Técnico", tipo:"Tipo", estado:"Estado", clasif:"Clasificación", odt:"ODT" };
@@ -687,6 +794,202 @@ function drawDetalle(rows) {
   });
 }
 
+
+/* ================= Página Rendimiento ================= */
+const fmtPct = (x) => (x == null || !isFinite(x) ? "—" : Math.round(x * 100) + " %");
+const pillCls = (x, ok = 0.85, mid = 0.6) => (x == null || !isFinite(x) ? "n" : x >= ok ? "g" : x >= mid ? "a" : "r");
+const ratio = (a, b) => (b ? a / b : null);
+const mlabel = (ym) => MES[ym % 100 - 1] + " " + String(Math.floor(ym / 100)).slice(2);
+const ymOf = (y, m) => (y && m ? y * 100 + m : null);
+const isTec = (n) => !NO_TECNICOS.includes(n) && !/^\d+$/.test(n) && n !== "HI TECH MICRO" && n !== "SIN RESPONSABLE";
+function stats(v) {
+  const e = countEst(v), t = v.filter((d) => d.term);
+  const pl = t.filter((d) => d.enPlazo != null), ti = t.filter((d) => d.enTiempo != null);
+  const ded = t.map((d) => d.hDed).filter((x) => x != null).sort((a, b) => a - b);
+  return {
+    asig: v.length, term: e.Terminado, proc: e.Proceso, paus: e.Pausado, pend: e.Pendiente,
+    rend: ratio(e.Terminado, v.length),
+    plazo: ratio(pl.filter((d) => d.enPlazo).length, pl.length),
+    tiempo: ratio(ti.filter((d) => d.enTiempo).length, ti.length),
+    venc: v.filter((d) => d.vencida).length,
+    hmed: ded.length ? ded[Math.floor(ded.length / 2)] : null,
+  };
+}
+
+/* Gráfico SVG: barras (agrupadas o apiladas) + líneas en % sobre eje derecho */
+function svgChart(box, cats, o) {
+  box.replaceChildren();
+  if (!cats.length) { box.append(el("p", "empty", o.empty || "Sin datos con estos filtros.")); return; }
+  const NS = "http://www.w3.org/2000/svg";
+  const mk = (tag, at, parent) => { const n = document.createElementNS(NS, tag); for (const k in at) n.setAttribute(k, at[k]); if (parent) parent.append(n); return n; };
+  const W = Math.max(320, box.clientWidth || 900), H = 280, m = { t: 22, r: o.lines && o.lines.length ? 46 : 12, b: 30, l: 40 };
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const svg = mk("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", role: "img", "aria-label": o.label || "Gráfico" });
+  const tot = (c) => (o.stacked ? o.bars.reduce((a, b) => a + (c.v[b.k] || 0), 0) : Math.max(...o.bars.map((b) => c.v[b.k] || 0)));
+  let max = Math.max(1, ...cats.map(tot));
+  const step = Math.pow(10, Math.floor(Math.log10(max))); max = Math.ceil(max / step * 1.08) * step || 1;
+  const y = (v) => m.t + ih - (v / max) * ih;
+  const g = mk("g", { class: "grid" }, svg), ax = mk("g", { class: "ax" }, svg);
+  for (let i = 0; i <= 4; i++) {
+    const v = max * i / 4; mk("line", { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v) }, g);
+    const tx = mk("text", { x: m.l - 6, y: y(v) + 4, "text-anchor": "end" }, ax); tx.textContent = NF.format(Math.round(v));
+    if (o.lines && o.lines.length) { const tr = mk("text", { x: W - m.r + 6, y: y(v) + 4 }, ax); tr.textContent = Math.round(i * 25 * (o.pctMax || 1)) + "%"; }
+  }
+  const bw = iw / cats.length, inner = Math.min(o.stacked ? 34 : 40, bw * 0.72);
+  const every = Math.ceil(cats.length / Math.max(1, Math.floor(iw / 52)));
+  cats.forEach((c, i) => {
+    const x0 = m.l + i * bw + (bw - inner) / 2;
+    if (o.stacked) {
+      let acc = 0;
+      o.bars.forEach((b) => { const v = c.v[b.k] || 0; if (!v) return; mk("rect", { x: x0, y: y(acc + v), width: inner, height: Math.max(0, y(acc) - y(acc + v)), fill: b.c, rx: 2 }, svg); acc += v; });
+      if (o.totalLabel && acc) { const tl = mk("text", { x: x0 + inner / 2, y: y(acc) - 4, "text-anchor": "middle", class: "vlab" }, svg); tl.textContent = NF.format(acc); }
+    } else {
+      const sw = inner / o.bars.length;
+      o.bars.forEach((b, j) => { const v = c.v[b.k] || 0; mk("rect", { x: x0 + j * sw, y: y(v), width: Math.max(1, sw - 2), height: y(0) - y(v), fill: b.c, rx: 2 }, svg);
+        if (o.valueLabels && v && sw >= 16) { const tl = mk("text", { x: x0 + j * sw + (sw - 2) / 2, y: y(v) - 4, "text-anchor": "middle", class: "vlab" }, svg); tl.textContent = NF.format(v); } });
+    }
+    if (i % every === 0) { const tx = mk("text", { x: m.l + i * bw + bw / 2, y: H - 10, "text-anchor": "middle" }, ax); tx.textContent = c.label; }
+  });
+  mk("line", { x1: m.l, x2: W - m.r, y1: y(0), y2: y(0), class: "base" }, svg);
+  (o.lines || []).forEach((ln) => {
+    const pts = cats.map((c, i) => [m.l + i * bw + bw / 2, c.v[ln.k]]).filter((p) => p[1] != null && isFinite(p[1]));
+    const yp = (p) => m.t + ih - Math.min(p / (o.pctMax || 1), 1.05) * ih;
+    if (pts.length > 1) mk("path", { d: pts.map((p, i) => (i ? "L" : "M") + p[0] + "," + yp(p[1])).join(""), fill: "none", stroke: ln.c, "stroke-width": 2.5, "stroke-linejoin": "round", "stroke-linecap": "round", "stroke-dasharray": ln.dash || "" }, svg);
+    pts.forEach((p) => mk("circle", { cx: p[0], cy: yp(p[1]), r: 3.5, fill: "var(--surface)", stroke: ln.c, "stroke-width": 2 }, svg));
+    const last = pts[pts.length - 1];
+    if (last) { const tl = mk("text", { x: last[0], y: yp(last[1]) - 9, "text-anchor": "middle", class: "llab", fill: ln.c }, svg); tl.textContent = Math.round(last[1] * 100) + "%"; }
+  });
+  cats.forEach((c, i) => {
+    const r = mk("rect", { x: m.l + i * bw, y: m.t, width: bw, height: ih, class: "hov" }, svg);
+    r.addEventListener("mousemove", (e) => showTip(e, o.tip(c)));
+    r.addEventListener("mouseleave", hideTip);
+    if (o.click) { r.style.cursor = "pointer"; r.addEventListener("click", () => o.click(c)); }
+  });
+  box.append(svg);
+}
+
+function drawRend(rows) {
+  /* ---- KPIs ---- */
+  const S = stats(rows);
+  kpis($("kpis-rend"), [
+    { n: NF.format(S.asig), l: "ODTs asignadas", p: "creadas en el periodo filtrado" },
+    { n: NF.format(S.term), l: "Cumplidas (terminadas)", c: "var(--term)", p: NF.format(S.proc + S.paus + S.pend) + " siguen abiertas" },
+    { n: fmtPct(S.rend), l: "Rendimiento", c: "var(--proc)", p: "terminadas ÷ asignadas" },
+    { n: fmtPct(S.plazo), l: "Terminadas en plazo", c: "var(--prev)", p: "antes de fecha programada + ventana" },
+    { n: fmtPct(S.tiempo), l: "Dentro del tiempo estimado", c: "var(--pend)", p: "horas dedicadas ≤ ventana" },
+    { n: NF.format(S.venc), l: "Abiertas vencidas", c: "var(--paus)", p: "ya pasaron su plazo" },
+  ]);
+
+  /* ---- Entradas vs cumplidas por mes ---- */
+  const base = filt(["anio", "mes"]);
+  const inY = (y, m) => has("anio", String(y)) && has("mes", String(m));
+  const ent = groupBy(base.filter((d) => d.y && inY(d.y, d.m)), (d) => ymOf(d.y, d.m));
+  const cum = groupBy(base.filter((d) => d.term && d.fy && inY(d.fy, d.fm)), (d) => ymOf(d.fy, d.fm));
+  const months = [...new Set([...ent.keys(), ...cum.keys()])].sort((a, b) => a - b);
+  const flujo = months.map((ym) => {
+    const e = ent.get(ym) || [], c = cum.get(ym) || [];
+    const pl = c.filter((d) => d.enPlazo != null);
+    return { key: ym, label: mlabel(ym), v: { e: e.length, c: c.length, cumpl: ratio(c.length, e.length), plazo: ratio(pl.filter((d) => d.enPlazo).length, pl.length) } };
+  });
+  const FB = [{ k: "e", l: "Entradas", c: "var(--proc)" }, { k: "c", l: "Cumplidas", c: "var(--term)" }];
+  const FL = [{ k: "cumpl", l: "Cumplidas ÷ entradas", c: "var(--ink)" }, { k: "plazo", l: "% en plazo", c: "var(--corr)", dash: "5 4" }];
+  legend($("lg-flujo"), [...FB, ...FL]);
+  const pmax = Math.max(1, ...flujo.map((f) => f.v.cumpl || 0));
+  svgChart($("c-flujo"), flujo, {
+    bars: FB, lines: FL, pctMax: pmax > 1 ? Math.ceil(pmax * 4) / 4 : 1, valueLabels: true, label: "ODTs entradas y cumplidas por mes",
+    tip: (c) => [{ t: MESL[c.key % 100 - 1] + " " + Math.floor(c.key / 100) }, { c: "var(--proc)", t: "Entradas: " + NF.format(c.v.e) }, { c: "var(--term)", t: "Cumplidas: " + NF.format(c.v.c) },
+      { t: "Cumplidas ÷ entradas: " + fmtPct(c.v.cumpl) }, { c: "var(--corr)", t: "En plazo: " + fmtPct(c.v.plazo) }],
+  });
+
+  /* ---- Tabla por técnico ---- */
+  const tecRows = filt(["resp"]).filter((d) => !UI.soloTec || isTec(d.responsable));
+  let list = [...groupBy(tecRows, (d) => d.responsable)].map(([k, v]) => ({ key: k, ...stats(v) }));
+  const kk = UI.sortK, dir = UI.sortDir;
+  list.sort((a, b) => kk === "key" ? a.key.localeCompare(b.key) * dir : (((a[kk] ?? -1) - (b[kk] ?? -1)) * dir || b.asig - a.asig));
+  const cols = [["key", "Técnico"], ["asig", "Asignadas"], ["bar", "Estado actual"], ["term", "Terminadas"], ["proc", "Proceso"], ["paus", "Pausa"], ["pend", "Pendiente"], ["rend", "Rendimiento"], ["plazo", "En plazo"], ["tiempo", "Tiempo estimado"], ["venc", "Vencidas"], ["hmed", "Horas/ODT"]];
+  const th = el("tr");
+  cols.forEach(([k, l]) => {
+    const h = el("th"); if (k === "bar") { h.append(el("span", "", l)); h.style.padding = "8px 10px"; th.append(h); return; }
+    const b = el("button", "", l + (UI.sortK === k ? (UI.sortDir > 0 ? " ↑" : " ↓") : "")); b.type = "button";
+    b.addEventListener("click", () => { if (UI.sortK === k) UI.sortDir = -UI.sortDir; else { UI.sortK = k; UI.sortDir = k === "key" ? 1 : -1; } drawRend(filt()); });
+    h.append(b); th.append(h);
+  });
+  $("t-score").tHead.replaceChildren(th);
+  const tb = $("t-score").tBodies[0]; tb.replaceChildren();
+  const BS = [["term", "var(--term)"], ["proc", "var(--proc)"], ["paus", "var(--paus)"], ["pend", "var(--pend)"]];
+  for (const r of list) {
+    const tr = el("tr", F.resp.includes(r.key) ? "on" : ""); tr.tabIndex = 0;
+    tr.append(el("td", "", r.key), el("td", "num", NF.format(r.asig)));
+    const bt = el("td", "bar"), sb = el("div", "sb");
+    BS.forEach(([k, c]) => { if (!r[k]) return; const i = el("i"); i.style.flex = r[k] + " 0 0"; i.style.background = c; i.title = k; sb.append(i); });
+    bt.append(sb); tr.append(bt);
+    ["term", "proc", "paus", "pend"].forEach((k) => tr.append(el("td", "num", NF.format(r[k]))));
+    [["rend", 0.85, 0.6], ["plazo", 0.7, 0.4], ["tiempo", 0.7, 0.4]].forEach(([k, a, b]) => { const td = el("td"); td.append(el("span", "pill " + pillCls(r[k], a, b), fmtPct(r[k]))); tr.append(td); });
+    tr.append(el("td", "num" + (r.venc ? "" : ""), NF.format(r.venc)));
+    tr.append(el("td", "num", r.hmed == null ? "—" : DF.format(r.hmed)));
+    tr.addEventListener("mousemove", (e) => showTip(e, [{ t: r.key }, { t: "Asignadas: " + NF.format(r.asig) }, ...BS.map(([k, c]) => ({ c, t: { term: "Terminadas", proc: "En proceso", paus: "En pausa", pend: "Pendientes" }[k] + ": " + NF.format(r[k]) })),
+      { t: "Rendimiento " + fmtPct(r.rend) + " · en plazo " + fmtPct(r.plazo) + " · tiempo estimado " + fmtPct(r.tiempo) }]));
+    tr.addEventListener("mouseleave", hideTip);
+    const go = () => { hideTip(); toggleF("resp", r.key); };
+    tr.addEventListener("click", go); tr.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+    tb.append(tr);
+  }
+  if (!list.length) { const tr = el("tr"); const td = el("td", "empty", "Sin ODTs con estos filtros."); td.colSpan = cols.length; tr.append(td); tb.append(tr); }
+  $("score-foot").textContent = "Rendimiento = terminadas ÷ asignadas (verde ≥ 85 %, ámbar ≥ 60 %). En plazo = terminada antes de la fecha programada + ventana del CMMS (la misma regla de \"Atención/Solución atrasada\"). Tiempo estimado = horas dedicadas ≤ horas de la ventana. Horas/ODT = mediana de horas dedicadas por ODT terminada." + (UI.soloTec ? " Se ocultan responsables que no son técnicos y códigos de contratistas." : "");
+
+  /* ---- Mes a mes (técnico seleccionado o todos) ---- */
+  const sel = F.resp;
+  $("mm-title").textContent = sel.length === 1 ? "Mes a mes: " + sel[0] : sel.length > 1 ? "Mes a mes: " + sel.length + " técnicos seleccionados" : "Asignadas por mes y estado actual (todo el equipo)";
+  $("mm-sub").textContent = "Barras: ODTs asignadas en cada mes, según el estado en que están hoy. Línea: rendimiento (terminadas ÷ asignadas)." + (sel.length ? "" : " Toca un técnico en la tabla para ver solo el suyo.");
+  const MB = [{ k: "term", l: "Terminadas", c: "var(--term)" }, { k: "proc", l: "En proceso", c: "var(--proc)" }, { k: "paus", l: "En pausa", c: "var(--paus)" }, { k: "pend", l: "Pendientes", c: "var(--pend)" }];
+  const ML = [{ k: "rend", l: "Rendimiento", c: "var(--ink)" }];
+  legend($("lg-mm"), [...MB, ...ML]);
+  const mmRows = rows.filter((d) => !UI.soloTec || sel.length || isTec(d.responsable));
+  const mm = [...groupBy(mmRows.filter((d) => d.y), (d) => ymOf(d.y, d.m))].sort((a, b) => a[0] - b[0]).map(([ym, v]) => ({ key: ym, label: mlabel(ym), v: stats(v) }));
+  svgChart($("c-mm"), mm, {
+    bars: MB, stacked: true, lines: ML, totalLabel: true, label: "Asignadas por mes y estado",
+    tip: (c) => [{ t: MESL[c.key % 100 - 1] + " " + Math.floor(c.key / 100) + " · " + NF.format(c.v.asig) + " asignadas" },
+      ...MB.map((b) => ({ c: b.c, t: b.l + ": " + NF.format(c.v[b.k]) })), { t: "Rendimiento: " + fmtPct(c.v.rend) + " · en plazo: " + fmtPct(c.v.plazo) }],
+  });
+
+  /* ---- Mapa técnico × mes ---- */
+  document.querySelectorAll("#hm-seg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.m === UI.hm)));
+  const hmRows = tecRows.filter((d) => d.y);
+  const hmMonths = [...new Set(hmRows.map((d) => ymOf(d.y, d.m)))].sort((a, b) => a - b).slice(-12);
+  const tecs = [...groupBy(hmRows.filter((d) => hmMonths.includes(ymOf(d.y, d.m))), (d) => d.responsable)]
+    .map(([k, v]) => [k, v]).sort((a, b) => b[1].length - a[1].length).slice(0, sel.length ? 50 : 20);
+  const tbl = $("t-hm"); tbl.replaceChildren();
+  const hr = el("tr"); hr.append(el("th", "tn", "Técnico")); hmMonths.forEach((ym) => hr.append(el("th", "", mlabel(ym)))); tbl.append(hr);
+  const maxA = Math.max(1, ...tecs.flatMap(([, v]) => hmMonths.map((ym) => v.filter((d) => ymOf(d.y, d.m) === ym).length)));
+  const cGood = [31, 138, 91], cMid = [233, 168, 0], cBad = [192, 57, 43], cBlue = [47, 111, 219];
+  const mix = (a, b, t) => a.map((x, i) => Math.round(x + (b[i] - x) * t));
+  const colorFor = (x) => { if (UI.hm === "asig") return mix([234, 238, 245], cBlue, Math.min(1, x / maxA)); return x < 0.5 ? mix(cBad, cMid, x / 0.5) : mix(cMid, cGood, (x - 0.5) / 0.5); };
+  for (const [k, v] of tecs) {
+    const tr = el("tr"); const tn = el("td", "tn", k); tn.title = k; tn.addEventListener("click", () => toggleF("resp", k)); tr.append(tn);
+    for (const ym of hmMonths) {
+      const cell = v.filter((d) => ymOf(d.y, d.m) === ym), s0 = stats(cell);
+      const td = el("td", "c");
+      if (!cell.length) { td.classList.add("e"); tr.append(td); continue; }
+      const val = UI.hm === "asig" ? s0.asig : UI.hm === "plazo" ? s0.plazo : s0.rend;
+      if (val == null) td.classList.add("e");
+      else { const rgb = colorFor(val); td.style.background = `rgb(${rgb})`; const lum = (rgb[0] * 299 + rgb[1] * 587 + rgb[2] * 114) / 1000; td.style.color = lum > 150 ? "#14213D" : "#fff"; }
+      td.append(document.createTextNode(UI.hm === "asig" ? NF.format(s0.asig) : fmtPct(val)), el("small", "", NF.format(s0.term) + "/" + NF.format(s0.asig)));
+      td.addEventListener("mousemove", (e) => showTip(e, [{ t: k + " · " + MESL[ym % 100 - 1] + " " + Math.floor(ym / 100) }, { t: "Asignadas: " + NF.format(s0.asig) },
+        ...MB.map((b) => ({ c: b.c, t: b.l + ": " + NF.format(s0[b.k]) })), { t: "Rendimiento " + fmtPct(s0.rend) + " · en plazo " + fmtPct(s0.plazo) }]));
+      td.addEventListener("mouseleave", hideTip);
+      tr.append(td);
+    }
+    tbl.append(tr);
+  }
+  if (!tecs.length) { const tr = el("tr"); tr.append(el("td", "empty", "Sin datos con estos filtros.")); tbl.append(tr); }
+  const sc = $("hm-scale"); sc.replaceChildren();
+  const grad = el("i"); grad.style.background = UI.hm === "asig" ? "linear-gradient(90deg,rgb(234,238,245),rgb(47,111,219))" : "linear-gradient(90deg,rgb(192,57,43),rgb(233,168,0),rgb(31,138,91))";
+  sc.append(el("span", "", UI.hm === "asig" ? "Pocas" : "0 %"), grad, el("span", "", UI.hm === "asig" ? NF.format(maxA) + " asignadas" : "100 %"), el("span", "", " · Últimos 12 meses con datos" + (sel.length ? "" : ", 20 técnicos con más ODTs")));
+}
+document.querySelectorAll("#hm-seg button").forEach((b) => b.addEventListener("click", () => { UI.hm = b.dataset.m; drawRend(filt()); }));
+$("chk-tec").addEventListener("change", (e) => { UI.soloTec = e.target.checked; render(); });
+let rzT; window.addEventListener("resize", () => { clearTimeout(rzT); rzT = setTimeout(() => { if (UI.tab === "rend") drawRend(filt()); }, 200); });
+
 /* ---------- Matriz Área ▸ Máquina ▸ ODT ---------- */
 let MXROWS = [];
 function matrixRows(rows) {
@@ -784,9 +1087,9 @@ function render() {
     if (old) lead.append(" ", el("b", null, NF.format(old)), " llevan más de 30 días abiertas.");
   }
   document.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === UI.tab)));
-  $("tab-note").textContent = "Los filtros son propios de esta página, como en Power BI" + (UI.tab === "detalle" ? " (arranca con las 6 áreas de Planta Acabados)." : ".");
-  $("pg-cmi").hidden = UI.tab !== "cmi"; $("pg-detalle").hidden = UI.tab !== "detalle";
-  if (UI.tab === "cmi") drawCMI(rows); else drawDetalle(rows);
+  $("tab-note").textContent = "Los filtros son propios de esta página, como en Power BI" + (UI.tab === "detalle" ? " (arranca con las 6 áreas de Planta Acabados)." : UI.tab === "rend" ? " (arranca con todos los estados y clasificación 2, 13 y 34)." : ".");
+  $("pg-cmi").hidden = UI.tab !== "cmi"; $("pg-detalle").hidden = UI.tab !== "detalle"; $("pg-rend").hidden = UI.tab !== "rend";
+  if (UI.tab === "cmi") drawCMI(rows); else if (UI.tab === "detalle") drawDetalle(rows); else drawRend(rows);
   drawMatrix(rows);
 }
 document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => { FT[UI.tab] = F; UI.tab = b.dataset.tab; F = FT[UI.tab]; UI.auto = true; history.replaceState(null, "", "#" + UI.tab); render(); }));
