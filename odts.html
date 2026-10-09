@@ -194,6 +194,11 @@ details.ms{display:block;width:100%;min-width:0}
 .mx .mini i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:3px}
 .mx td.desc{min-width:280px;max-width:460px;overflow-wrap:anywhere}
 .mx td.msg{min-width:160px;max-width:260px;overflow-wrap:anywhere;color:var(--muted)}
+.mx td.obs{min-width:260px;max-width:440px;overflow-wrap:anywhere;white-space:pre-line}
+.mx td.obs.pend{color:var(--muted);font-style:italic}
+.mx td.fx{white-space:nowrap;font-size:12.5px;line-height:1.5;font-variant-numeric:tabular-nums}
+.mx td.fx b{display:inline-block;min-width:82px;color:var(--muted);font-weight:500}
+.mx td.fx .late{color:var(--paus);font-weight:600}
 .est{display:inline-flex;gap:6px;align-items:center;white-space:nowrap;font-weight:600;font-size:12.5px}
 .est::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--c)}
 .age{font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -359,7 +364,7 @@ details.guia dd{margin:0;color:var(--muted)}
         <p class="sub" id="mx-sub" style="margin:0"></p>
       </div>
       <div class="actions">
-        <input type="search" id="q" placeholder="Buscar código, máquina, descripción…" aria-label="Buscar ODT">
+        <input type="search" id="q" placeholder="Buscar código, máquina, descripción u observación…" aria-label="Buscar ODT">
         <button class="linkbtn" id="mx-open" type="button">Expandir todo</button>
         <button class="linkbtn" id="mx-close" type="button">Contraer</button>
         <button class="linkbtn" id="btn-csv" type="button">Descargar CSV</button>
@@ -367,11 +372,11 @@ details.guia dd{margin:0;color:var(--muted)}
     </div>
     <div class="tw">
       <table class="mx">
-        <thead><tr><th>Área ▸ Máquina ▸ N° de ODT</th><th>Descripción de la ODT</th><th>Estado</th><th>Fecha captura</th><th>Días</th><th>Responsable</th><th>Mensaje falta</th></tr></thead>
+        <thead><tr><th>Área ▸ Máquina ▸ N° de ODT</th><th>Descripción de la ODT</th><th>Estado</th><th>Fechas de ejecución</th><th>Días</th><th>Responsable</th><th>Observaciones finales (qué se hizo)</th></tr></thead>
         <tbody id="mx-body"></tbody>
       </table>
     </div>
-    <p class="foot">Toca un área o una máquina para abrir o cerrar sus ODTs. "Días": desde la captura hasta hoy si está abierta, o hasta la finalización si está terminada.</p>
+    <p class="foot">Toca un área o una máquina para abrir o cerrar sus ODTs. Fechas: captura, programada, inicio y fin reales, y plazo del CMMS (en rojo si se pasó). "Días": desde la captura hasta hoy si está abierta, o hasta la finalización si está terminada. La búsqueda también revisa las observaciones finales.</p>
   </section>
 
   <details class="guia">
@@ -420,6 +425,7 @@ const short = (a) => (a ? a.replace(/\s+PROD\.?$/i, "") : a);
 const cl = (t) => String(t == null ? "" : t).replace(/\s+/g, " ").trim();
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 const p2 = (n) => String(n).padStart(2, "0");
+const fdt = (v) => fdate(v.slice(0, 10)) + (v.length > 10 ? " " + v.slice(11, 16) : "");
 const fdate = (iso) => (iso ? +iso.slice(8, 10) + " " + MES[+iso.slice(5, 7) - 1] + " " + iso.slice(0, 4) : "");
 const now0 = new Date(); const TODAY = now0.getFullYear() + "-" + p2(now0.getMonth() + 1) + "-" + p2(now0.getDate());
 const daysBetween = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
@@ -480,7 +486,8 @@ function normOdts(raw) {
     };
     d.dias = fecha ? Math.max(0, daysBetween(fecha, estado === "Terminado" ? (fin || fecha) : TODAY)) : null;
     const hh = (v) => (/^\d{4}-\d{2}-\d{2}/.test(s(v)) ? s(v).slice(0, 16) : null);
-    d.plazo = hh(r.Plazo); d.finHora = hh(r.FinHora);
+    d.plazo = hh(r.Plazo); d.finHora = hh(r.FinHora); d.iniHora = hh(r.InicioHora); d.ejec = hh(r.FechaEjecucion);
+    d.obs = s(r.ObservacionesFinales).trim();
     d.hEst = r.HorasEstimadas === "" || r.HorasEstimadas == null ? null : +r.HorasEstimadas;
     d.hDed = r.HorasDedicadas === "" || r.HorasDedicadas == null ? null : +r.HorasDedicadas;
     d.term = estado === "Terminado";
@@ -995,7 +1002,7 @@ let MXROWS = [];
 function matrixRows(rows) {
   const q = UI.q;
   let r = rows;
-  if (q) r = r.filter((d) => [d.codigo, d.maquina, d.descripcion, d.mensaje, d.responsable, d.area].some((x) => x && x.toLowerCase().includes(q)));
+  if (q) r = r.filter((d) => [d.codigo, d.maquina, d.descripcion, d.mensaje, d.obs, d.responsable, d.area].some((x) => x && x.toLowerCase().includes(q)));
   return r;
 }
 function drawMatrix(rows) {
@@ -1029,8 +1036,15 @@ function drawMatrix(rows) {
         const td = (t, c) => { const x = el("td", c || "", t); tr.append(x); return x; };
         const c0 = td("ODT " + d.codigo); c0.append(el("small", "", d.tipo)); td(d.descripcion || "(sin descripción)", "desc");
         const te = el("td"); const sp = el("span", "est", EST1[d.estado] || d.estado); sp.style.setProperty("--c", ESTC[d.estado] || "var(--mute)"); te.append(sp); tr.append(te);
-        td(fdate(d.fecha)); td(d.dias == null ? "" : NF.format(d.dias), "age" + (d.estado !== "Terminado" && d.dias > 30 ? " old" : ""));
-        td(d.responsable); td(d.mensaje, "msg");
+        const fx = el("td", "fx");
+        const line = (lab, v, cls) => { const dv = el("div", cls || ""); dv.append(el("b", "", lab), document.createTextNode(v ? fdt(v) : "—")); fx.append(dv); };
+        line("Captura", d.fecha); line("Programada", d.ejec); line("Inicio", d.iniHora); line("Fin", d.finHora, d.term && d.enPlazo === false ? "late" : "");
+        if (d.plazo) line("Plazo", d.plazo, !d.term && d.vencida ? "late" : "");
+        tr.append(fx);
+        td(d.dias == null ? "" : NF.format(d.dias), "age" + (d.estado !== "Terminado" && d.dias > 30 ? " old" : ""));
+        td(d.responsable);
+        if (d.term) td(d.obs || "(sin observaciones finales)", "obs");
+        else td((d.obs ? d.obs + "\n" : "") + (d.mensaje ? "Abierta: " + d.mensaje : "Aún sin cerrar"), "obs pend");
         frag.append(tr);
       }
     }
@@ -1059,7 +1073,7 @@ $("mx-close").addEventListener("click", () => { UI.open = new Set(); drawMatrix(
 let qTimer;
 $("q").addEventListener("input", (e) => { clearTimeout(qTimer); qTimer = setTimeout(() => { UI.q = e.target.value.trim().toLowerCase(); UI.auto = true; drawMatrix(filt()); }, 200); });
 $("btn-csv").addEventListener("click", () => {
-  const cols = ["codigo","area","maquina","descripcion","estado","fecha","fin","dias","responsable","tipo","clasif","mensaje"];
+  const cols = ["codigo","area","maquina","descripcion","estado","fecha","ejec","iniHora","finHora","plazo","dias","responsable","tipo","clasif","obs","mensaje"];
   const q = (v) => '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
   const csv = "﻿" + cols.join(",") + "\n" + MXROWS.map((d) => cols.map((c) => q(d[c])).join(",")).join("\n");
   const a = el("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
