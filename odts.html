@@ -227,43 +227,36 @@ details.guia dd{margin:0;color:var(--muted)}
     </div>
 
 
-    <section class="panel" aria-label="ODTs por técnico">
-      <h2>ODTs por técnico y estado</h2>
-      <p class="sub">Toca un técnico para ver abajo la descripción de sus ODTs por área y máquina.</p>
-      <div class="legend" id="lg-tec"></div>
-      <div class="bars" id="b-tec"></div>
-      <button class="linkbtn more" id="btn-todos" type="button" hidden></button>
-    </section>
   </div>
 
   <div id="pg-detalle" role="tabpanel" aria-labelledby="tab-detalle" hidden>
     <section class="kpis k3" id="kpis-det" aria-label="Indicadores por tipo"></section>
+    <section class="panel" aria-label="ODTs por técnico">
+      <h2>ODTs por técnico y estado</h2>
+      <p class="sub">Igual que "Cantidad de ODTS Técnico" de tu Power BI. Toca un técnico para ver abajo la descripción de sus ODTs por área y máquina.</p>
+      <div class="legend" id="lg-tec"></div>
+      <div class="bars" id="b-tec"></div>
+      <button class="linkbtn more" id="btn-todos" type="button" hidden></button>
+    </section>
     <div class="grid2">
       <section class="panel" aria-label="ODTs por área">
         <h2>Cantidad de ODTs por área</h2>
         <p class="sub">Pasa el cursor para ver las máquinas con más ODTs. Toca un área para filtrar.</p>
         <div class="bars" id="b-area2"></div>
       </section>
-      <section class="panel" aria-label="ODTs por técnico">
-        <h2>Cantidad de ODTs por técnico</h2>
-        <p class="sub">Toca un técnico para filtrar.</p>
-        <div class="bars" id="b-tec2"></div>
-      </section>
-    </div>
-    <div class="grid2">
       <section class="panel" aria-label="ODTs por mes">
         <h2>Preventivas y correctivas por mes</h2>
         <p class="sub">Según la fecha de captura de la ODT.</p>
         <div class="legend"><span><i class="dot" style="background:var(--prev)"></i>Preventivas</span><span><i class="dot" style="background:var(--corr)"></i>Correctivas</span></div>
         <div id="b-mes"></div>
       </section>
-      <section class="panel" aria-label="Antigüedad">
+    </div>
+    <section class="panel" aria-label="Antigüedad">
         <h2>¿Hace cuánto están abiertas?</h2>
         <p class="sub">Días desde la captura de las ODTs no terminadas. Más de 30 días merece revisión.</p>
         <div class="legend" id="lg-age"></div>
         <div class="bars" id="b-age"></div>
       </section>
-    </div>
   </div>
 
   <section class="panel" id="matriz" aria-label="Descripción de las ODTs">
@@ -625,20 +618,6 @@ function drawCMI(rows) {
     tip: (d) => [{ t: d.label }, { c: "var(--proc)", t: "Cantidad ODT: " + NF.format(d.vals.n) }, { c: "var(--term)", t: "Terminadas: " + NF.format(d.vals.t) }],
   });
 
-  const series = ESTADOS.filter((st) => has("estado", st)).map((k) => ({ k, l: ESTL[k], c: ESTC[k] }));
-  legend($("lg-tec"), series);
-  const base = filt(["resp"]);
-  let items = [...groupBy(base, (d) => d.responsable)].map(([k, v]) => ({ key: k, label: k, vals: countEst(v), total: v.length }))
-    .sort((a, b) => b.total - a.total || a.label.localeCompare(b.label));
-  const n = items.length, LIM = 15, btn = $("btn-todos");
-  btn.hidden = n <= LIM; btn.textContent = UI.todos ? "Ver solo los 15 primeros" : "Ver los " + n + " responsables";
-  if (!UI.todos) items = items.slice(0, LIM);
-  for (const r0 of F.resp) if (!items.some((d) => d.key === r0)) { const v = base.filter((d) => d.responsable === r0); items.push({ key: r0, label: r0, vals: countEst(v), total: v.length }); }
-  bars($("b-tec"), items, {
-    series, sel: F.resp,
-    tip: (d) => [{ t: d.label }, ...series.map((sr) => ({ c: sr.c, t: sr.l + ": " + NF.format(d.vals[sr.k]) })), { t: "Total: " + NF.format(d.total) }],
-    click: (d) => { toggleF("resp", d.key); if (F.resp.length) $("matriz").scrollIntoView({ behavior: "smooth", block: "start" }); },
-  });
 }
 
 /* ---------- Página ODTs ---------- */
@@ -657,11 +636,19 @@ function drawDetalle(rows) {
     tip: (d) => [{ t: d.label + " · " + NF.format(d.total) + " ODTs" },
       ...[...groupBy(d.rows, (r) => r.maquina)].map(([m, v]) => [m, v.length]).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([m, c]) => ({ t: m + ": " + NF.format(c) }))],
   });
-  const tec = [...groupBy(filt(["resp"]), (d) => d.responsable)].map(([k, v]) => ({ key: k, label: k, total: v.length, vals: { n: v.length } }))
-    .sort((a, b) => b.total - a.total).slice(0, 15);
-  bars($("b-tec2"), tec, {
-    series: [{ k: "n", c: "var(--proc)" }], sel: F.resp, click: (d) => toggleF("resp", d.key),
-    tip: (d) => [{ t: d.label }, { t: "ODTs: " + NF.format(d.total) }],
+  const series = ESTADOS.filter((st) => has("estado", st)).map((k) => ({ k, l: ESTL[k], c: ESTC[k] }));
+  legend($("lg-tec"), series);
+  const base = filt(["resp"]);
+  let items = [...groupBy(base, (d) => d.responsable)].map(([k, v]) => ({ key: k, label: k, vals: countEst(v), total: v.length }))
+    .sort((a, b) => b.total - a.total || a.label.localeCompare(b.label));
+  const n = items.length, LIM = 15, btn = $("btn-todos");
+  btn.hidden = n <= LIM; btn.textContent = UI.todos ? "Ver solo los 15 primeros" : "Ver los " + n + " responsables";
+  if (!UI.todos) items = items.slice(0, LIM);
+  for (const r0 of F.resp) if (!items.some((d) => d.key === r0)) { const v = base.filter((d) => d.responsable === r0); items.push({ key: r0, label: r0, vals: countEst(v), total: v.length }); }
+  bars($("b-tec"), items, {
+    series, sel: F.resp,
+    tip: (d) => [{ t: d.label }, ...series.map((sr) => ({ c: sr.c, t: sr.l + ": " + NF.format(d.vals[sr.k]) })), { t: "Total: " + NF.format(d.total) }],
+    click: (d) => { toggleF("resp", d.key); if (F.resp.length) $("matriz").scrollIntoView({ behavior: "smooth", block: "start" }); },
   });
 
   const box = $("b-mes"); box.replaceChildren();
