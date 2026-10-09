@@ -140,7 +140,11 @@ details.ms{display:block;width:100%;min-width:0}
   .r-maq h3 small{font-weight:500;color:#5A6478;margin-left:6px}
   .r-odt td{font-size:9.5px;line-height:1.35}
   .r-odt td.cod{white-space:nowrap;font-weight:700}
-  .r-odt td.f{white-space:nowrap;color:#33414e}
+  .r-odt td.f{white-space:nowrap;color:#33414e;line-height:1.45}
+  .r-odt td.f b{font-weight:600;color:#5A6478}
+  .r-odt td.f .venc{color:#C0392B;font-weight:700}
+  .r-odt td.f .venc b{color:#C0392B}
+  .r-odt td.f .ok{color:#1F8A5B}
   .r-odt td.d{width:30%}
   .r-odt td.o{width:36%}
   .r-odt .tu{color:#1C6E70;font-size:9px;margin-top:2px}
@@ -1309,8 +1313,16 @@ function buildReport() {
       for (const d of vm.slice().sort((x, y) => (y.fecha || "").localeCompare(x.fecha || ""))) {
         const tr = el("tr");
         const c1 = el("td", "cod", d.codigo); c1.append(el("div", "", d.tipo)); tr.append(c1);
-        const c2 = el("td", "f"); c2.append(el("div", "", "Captura: " + fdate(d.fecha)), el("div", "", "Fin: " + (d.finHora ? fdt(d.finHora) : "—")));
-        if (!d.term && d.vencida) c2.append(el("div", "", "Plazo vencido"));
+        const c2 = el("td", "f");
+        const fl = (lab, v, cls) => { const dv = el("div", cls || ""); dv.append(el("b", "", lab + ": "), document.createTextNode(v)); c2.append(dv); };
+        fl("Captura", fdate(d.fecha) || "—");
+        fl("Ejecución", d.ejec ? fdt(d.ejec) : "—");
+        if (d.iniHora) fl("Inicio real", fdt(d.iniHora));
+        fl("Fin", d.finHora ? fdt(d.finHora) : "—");
+        if (d.plazo) {
+          const venc = (!d.term && d.vencida) || (d.term && d.enPlazo === false);
+          fl("Plazo", fdt(d.plazo) + (venc ? (d.term ? " · fuera de plazo" : " · VENCIDO") : " · a tiempo"), venc ? "venc" : "ok");
+        }
         tr.append(c2);
         const c3 = el("td"); const sp = el("span", "r-est", EST1[d.estado] || d.estado); sp.style.background = EST_HEX[d.estado] || "#888"; c3.append(sp); tr.append(c3);
         tr.append(el("td", "", d.responsable)); descCell(tr, d).className = "d";
@@ -1322,7 +1334,7 @@ function buildReport() {
     }
     R.append(sec);
   }
-  R.append(el("p", "r-foot", "Fuente: exporte del CMMS (ODT_JUNIOV2_26 y ODT_BE_V2_26), mismas reglas del Power BI RAM_ODTs_Costos. \"Trabajo realizado\" = observaciones finales del CMMS; cuando el mismo técnico reportó el trabajo en el informe de turnos, se agrega ese registro."));
+  R.append(el("p", "r-foot", "Fuente: exporte del CMMS (ODT_JUNIOV2_26 y ODT_BE_V2_26), mismas reglas del Power BI RAM_ODTs_Costos. \"Ejecución\" = fecha programada de la ODT; \"Plazo\" = ejecución + ventana del CMMS (vencido si pasó sin cerrarse; fuera de plazo si se cerró después). \"Trabajo realizado\" = observaciones finales del CMMS; cuando el mismo técnico reportó el trabajo en el informe de turnos, se agrega ese registro."));
 }
 $("btn-rep").addEventListener("click", () => {
   if (!MXROWS.length) { setStatus("No hay ODTs para el reporte con estos filtros.", "err"); return; }
