@@ -144,6 +144,7 @@ details.ms{display:block;width:100%;min-width:0}
   .r-odt td.d{width:30%}
   .r-odt td.o{width:36%}
   .r-odt .tu{color:#1C6E70;font-size:9px;margin-top:2px}
+  .r-odt td.d .asunto{font-weight:700;color:#5A6478;font-size:9px}
   .r-est{display:inline-block;padding:1px 6px;border-radius:9px;color:#fff;font-weight:700;font-size:9px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .r-foot{margin-top:10px;font-size:9px;color:#5A6478}
 ,.filters,.chips,.tabs,#tab-note,#btn-print,#matriz,details.guia,.lead{display:none!important}
@@ -255,7 +256,9 @@ details.ms{display:block;width:100%;min-width:0}
 .mx .cnt{font-family:var(--font-num);color:var(--muted);font-weight:600;margin-left:6px}
 .mx .mini{display:inline-flex;gap:8px;font-weight:500;font-size:12.5px;color:var(--muted)}
 .mx .mini i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:3px}
-.mx td.desc{min-width:280px;max-width:460px;overflow-wrap:anywhere}
+.mx td.desc{min-width:300px;max-width:480px;overflow-wrap:anywhere}
+.mx td.desc .asunto{font-weight:600;font-size:12.5px;color:var(--muted);margin-bottom:2px}
+.mx td.desc .dodt{color:var(--ink)}
 .mx td.msg{min-width:160px;max-width:260px;overflow-wrap:anywhere;color:var(--muted)}
 .mx td.obs{min-width:260px;max-width:440px;overflow-wrap:anywhere;white-space:pre-line}
 .mx td.obs.pend{color:var(--muted);font-style:italic}
@@ -469,7 +472,7 @@ details.guia dd{margin:0;color:var(--muted)}
     </div>
     <div class="tw">
       <table class="mx">
-        <thead><tr><th>Área ▸ Máquina ▸ N° de ODT</th><th>Descripción de la ODT</th><th>Estado</th><th>Fechas de ejecución</th><th>Días</th><th>Responsable</th><th>Observaciones finales (qué se hizo)</th></tr></thead>
+        <thead><tr><th>Área ▸ Máquina ▸ N° de ODT</th><th>Asunto y descripción de la ODT</th><th>Estado</th><th>Fechas de ejecución</th><th>Días</th><th>Responsable</th><th>Observaciones finales (qué se hizo)</th></tr></thead>
         <tbody id="mx-body"></tbody>
       </table>
     </div>
@@ -579,13 +582,16 @@ function normOdts(raw) {
       responsable: s(r.Responsable).trim() || "SIN RESPONSABLE",
       maquina: s(r.Maquina_Limpia).trim() || "SIN MÁQUINA",
       area, acabados: ACABADOS.includes(area),
-      descripcion: cl(r.DescripcionInicial), mensaje: cl(r.MensajeFalta),
+      asunto: cl(r.DescripcionInicial), descODT: cl(s(r.DescripcionODT).replace(/<[^>]+>/g, " ")), mensaje: cl(r.MensajeFalta),
       y: fecha ? +fecha.slice(0, 4) : null, m: fecha ? +fecha.slice(5, 7) : null,
     };
     d.dias = fecha ? Math.max(0, daysBetween(fecha, estado === "Terminado" ? (fin || fecha) : TODAY)) : null;
     const hh = (v) => (/^\d{4}-\d{2}-\d{2}/.test(s(v)) ? s(v).slice(0, 16) : null);
     d.plazo = hh(r.Plazo); d.finHora = hh(r.FinHora); d.iniHora = hh(r.InicioHora); d.ejec = hh(r.FechaEjecucion);
     d.obs = s(r.ObservacionesFinales).trim();
+    /* DescripcionInicial = asunto (a veces solo "CBM"); DescripcionODT = lo que se pide hacer. Se muestran ambos sin repetir. */
+    const kk = (x) => x.toLowerCase().replace(/[^a-z0-9áéíóúñ]/g, "");
+    d.descripcion = d.descODT && !kk(d.asunto).includes(kk(d.descODT)) ? (d.asunto ? d.asunto + " — " : "") + d.descODT : (d.asunto || d.descODT);
     d.turnos = s(r.TrabajoTurnos).trim() ? s(r.TrabajoTurnos).split(" ¶ ").map((x) => x.trim()).filter(Boolean) : [];
     d.hEst = r.HorasEstimadas === "" || r.HorasEstimadas == null ? null : +r.HorasEstimadas;
     d.hDed = r.HorasDedicadas === "" || r.HorasDedicadas == null ? null : +r.HorasDedicadas;
@@ -715,7 +721,7 @@ function optionsFor(k) {
     case "odt": {
       const byCode = new Map(ALL.map((d) => [d.codigo, d]));
       const codes = keep(pool.map((d) => d.codigo)).sort((a, b) => b - a);
-      return codes.map((c) => { const d = byCode.get(c) || {}; return [c, c, (d.descripcion || "").slice(0, 90), d.maquina || ""]; });
+      return codes.map((c) => { const d = byCode.get(c) || {}; return [c, c, (d.descripcion || "").slice(0, 110), d.maquina || ""]; });
     }
   }
   return [];
@@ -1207,7 +1213,7 @@ function drawMatrix(rows) {
         if (shown++ >= CAP) break;
         const tr = el("tr", "od");
         const td = (t, c) => { const x = el("td", c || "", t); tr.append(x); return x; };
-        const c0 = td("ODT " + d.codigo); c0.append(el("small", "", d.tipo)); td(d.descripcion || "(sin descripción)", "desc");
+        const c0 = td("ODT " + d.codigo); c0.append(el("small", "", d.tipo)); descCell(tr, d);
         const te = el("td"); const sp = el("span", "est", EST1[d.estado] || d.estado); sp.style.setProperty("--c", ESTC[d.estado] || "var(--mute)"); te.append(sp); tr.append(te);
         const fx = el("td", "fx");
         const line = (lab, v, cls) => { const dv = el("div", cls || ""); dv.append(el("b", "", lab), document.createTextNode(v ? fdt(v) : "—")); fx.append(dv); };
@@ -1230,6 +1236,15 @@ function drawMatrix(rows) {
   }
   if (shown > CAP) { const tr = el("tr"); const td = el("td", "empty", "Se muestran las primeras " + NF.format(CAP) + " ODTs abiertas. Usa filtros o la búsqueda para acotar."); td.colSpan = 7; tr.append(td); frag.append(tr); }
   body.replaceChildren(frag);
+}
+function descCell(tr, d) {
+  const td = el("td", "desc");
+  const kk = (x) => x.toLowerCase().replace(/[^a-z0-9áéíóúñ]/g, "");
+  const dup = !d.descODT || kk(d.asunto).includes(kk(d.descODT));
+  if (d.asunto) td.append(el("div", dup ? "" : "asunto", d.asunto));
+  if (!dup) td.append(el("div", "dodt", d.descODT));
+  if (!d.asunto && !d.descODT) td.append(document.createTextNode("(sin descripción)"));
+  tr.append(td); return td;
 }
 function groupRow(cls, key, open, label, v) {
   const tr = el("tr", cls + (open ? " open" : "")); tr.dataset.key = key; tr.tabIndex = 0;
@@ -1289,7 +1304,7 @@ function buildReport() {
       const bx = el("div", "r-maq"); const s1 = countEst(vm);
       const h3 = el("h3", "", m); h3.append(el("small", "", NF.format(vm.length) + " ODTs · " + ESTADOS.filter((x) => s1[x]).map((x) => NF.format(s1[x]) + " " + EST1[x].toLowerCase()).join(" · "))); bx.append(h3);
       const t2 = el("table", "r-tab r-odt"); const h2r = el("tr");
-      ["N° ODT", "Fechas", "Estado", "Responsable", "Descripción", "Trabajo realizado"].forEach((h) => h2r.append(el("th", "", h)));
+      ["N° ODT", "Fechas", "Estado", "Responsable", "Asunto y descripción", "Trabajo realizado"].forEach((h) => h2r.append(el("th", "", h)));
       const t2h = el("thead"); t2h.append(h2r); t2.append(t2h); const t2b = el("tbody");
       for (const d of vm.slice().sort((x, y) => (y.fecha || "").localeCompare(x.fecha || ""))) {
         const tr = el("tr");
@@ -1298,7 +1313,7 @@ function buildReport() {
         if (!d.term && d.vencida) c2.append(el("div", "", "Plazo vencido"));
         tr.append(c2);
         const c3 = el("td"); const sp = el("span", "r-est", EST1[d.estado] || d.estado); sp.style.background = EST_HEX[d.estado] || "#888"; c3.append(sp); tr.append(c3);
-        tr.append(el("td", "", d.responsable), el("td", "d", d.descripcion || "(sin descripción)"));
+        tr.append(el("td", "", d.responsable)); descCell(tr, d).className = "d";
         const c6 = el("td", "o", d.term ? (d.obs || "(sin observaciones finales)") : (d.mensaje ? "Abierta: " + d.mensaje : "Aún sin cerrar"));
         d.turnos.forEach((x) => c6.append(el("div", "tu", "Informe de turnos: " + x)));
         tr.append(c6); t2b.append(tr);
@@ -1322,7 +1337,7 @@ $("btn-rep").addEventListener("click", () => {
 let qTimer;
 $("q").addEventListener("input", (e) => { clearTimeout(qTimer); qTimer = setTimeout(() => { UI.q = e.target.value.trim().toLowerCase(); UI.auto = true; drawMatrix(filt()); }, 200); });
 $("btn-csv").addEventListener("click", () => {
-  const cols = ["codigo","area","maquina","descripcion","estado","fecha","ejec","iniHora","finHora","plazo","dias","responsable","tipo","clasif","obs","mensaje"];
+  const cols = ["codigo","area","maquina","asunto","descODT","estado","fecha","ejec","iniHora","finHora","plazo","dias","responsable","tipo","clasif","obs","mensaje"];
   const q = (v) => '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
   const csv = "\ufeff" + cols.join(",") + ",trabajo_informe_turnos\n" + MXROWS.map((d) => cols.map((c) => q(d[c])).join(",") + "," + q(d.turnos.join(" | "))).join("\n");
   const a = el("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
@@ -1371,7 +1386,12 @@ let SNAPOBS = null;
 async function completarObs(rows) {
   try {
     if (!SNAPOBS) { const j = await (await fetch(SNAPSHOT_URL, { cache: "no-store" })).json(); SNAPOBS = new Map((j.odts || []).map((r) => [String(r.CodigoAlterno), r])); }
-    for (const d of rows) { const r = SNAPOBS.get(d.codigo); if (!r) continue; if (!d.obs) d.obs = s(r.ObservacionesFinales).trim(); if (!d.turnos.length && r.TrabajoTurnos) d.turnos = s(r.TrabajoTurnos).split(" ¶ ").filter(Boolean); }
+    for (const d of rows) {
+      const r = SNAPOBS.get(d.codigo); if (!r) continue;
+      if (!d.obs) d.obs = s(r.ObservacionesFinales).trim();
+      if (!d.turnos.length && r.TrabajoTurnos) d.turnos = s(r.TrabajoTurnos).split(" ¶ ").filter(Boolean);
+      if (!d.descODT && r.DescripcionODT) { d.descODT = cl(s(r.DescripcionODT)); const kk = (x) => x.toLowerCase().replace(/[^a-z0-9áéíóúñ]/g, ""); if (!kk(d.asunto).includes(kk(d.descODT))) d.descripcion = (d.asunto ? d.asunto + " — " : "") + d.descODT; }
+    }
   } catch (e) { /* sin copia */ }
 }
 async function fetchLive(isAuto) {
@@ -1379,7 +1399,7 @@ async function fetchLive(isAuto) {
   try {
     const raw = gvizRows(await loadGviz(TAB_ODTS));
     const odts = normOdts(raw);
-    if (raw.length && !("ObservacionesFinales" in raw[0])) await completarObs(odts);
+    if (raw.length && (!("ObservacionesFinales" in raw[0]) || !("DescripcionODT" in raw[0]))) await completarObs(odts);
     if (!odts.length) throw new Error("vacia");
     const before = ALL.length;
     if (before && odts.length < before * 0.95) { // lectura incompleta mientras otra persona sincroniza: se conserva lo actual
