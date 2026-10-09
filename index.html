@@ -547,6 +547,13 @@ async function fetchLive(isAuto){
       return;
     }
     const before = DATA.length;
+    // Lectura incompleta: otra persona está sincronizando y la hoja aún se está escribiendo.
+    // El Excel nunca trae menos filas (el sincronizador lo impide), así que se conserva lo que hay y se reintenta.
+    if (before && data.length < before * 0.95){
+      if (!isAuto) setStatus("La hoja se está actualizando en este momento; se reintenta en 20 segundos…");
+      setTimeout(()=> fetchLive(isAuto), 20000);
+      return;
+    }
     DATA = data;
     const now = new Date();
     META = {when: now.toISOString()};
@@ -602,8 +609,11 @@ function resetFilters(keepNothing){
 function uniq(key){ return [...new Set(DATA.map(r=>r[key]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es")); }
 function fillSelect(id, label, values, cur){
   const el = $(id);
-  el.innerHTML = '<option value="">'+label+'</option>' + values.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join("");
-  el.value = values.includes(cur) ? cur : "";
+  // Si el valor elegido por este usuario no viene en los datos (lectura parcial mientras otro sincroniza),
+  // se conserva igual: cada usuario mantiene sus filtros.
+  const vals = (cur && !values.includes(cur)) ? values.concat([cur]) : values;
+  el.innerHTML = '<option value="">'+label+'</option>' + vals.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join("");
+  el.value = cur || "";
 }
 function refreshSecSelect(){
   const vals = [...new Set(DATA.filter(r=>!F.planta || r.planta===F.planta).map(pxArea).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
@@ -1224,7 +1234,12 @@ $("failChips").addEventListener("click", e=>{
 });
 const map = {fFrom:"from",fTo:"to",fPlanta:"planta",fSec:"sec",fProceso:"proceso",fTurno:"turno",fMto:"mto",fParo:"paro"};
 Object.keys(map).forEach(id=> $(id).addEventListener("change", e=>{ F[map[id]] = e.target.value; PAGE=0; renderAll(); }));
-$("fPlanta").addEventListener("change", ()=>{ const prev=F.sec; refreshSecSelect(); if (F.sec!==prev){ PAGE=0; renderAll(); } });
+$("fPlanta").addEventListener("change", ()=>{
+  const prev=F.sec;
+  // Cambio hecho por el usuario: si su área no pertenece a la nueva planta, se quita.
+  const enPlanta = DATA.some(r=>(!F.planta || r.planta===F.planta) && pxArea(r)===F.sec);
+  if (F.sec && !enPlanta) F.sec = "";
+  refreshSecSelect(); if (F.sec!==prev){ PAGE=0; renderAll(); } });
 let qTimer; $("q").addEventListener("input", e=>{ clearTimeout(qTimer); qTimer=setTimeout(()=>{ F.q=e.target.value.trim(); PAGE=0; renderTable(); },180); });
 $("prev").addEventListener("click", ()=>{ PAGE=Math.max(0,PAGE-1); renderTable(); });
 $("next").addEventListener("click", ()=>{ PAGE++; renderTable(); });

@@ -1255,6 +1255,11 @@ async function fetchLive(isAuto) {
     const odts = normOdts(gvizRows(await loadGviz(TAB_ODTS)));
     if (!odts.length) throw new Error("vacia");
     const before = ALL.length;
+    if (before && odts.length < before * 0.95) { // lectura incompleta mientras otra persona sincroniza: se conserva lo actual
+      if (!isAuto) setStatus("La hoja se está actualizando en este momento; se reintenta en 20 segundos…");
+      setTimeout(() => fetchLive(isAuto), 20000);
+      return true;
+    }
     ALL = odts;
     setRange(); render();
     const d = new Date(), diff = ALL.length - before;
