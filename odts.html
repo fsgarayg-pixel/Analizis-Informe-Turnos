@@ -512,7 +512,7 @@ details.guia dd{margin:0;color:var(--muted)}
     <div class="grid2">
       <section class="panel" aria-label="ODTs por área">
         <h2>Cantidad de ODTs por área</h2>
-        <p class="sub">Según los estados filtrados. Clic en un color para ver esas ODTs; clic en el nombre del área para filtrar.</p>
+        <p class="sub">Según los estados filtrados; las pendientes se dividen en atrasadas (ya pasó su plazo) y a tiempo. Clic en un color para ver esas ODTs; clic en el nombre del área para filtrar.</p>
         <div class="legend" id="lg-area2"></div>
         <div class="bars" id="b-area2"></div>
       </section>
@@ -1385,6 +1385,15 @@ function drawTiempos(rows) {
   $("tc-foot").textContent = "Cálculo con la hora actual (" + fdt(NOWH) + "). Los días y horas de retraso o margen se recalculan cada vez que abres o actualizas la página. Tiempo en pausa: el que reporta el CMMS en la última sincronización.";
 }
 
+/* Series por estado con las pendientes partidas en atrasadas (ya pasó el plazo: se debieron ejecutar),
+   a tiempo (aún hay plazo) y sin plazo. Solo incluye las partes que existen en base. */
+function estSeries(base) {
+  return ESTADOS.filter((st) => has("estado", st)).flatMap((k) => k !== "Pendiente" ? [{ k, l: ESTL[k], c: ESTC[k], f: (x) => x.estado === k }] : [
+    { k: "PendAtr", l: "Pendientes atrasadas", c: "#A86A00", f: (x) => x.estado === "Pendiente" && x.sit && x.sit.cls === "atr" },
+    { k: "PendOk", l: "Pendientes a tiempo", c: "#F2CC6B", tc: "#3D2A00", f: (x) => x.estado === "Pendiente" && x.sit && x.sit.cls !== "atr" },
+    { k: "PendSp", l: "Pendientes sin plazo", c: "#C9D0DC", tc: "#14213D", f: (x) => x.estado === "Pendiente" && !x.sit },
+  ]).filter((sr) => base.some(sr.f));
+}
 /* ---------- Página ODTs ---------- */
 function drawDetalle(rows) {
   const st = filt(["tipo"]);
@@ -1394,23 +1403,18 @@ function drawDetalle(rows) {
     { n: NF.format(prev), l: "Preventivas", c: "var(--prev)", p: "sin filtro de tipo (medida 22)" },
     { n: NF.format(corr), l: "Correctivas", c: "var(--corr)", p: "sin filtro de tipo (medida 23)" },
   ]);
-  const byArea = [...groupBy(rows, (d) => d.area)].map(([k, v]) => ({ key: k, label: short(k), total: v.length, rows: v, vals: countEst(v) }))
+  const SA = estSeries(rows);
+  const byArea = [...groupBy(rows, (d) => d.area)].map(([k, v]) => ({ key: k, label: short(k), total: v.length, rows: v, vals: Object.fromEntries(SA.map((sr) => [sr.k, v.filter(sr.f).length])) }))
     .sort((a, b) => b.total - a.total).slice(0, 12);
-  const SA = ESTADOS.filter((st) => has("estado", st) && rows.some((d) => d.estado === st)).map((k) => ({ k, l: ESTL[k], c: ESTC[k] }));
   legend($("lg-area2"), SA);
   bars($("b-area2"), byArea, {
     series: SA, sel: F.area, click: (d) => toggleF("area", d.key),
-    segClick: (d, sr) => drillTo({ pred: (x) => x.area === d.key && x.estado === sr.k, label: d.label + " · " + sr.l.toLowerCase(), c: sr.c }),
-    tip: (d) => [{ t: d.label + " · " + NF.format(d.total) + " ODTs" }, ...SA.map((sr) => ({ c: sr.c, t: sr.l + ": " + NF.format(d.vals[sr.k]) })), { t: "Máquinas con más ODTs:" },
+    segClick: (d, sr) => drillTo({ pred: (x) => x.area === d.key && sr.f(x), label: d.label + " · " + sr.l.toLowerCase(), c: sr.c }),
+    tip: (d) => [{ t: d.label + " · " + NF.format(d.total) + " ODTs" }, ...SA.filter((sr) => d.vals[sr.k]).map((sr) => ({ c: sr.c, t: sr.l + ": " + NF.format(d.vals[sr.k]) })), { t: "Máquinas con más ODTs:" },
       ...[...groupBy(d.rows, (r) => r.maquina)].map(([m, v]) => [m, v.length]).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([m, c]) => ({ t: m + ": " + NF.format(c) }))],
   });
-  /* Pendientes partidas en atrasadas (ya pasó el plazo: se debieron ejecutar) y a tiempo (aún hay plazo) */
   const base = filt(["resp"]);
-  const series = ESTADOS.filter((st) => has("estado", st)).flatMap((k) => k !== "Pendiente" ? [{ k, l: ESTL[k], c: ESTC[k], f: (x) => x.estado === k }] : [
-    { k: "PendAtr", l: "Pendientes atrasadas", c: "#A86A00", f: (x) => x.estado === "Pendiente" && x.sit && x.sit.cls === "atr" },
-    { k: "PendOk", l: "Pendientes a tiempo", c: "#F2CC6B", tc: "#3D2A00", f: (x) => x.estado === "Pendiente" && x.sit && x.sit.cls !== "atr" },
-    { k: "PendSp", l: "Pendientes sin plazo", c: "#C9D0DC", tc: "#14213D", f: (x) => x.estado === "Pendiente" && !x.sit },
-  ]).filter((sr) => sr.k.indexOf("Pend") !== 0 || base.some(sr.f));
+  const series = estSeries(base);
   legend($("lg-tec"), series);
   const tvals = (v) => Object.fromEntries(series.map((sr) => [sr.k, v.filter(sr.f).length]));
   let items = [...groupBy(base, (d) => d.responsable)].map(([k, v]) => ({ key: k, label: k, vals: tvals(v), total: v.length }))
