@@ -330,6 +330,12 @@ details.ms{display:block;width:100%;min-width:0}
 .tw-turno{margin-top:6px;padding:6px 8px;border-left:3px solid var(--prev);background:var(--soft);border-radius:0 5px 5px 0;font-size:12.5px;white-space:normal}
 .tw-turno .tt{display:block;font-weight:600;color:var(--prev);font-size:11.5px;margin-bottom:2px}
 #reporte{display:none}
+.dia-list{padding:10px;min-width:250px}
+.dia-q{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.dia-q button{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:6px 8px;cursor:pointer;font-size:13px;color:var(--ink)}
+.dia-q button:hover{background:var(--soft)}
+.dia-list label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;margin:6px 0}
+.dia-list input[type=date]{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:5px 6px;color:var(--ink)}
 .pmot{margin-top:6px;min-width:180px;max-width:230px;font-size:11.5px;line-height:1.35;white-space:normal;padding:4px 6px;border-left:3px solid var(--paus);background:var(--soft);border-radius:0 4px 4px 0}
 .pmot b{display:block;font-size:10.5px;color:var(--paus);text-transform:uppercase;letter-spacing:.03em}
 .pmot.no{color:var(--muted);font-style:italic}
@@ -377,6 +383,20 @@ details.guia dd{margin:0;color:var(--muted)}
     <div class="filters">
       <div class="field"><span class="lbl" id="l-anio">Año</span><div class="msw" data-k="anio"></div></div>
       <div class="field"><span class="lbl" id="l-mes">Mes</span><div class="msw" data-k="mes"></div></div>
+      <div class="field"><span class="lbl" id="l-dia">Día de captura</span>
+        <details class="ms" id="dia-w"><summary aria-labelledby="l-dia" id="dia-sum">Todos</summary>
+          <div class="ms-list dia-list">
+            <div class="dia-q">
+              <button type="button" data-q="0">Hoy</button><button type="button" data-q="1">Ayer</button>
+              <button type="button" data-q="7">Últimos 7 días</button><button type="button" data-q="15">Últimos 15 días</button>
+              <button type="button" data-q="30">Últimos 30 días</button><button type="button" data-q="mes">Este mes</button>
+            </div>
+            <label>Desde <input type="date" id="dia-d"></label>
+            <label>Hasta <input type="date" id="dia-h"></label>
+            <div class="ms-acts"><button type="button" id="dia-ok">Aplicar</button><button type="button" id="dia-x">Limpiar (todos)</button></div>
+          </div>
+        </details>
+      </div>
       <div class="field"><span class="lbl" id="l-planta">Planta</span><div class="msw" data-k="planta"></div></div>
       <div class="field"><span class="lbl" id="l-area">Área</span><div class="msw" data-k="area"></div></div>
       <div class="field"><span class="lbl" id="l-maquina">Máquina</span><div class="msw" data-k="maquina"></div></div>
@@ -464,6 +484,7 @@ details.guia dd{margin:0;color:var(--muted)}
           </div>
           <label class="lbl">Área <select id="ap-area" aria-label="Área del gráfico"></select></label>
           <div class="seg" role="group" aria-label="Agrupar por" id="ap-seg">
+            <button type="button" data-g="dia" aria-pressed="false">Día</button>
             <button type="button" data-g="sem" aria-pressed="false">Semana</button>
             <button type="button" data-g="mes" aria-pressed="true">Mes</button>
             <button type="button" data-g="tri" aria-pressed="false">Trimestre</button>
@@ -766,12 +787,12 @@ function normOdts(raw) {
 
 /* ---------- Estado de filtros (cada filtro es una lista: vacía = todos) ---------- */
 let ALL = [];
-const KEYS = ["anio", "mes", "planta", "area", "maquina", "resp", "estado", "clasif", "tipo", "odt", "plazo"];
+const KEYS = ["anio", "mes", "dia", "planta", "area", "maquina", "resp", "estado", "clasif", "tipo", "odt", "plazo"];
 /* Cada página tiene sus filtros, igual que las páginas del Power BI */
 const DEF_TAB = {
-  cmi: () => ({ anio: [], mes: [], planta: [], area: [], maquina: [], resp: [], tipo: [], odt: [], plazo: [], estado: PBI_ESTADO.slice(), clasif: PBI_CLASIF.slice() }),
-  detalle: () => ({ anio: [], mes: [], planta: [], area: ACABADOS.slice(), maquina: [], resp: [], tipo: [], odt: [], plazo: [], estado: PBI_ESTADO.slice(), clasif: PBI_CLASIF.slice() }),
-  rend: () => ({ anio: [], mes: [], planta: [], area: [], maquina: [], resp: [], tipo: [], odt: [], plazo: [], estado: [], clasif: PBI_CLASIF.slice() }),
+  cmi: () => ({ anio: [], mes: [], dia: [], planta: [], area: [], maquina: [], resp: [], tipo: [], odt: [], plazo: [], estado: PBI_ESTADO.slice(), clasif: PBI_CLASIF.slice() }),
+  detalle: () => ({ anio: [], mes: [], dia: [], planta: [], area: ACABADOS.slice(), maquina: [], resp: [], tipo: [], odt: [], plazo: [], estado: PBI_ESTADO.slice(), clasif: PBI_CLASIF.slice() }),
+  rend: () => ({ anio: [], mes: [], dia: [], planta: [], area: [], maquina: [], resp: [], tipo: [], odt: [], plazo: [], estado: [], clasif: PBI_CLASIF.slice() }),
 };
 /* Responsables de ODT que no son técnicos (se ocultan en el rendimiento con "Solo técnicos") */
 const NO_TECNICOS = ["JAVIER GAMEZ BLANCO", "RODRIGUEZ PENA JAIME ALFONSO", "BRIANDA BETANCOURT SANCHEZ", "JOSE SANTIAGO CASTAÑEDA BUITRAGO", "FABIAN STEVEN GARAY GOMEZ"];
@@ -779,7 +800,7 @@ const UI = { tab: ["#detalle", "#rend"].includes(location.hash) ? location.hash.
 const FT = { cmi: DEF_TAB.cmi(), detalle: DEF_TAB.detalle(), rend: DEF_TAB.rend() };
 const DEF = () => DEF_TAB[UI.tab]();
 let F = FT[UI.tab];
-const FLABEL = { anio:"Año", mes:"Mes", planta:"Planta", area:"Área", maquina:"Máquina", resp:"Técnico", tipo:"Tipo", estado:"Estado", clasif:"Clasificación", odt:"ODT", plazo:"Plazo" };
+const FLABEL = { anio:"Año", mes:"Mes", dia:"Día", planta:"Planta", area:"Área", maquina:"Máquina", resp:"Técnico", tipo:"Tipo", estado:"Estado", clasif:"Clasificación", odt:"ODT", plazo:"Plazo" };
 const PLANTAS = { acabados: "Planta Acabados", otras: "Otras áreas" };
 const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
 /* Estado vacío = todos menos canceladas (medida 21); las canceladas solo aparecen si se eligen */
@@ -797,6 +818,7 @@ function filt(skip = []) {
   const sk = new Set(skip);
   return ALL.filter((d) =>
     (sk.has("anio") || has("anio", String(d.y))) && (sk.has("mes") || has("mes", String(d.m))) &&
+    (sk.has("dia") || !F.dia.length || (d.fecha && d.fecha >= F.dia[0] && d.fecha <= F.dia[1])) &&
     (sk.has("planta") || plantaOk(d)) && (sk.has("area") || has("area", d.area)) &&
     (sk.has("maquina") || has("maquina", d.maquina)) && (sk.has("resp") || has("resp", d.responsable)) &&
     (sk.has("tipo") || has("tipo", d.tipo)) && (sk.has("estado") ? !d.cancel : has("estado", d.estado)) &&
@@ -913,6 +935,7 @@ function optionsFor(k) {
 }
 function summaryText(k, opts) {
   const cur = F[k];
+  if (k === "dia") return !cur.length ? "Todos" : cur[0] === cur[1] ? fdate(cur[0]) : fdate(cur[0]) + " – " + fdate(cur[1]);
   if (!cur.length) return "Todos";
   const lab = new Map(opts.map((o) => [o[0], o[1]]));
   const names = cur.map((v) => lab.get(v) || (k === "area" ? short(v) : v));
@@ -969,7 +992,23 @@ function makeMS(wrap) {
 document.querySelectorAll(".msw").forEach(makeMS);
 document.addEventListener("click", (e) => { document.querySelectorAll("details.ms[open]").forEach((d) => { if (!d.contains(e.target)) d.open = false; }); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") document.querySelectorAll("details.ms[open]").forEach((d) => { d.open = false; }); });
-function fillFilters() { Object.values(MS).forEach((m) => m.refresh()); }
+/* Filtro por día de captura (rango desde–hasta, con atajos) */
+const isoOf = (dt) => dt.getFullYear() + "-" + p2(dt.getMonth() + 1) + "-" + p2(dt.getDate());
+const diaW = $("dia-w");
+function setDia(a, b) { if (a && b && a > b) [a, b] = [b, a]; diaW.open = false; setF("dia", a && b ? [a, b] : []); }
+document.querySelectorAll(".dia-q button").forEach((b) => b.addEventListener("click", () => {
+  const q = b.dataset.q, t = new Date(now0);
+  if (q === "mes") return setDia(TODAY.slice(0, 8) + "01", TODAY);
+  if (q === "1") { t.setDate(t.getDate() - 1); const y = isoOf(t); return setDia(y, y); }
+  t.setDate(t.getDate() - Math.max(0, +q - 1)); setDia(isoOf(t), TODAY);
+}));
+$("dia-ok").addEventListener("click", () => { const a = $("dia-d").value, b = $("dia-h").value; setDia(a || b, b || a); });
+$("dia-x").addEventListener("click", () => setDia());
+function fillDia() {
+  const sm = $("dia-sum"); sm.textContent = summaryText("dia"); sm.classList.toggle("on", F.dia.length > 0);
+  $("dia-d").value = F.dia[0] || ""; $("dia-h").value = F.dia[1] || "";
+}
+function fillFilters() { Object.values(MS).forEach((m) => m.refresh()); fillDia(); }
 
 function chips() {
   const box = $("chips"); box.replaceChildren();
@@ -1052,7 +1091,8 @@ function drawCMI(rows) {
   drawMQ(sinEstado);
   drawRA(sinEstado);
   /* áreas por periodo (semana / mes / trimestre / semestre) */
-  drawAreasPeriodo(sinEstado);
+  /* sin el filtro de día: así las cerradas y pendientes de cada día cuentan también ODTs capturadas antes */
+  drawAreasPeriodo(filt(["estado", "dia"]));
 
   /* por área */
   const AB = [{ k: "term", l: "Terminadas", c: "var(--term)" }, { k: "proc", l: "En proceso", c: "var(--proc)" }, { k: "paus", l: "En pausa", c: "var(--paus)" }, { k: "pend", l: "Pendientes", c: "var(--pend)" }];
@@ -1202,6 +1242,7 @@ function periodKey(iso, g) {
   if (!iso) return null;
   const y = +iso.slice(0, 4), m = +iso.slice(5, 7);
   if (g === "mes") return y * 100 + m;
+  if (g === "dia") return y * 10000 + m * 100 + +iso.slice(8, 10);
   if (g === "tri") return y * 10 + Math.ceil(m / 3);
   if (g === "smt") return y * 10 + (m <= 6 ? 1 : 2);
   const d = new Date(Date.UTC(y, m - 1, +iso.slice(8, 10)));       /* semana ISO */
@@ -1211,6 +1252,7 @@ function periodKey(iso, g) {
   return fy * 100 + wk;
 }
 function periodLabel(k, g, long) {
+  if (g === "dia") { const iso = Math.floor(k / 10000) + "-" + p2(Math.floor(k / 100) % 100) + "-" + p2(k % 100); const dw = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"][new Date(iso + "T12:00").getDay()]; return long ? dw + " " + fdate(iso) : (k % 100) + " " + MES[Math.floor(k / 100) % 100 - 1]; }
   if (g === "mes") return long ? MESL[k % 100 - 1] + " " + Math.floor(k / 100) : MES[k % 100 - 1] + " " + String(Math.floor(k / 100)).slice(2);
   if (g === "tri") return (long ? "Trimestre " : "T") + (k % 10) + " " + (long ? Math.floor(k / 10) : String(Math.floor(k / 10)).slice(2));
   if (g === "smt") return (long ? "Semestre " : "Sem ") + (k % 10) + " " + (long ? Math.floor(k / 10) : String(Math.floor(k / 10)).slice(2));
@@ -1249,6 +1291,12 @@ function drawAreasPeriodo(base) {
   const rows = base.filter(inArea(UI.apArea));
   let keys = [...new Set(rows.filter((d) => d.fecha).map(kIn))].filter((k) => k != null).sort((a, b) => a - b);
   if (g === "sem") keys = keys.slice(-26);
+  if (g === "dia") {   /* todos los días del rango (incluye días sin ODTs), máximo los últimos 31 */
+    const to = F.dia.length ? F.dia[1] : TODAY, t = new Date(to + "T12:00"), all = [];
+    const from = F.dia.length ? F.dia[0] : null;
+    for (let i = 0; i < 31; i++) { const iso = isoOf(t); if (from && iso < from) break; all.unshift(periodKey(iso, "dia")); t.setDate(t.getDate() - 1); }
+    keys = all;
+  } else if (F.dia.length) { const a = periodKey(F.dia[0], g), b = periodKey(F.dia[1], g); keys = keys.filter((k) => k >= a && k <= b); }
   const C = calc(rows, keys);
   if (UI.apView === "estado") {
     $("ap-sub").textContent = "Cada barra son las ODTs que entraron en el periodo, divididas según su estado de hoy (entradas = terminadas + siguen abiertas). Línea: % de esas ODTs que ya están terminadas.";
@@ -1277,7 +1325,7 @@ function drawAreasPeriodo(base) {
   }
   /* tabla área × periodo (últimos periodos) con columnas que cuadran */
   const tb = $("t-ap"); tb.replaceChildren();
-  const last = keys.slice(g === "sem" ? -8 : g === "mes" ? -6 : -4);
+  const last = keys.slice(g === "dia" ? -7 : g === "sem" ? -8 : g === "mes" ? -6 : -4);
   if (!last.length) return;
   const estado = UI.apView === "estado";
   const heads = estado ? ["Ent.", "Term.", "Abiertas"] : ["Ent.", "Cerr.", "Pend. cierre"];
@@ -1312,9 +1360,9 @@ function drawAreasPeriodo(base) {
   foot.style.captionSide = "bottom"; foot.style.textAlign = "left"; foot.style.padding = "8px"; foot.style.fontSize = "12.5px"; foot.style.color = "var(--muted)";
   tb.append(foot);
 }
-document.querySelectorAll("#ap-seg button").forEach((b) => b.addEventListener("click", () => { UI.ap = b.dataset.g; drawAreasPeriodo(filt(["estado"])); }));
-document.querySelectorAll("#ap-view button").forEach((b) => b.addEventListener("click", () => { UI.apView = b.dataset.v; drawAreasPeriodo(filt(["estado"])); }));
-$("ap-area").addEventListener("change", (e) => { UI.apArea = e.target.value; drawAreasPeriodo(filt(["estado"])); });
+document.querySelectorAll("#ap-seg button").forEach((b) => b.addEventListener("click", () => { UI.ap = b.dataset.g; drawAreasPeriodo(filt(["estado", "dia"])); }));
+document.querySelectorAll("#ap-view button").forEach((b) => b.addEventListener("click", () => { UI.apView = b.dataset.v; drawAreasPeriodo(filt(["estado", "dia"])); }));
+$("ap-area").addEventListener("change", (e) => { UI.apArea = e.target.value; drawAreasPeriodo(filt(["estado", "dia"])); });
 
 document.querySelectorAll("#am-seg button").forEach((x) => x.addEventListener("click", () => { UI.am = x.dataset.m; render(); }));
 $("btn-print").addEventListener("click", () => window.print());
