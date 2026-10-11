@@ -1411,7 +1411,7 @@ function drawDetalle(rows) {
     .sort((a, b) => b.total - a.total).slice(0, 12);
   legend($("lg-area2"), SA);
   bars($("b-area2"), byArea, {
-    series: SA, sel: F.area, pct: true, value: (d) => NF.format(d.total) + (d.vals.PendAtr ? " · " + Math.round(d.vals.PendAtr * 100 / d.total) + " % atras." : ""), bad: (d) => d.vals.PendAtr / d.total >= 0.4,  click: (d) => toggleF("area", d.key),
+    series: SA, sel: F.area,  click: (d) => toggleF("area", d.key),
     segClick: (d, sr) => drillTo({ pred: (x) => x.area === d.key && sr.f(x), label: d.label + " · " + sr.l.toLowerCase(), c: sr.c }),
     tip: (d) => [{ t: d.label + " · " + NF.format(d.total) + " ODTs" }, ...SA.filter((sr) => d.vals[sr.k]).map((sr) => ({ c: sr.c, t: sr.l + ": " + NF.format(d.vals[sr.k]) + " (" + pct(d.vals[sr.k], d.total) + ")" })), { t: "Máquinas con más ODTs:" },
       ...[...groupBy(d.rows, (r) => r.maquina)].map(([m, v]) => [m, v.length]).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([m, c]) => ({ t: m + ": " + NF.format(c) }))],
@@ -1427,7 +1427,7 @@ function drawDetalle(rows) {
   if (!UI.todos) items = items.slice(0, LIM);
   for (const r0 of F.resp) if (!items.some((d) => d.key === r0)) { const v = base.filter((d) => d.responsable === r0); items.push({ key: r0, label: r0, vals: tvals(v), total: v.length }); }
   bars($("b-tec"), items, {
-    series, sel: F.resp, pct: true, value: (d) => NF.format(d.total) + (d.vals.PendAtr ? " · " + Math.round(d.vals.PendAtr * 100 / d.total) + " % atras." : ""), bad: (d) => d.vals.PendAtr / d.total >= 0.4, 
+    series, sel: F.resp, 
     tip: (d) => [{ t: d.label }, ...series.filter((sr) => d.vals[sr.k]).map((sr) => ({ c: sr.c, t: sr.l + ": " + NF.format(d.vals[sr.k]) + " (" + pct(d.vals[sr.k], d.total) + ")" })), { t: "Total: " + NF.format(d.total) }],
     segClick: (d, sr) => drillTo({ pred: (x) => x.responsable === d.key && sr.f(x), skip: ["resp"], label: d.label + " · " + sr.l.toLowerCase(), c: sr.c }),
     click: (d) => { toggleF("resp", d.key); if (F.resp.length) $("matriz").scrollIntoView({ behavior: "smooth", block: "start" }); },
