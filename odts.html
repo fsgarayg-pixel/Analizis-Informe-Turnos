@@ -985,70 +985,98 @@ function periodLabel(k, g, long) {
 function drawAreasPeriodo(base) {
   const g = UI.ap;
   document.querySelectorAll("#ap-seg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.g === g)));
+  document.querySelectorAll("#ap-view button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === UI.apView)));
   /* selector de área (respeta los demás filtros) */
   const sel = $("ap-area"), areas = [...groupBy(base, (d) => d.area)].sort((a, b) => b[1].length - a[1].length).map(([a]) => a);
   if (UI.apArea && UI.apArea !== "__acab" && !areas.includes(UI.apArea)) UI.apArea = "";
   sel.replaceChildren(new Option("Todas las áreas", ""), new Option("Planta Acabados (6 áreas)", "__acab"), ...areas.map((a) => new Option(short(a), a)));
   sel.value = UI.apArea;
-  const rows = base.filter((d) => !UI.apArea || (UI.apArea === "__acab" ? d.acabados : d.area === UI.apArea));
-  const ent = groupBy(rows.filter((d) => d.fecha), (d) => periodKey(d.fecha, g));
-  const cum = groupBy(rows.filter((d) => d.term && d.fin), (d) => periodKey(d.fin, g));
-  let keys = [...new Set([...ent.keys(), ...cum.keys()])].filter((k) => k != null).sort((a, b) => a - b);
-  if (g === "sem") keys = keys.slice(-26);
-  const data = keys.map((k) => {
-    const e = ent.get(k) || [], c = cum.get(k) || [];
-    const pend = e.filter((d) => !d.term).length;
-    return { key: k, label: periodLabel(k, g), v: { e: e.length, c: c.length, p: pend, r: ratio(c.length, e.length) } };
-  });
-  document.querySelectorAll("#ap-view button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === UI.apView)));
+  const inArea = (a) => (d) => !a || (a === "__acab" ? d.acabados : d.area === a);
   const scope = UI.apArea ? " · " + (UI.apArea === "__acab" ? "Planta Acabados" : short(UI.apArea)) : "";
+  /* periodo de entrada y de cierre de cada ODT */
+  const kIn = (d) => periodKey(d.fecha, g);
+  const kOut = (d) => (d.term ? periodKey(d.fin || d.fecha, g) : Infinity);
+  /* cuentas que SÍ cuadran:
+     Flujo:  pendientes al cierre = pendientes al cierre anterior + entradas − cerradas
+     Estado: entradas = terminadas + siguen abiertas (de las que entraron en ese periodo) */
+  const calc = (rows, keys) => {
+    const fl = rows.filter((d) => d.fecha).map((d) => [kIn(d), kOut(d), d]);
+    return keys.map((k) => {
+      let e = 0, c = 0, pc = 0, pi = 0; const coh = [];
+      for (const [ki, ko, d] of fl) {
+        if (ki === k) { e++; coh.push(d); }
+        if (ko === k) c++;
+        if (ki <= k && ko > k) pc++;
+        if (ki < k && ko >= k) pi++;
+      }
+      return { k, e, c, pc, pi, coh: stats(coh) };
+    });
+  };
+  const rows = base.filter(inArea(UI.apArea));
+  let keys = [...new Set(rows.filter((d) => d.fecha).map(kIn))].filter((k) => k != null).sort((a, b) => a - b);
+  if (g === "sem") keys = keys.slice(-26);
+  const C = calc(rows, keys);
   if (UI.apView === "estado") {
-    $("ap-sub").textContent = "Cada barra son las ODTs que entraron en el periodo, divididas según su estado de hoy. Línea: % de esas ODTs que ya están terminadas.";
+    $("ap-sub").textContent = "Cada barra son las ODTs que entraron en el periodo, divididas según su estado de hoy (entradas = terminadas + siguen abiertas). Línea: % de esas ODTs que ya están terminadas.";
     const MB = [{ k: "term", l: "Terminadas", c: "var(--term)" }, { k: "proc", l: "En proceso", c: "var(--proc)" }, { k: "paus", l: "En pausa", c: "var(--paus)" }, { k: "pend", l: "Pendientes", c: "var(--pend)" }];
     const ML = [{ k: "rend", l: "% terminadas", c: "var(--ink)" }];
     legend($("lg-ap"), [...MB, ...ML]);
-    const ed = keys.filter((k) => ent.has(k)).map((k) => ({ key: k, label: periodLabel(k, g), v: stats(ent.get(k)) }));
-    svgChart($("c-ap"), ed, {
+    svgChart($("c-ap"), C.filter((x) => x.e).map((x) => ({ key: x.k, label: periodLabel(x.k, g), v: x.coh })), {
       bars: MB, stacked: true, lines: ML, totalLabel: true, label: "Estado actual de las ODTs que entraron por periodo", empty: "Sin ODTs con estos filtros.",
       tip: (c) => [{ t: periodLabel(c.key, g, true) + scope + " · " + NF.format(c.v.asig) + " entraron" }, ...MB.map((x) => ({ c: x.c, t: x.l + ": " + NF.format(c.v[x.k]) })), { t: "Terminadas: " + fmtPct(c.v.rend) }],
     });
   } else {
-  $("ap-sub").textContent = "Entradas: ODTs creadas en el periodo. Cumplidas: ODTs terminadas en el periodo (aunque hayan entrado antes). Pendientes: de las que entraron, las que siguen abiertas hoy. Línea: cumplidas ÷ entradas (sobre 100 % = ese periodo se redujo el atraso).";
-  const B = [{ k: "e", l: "Entradas", c: "var(--proc)" }, { k: "c", l: "Cumplidas", c: "var(--term)" }, { k: "p", l: "Pendientes (siguen abiertas)", c: "var(--pend)" }];
-  const L = [{ k: "r", l: "Cumplidas ÷ entradas", c: "var(--ink)" }];
-  legend($("lg-ap"), [...B, ...L]);
-  const pmax = Math.max(1, ...data.map((d) => d.v.r || 0));
-  svgChart($("c-ap"), data, {
-    bars: B, lines: L, pctMax: [1, 1.2, 1.6, 2, 3].find((x) => x >= pmax) || Math.ceil(pmax), valueLabels: true, label: "Entradas, cumplidas y pendientes por periodo",
-    empty: "Sin ODTs con estos filtros.",
-    tip: (c) => [{ t: periodLabel(c.key, g, true) + (UI.apArea ? " · " + (UI.apArea === "__acab" ? "Planta Acabados" : short(UI.apArea)) : "") },
-      { c: "var(--proc)", t: "Entradas: " + NF.format(c.v.e) }, { c: "var(--term)", t: "Cumplidas: " + NF.format(c.v.c) },
-      { c: "var(--pend)", t: "Pendientes: " + NF.format(c.v.p) + (c.v.e ? " (" + fmtPct(c.v.p / c.v.e) + " de lo que entró)" : "") }, { t: "Cumplidas ÷ entradas: " + fmtPct(c.v.r) }],
-  });
+    $("ap-sub").textContent = "Entradas: ODTs creadas en el periodo. Cerradas: ODTs terminadas en el periodo (aunque hayan entrado antes). Pendientes al cierre: ODTs abiertas al terminar el periodo = pendientes del periodo anterior + entradas − cerradas. Línea: cerradas ÷ entradas (sobre 100 % = se redujo el atraso).";
+    const B = [{ k: "e", l: "Entradas", c: "var(--proc)" }, { k: "c", l: "Cerradas", c: "var(--term)" }, { k: "pc", l: "Pendientes al cierre", c: "var(--pend)" }];
+    const L = [{ k: "r", l: "Cerradas ÷ entradas", c: "var(--ink)" }];
+    legend($("lg-ap"), [...B, ...L]);
+    const data = C.map((x) => ({ key: x.k, label: periodLabel(x.k, g), v: { e: x.e, c: x.c, pc: x.pc, pi: x.pi, r: ratio(x.c, x.e) } }));
+    const pmax = Math.max(1, ...data.map((d) => d.v.r || 0));
+    svgChart($("c-ap"), data, {
+      bars: B, lines: L, pctMax: [1, 1.2, 1.6, 2, 3].find((x) => x >= pmax) || Math.ceil(pmax), valueLabels: true, label: "Entradas, cerradas y pendientes al cierre por periodo",
+      empty: "Sin ODTs con estos filtros.",
+      tip: (c) => [{ t: periodLabel(c.key, g, true) + scope },
+        { t: "Pendientes al inicio: " + NF.format(c.v.pi) },
+        { c: "var(--proc)", t: "+ Entradas: " + NF.format(c.v.e) }, { c: "var(--term)", t: "− Cerradas: " + NF.format(c.v.c) },
+        { c: "var(--pend)", t: "= Pendientes al cierre: " + NF.format(c.v.pc) }, { t: "Cerradas ÷ entradas: " + fmtPct(c.v.r) }],
+    });
   }
-  /* tabla área × periodo (últimos periodos) */
+  /* tabla área × periodo (últimos periodos) con columnas que cuadran */
   const tb = $("t-ap"); tb.replaceChildren();
   const last = keys.slice(g === "sem" ? -8 : g === "mes" ? -6 : -4);
   if (!last.length) return;
+  const estado = UI.apView === "estado";
+  const heads = estado ? ["Ent.", "Term.", "Abiertas"] : ["Ent.", "Cerr.", "Pend. cierre"];
   const hr = el("tr"); hr.append(el("th", "", "Área"));
   last.forEach((k) => { const h = el("th", "", periodLabel(k, g)); h.colSpan = 3; h.style.textAlign = "center"; hr.append(h); });
   const hr2 = el("tr"); hr2.append(el("th", "", ""));
-  last.forEach(() => ["Ent.", "Cum.", "Pend."].forEach((x) => hr2.append(el("th", "", x))));
+  last.forEach(() => heads.forEach((x) => hr2.append(el("th", "", x))));
   const th = el("thead"); th.append(hr, hr2); tb.append(th);
   const bd = el("tbody");
-  const list = UI.apArea ? [UI.apArea === "__acab" ? "__acab" : UI.apArea] : areas.slice(0, 12);
+  const list = UI.apArea ? [UI.apArea] : areas.slice(0, 12);
+  const allKeys = [...new Set(base.filter((d) => d.fecha).map(kIn))].sort((a, b) => a - b);
   for (const a of list) {
-    const ra = base.filter((d) => (a === "__acab" ? d.acabados : d.area === a));
+    const ra = base.filter(inArea(a));
+    const ca = new Map(calc(ra, allKeys.filter((k) => k <= last[last.length - 1])).map((x) => [x.k, x]));
     const tr = el("tr"); tr.append(el("td", "", a === "__acab" ? "Planta Acabados" : short(a)));
     for (const k of last) {
-      const e = ra.filter((d) => d.fecha && periodKey(d.fecha, g) === k), c = ra.filter((d) => d.term && d.fin && periodKey(d.fin, g) === k);
-      const p = e.filter((d) => !d.term).length;
-      tr.append(el("td", "num", e.length ? NF.format(e.length) : "·"), el("td", "num", c.length ? NF.format(c.length) : "·"));
-      const tp = el("td", "num", p ? NF.format(p) : "·"); if (p) tp.style.color = "var(--paus)"; tr.append(tp);
+      const x = ca.get(k) || { e: 0, c: 0, pc: 0, pi: 0, coh: { term: 0, asig: 0 } };
+      const vals = estado ? [x.e, x.coh.term, x.e - x.coh.term] : [x.e, x.c, x.pc];
+      vals.forEach((v, i) => {
+        const td = el("td", "num", v ? NF.format(v) : "·");
+        if (i === 2 && v) td.style.color = "var(--paus)";
+        if (!estado) td.title = periodLabel(k, g, true) + ": pendientes al inicio " + x.pi + " + entradas " + x.e + " − cerradas " + x.c + " = " + x.pc;
+        tr.append(td);
+      });
     }
     bd.append(tr);
   }
   tb.append(bd);
+  const foot = el("caption", "", estado
+    ? "Ent. = ODTs que entraron en el periodo · Term. = de esas, las que ya se terminaron · Abiertas = de esas, las que siguen abiertas hoy (Ent. = Term. + Abiertas)."
+    : "Ent. = ODTs creadas en el periodo · Cerr. = ODTs terminadas en el periodo (pueden venir de periodos anteriores) · Pend. cierre = abiertas al final del periodo = pend. cierre anterior + Ent. − Cerr.");
+  foot.style.captionSide = "bottom"; foot.style.textAlign = "left"; foot.style.padding = "8px"; foot.style.fontSize = "12.5px"; foot.style.color = "var(--muted)";
+  tb.append(foot);
 }
 document.querySelectorAll("#ap-seg button").forEach((b) => b.addEventListener("click", () => { UI.ap = b.dataset.g; drawAreasPeriodo(filt(["estado"])); }));
 document.querySelectorAll("#ap-view button").forEach((b) => b.addEventListener("click", () => { UI.apView = b.dataset.v; drawAreasPeriodo(filt(["estado"])); }));
