@@ -88,6 +88,28 @@ details.ms{display:block;width:100%;min-width:0}
 .kpis.k6{grid-template-columns:repeat(6,1fr)}
 .kpi .n small{font-size:18px;font-weight:600;color:var(--muted);margin-left:2px}
 .chk{display:inline-flex;gap:6px;align-items:center;font-size:13.5px;cursor:pointer}
+.tc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media (max-width:900px){.tc-grid{grid-template-columns:1fr}}
+.tc-card{border:1px solid var(--line);border-radius:8px;padding:12px 14px;border-top:4px solid var(--c)}
+.tc-card h4{margin:0;font-size:14px;color:var(--muted);font-weight:600}
+.tc-card .big{font-family:var(--font-num);font-size:30px;font-weight:700;line-height:1.1}
+.tc-bar{display:flex;height:22px;border-radius:5px;overflow:hidden;margin:8px 0 6px;gap:2px;background:var(--soft)}
+.tc-bar button{border:0;padding:0;color:#fff;font-family:var(--font-num);font-weight:700;font-size:13px;cursor:pointer;min-width:0;overflow:hidden}
+.tc-bar button:hover,.tc-bar button:focus-visible{filter:brightness(1.12);outline:2px solid var(--ink);outline-offset:-2px}
+.tc-leg{display:flex;flex-direction:column;gap:3px;font-size:13px}
+.tc-leg button{display:flex;justify-content:space-between;gap:8px;border:0;background:none;padding:2px 4px;border-radius:4px;cursor:pointer;text-align:left;color:var(--ink)}
+.tc-leg button:hover{background:var(--soft)}
+.tc-leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.tc-leg b{font-family:var(--font-num)}
+.tc-meta{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.5}
+.tc-h3{font-family:var(--font-num);font-size:16px;margin:16px 0 6px}
+.tc-t{min-width:900px}
+.tc-t td{white-space:normal}
+.tc-t th,.tc-t td{text-align:left!important}
+.tc-t td.nw{white-space:nowrap}
+.sit{display:inline-block;padding:2px 8px;border-radius:999px;font-weight:700;font-size:12.5px;white-space:nowrap;color:#fff}
+.sit.atr{background:#C0392B}.sit.riesgo{background:#C98A00}.sit.ok{background:#1F8A5B}
+.mx td.fx .sitl{margin-top:2px}
 .ap-ctl{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .ap-ctl select{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 8px;max-width:260px}
 .ap-tw{margin-top:12px;max-height:none}
@@ -418,6 +440,15 @@ details.guia dd{margin:0;color:var(--muted)}
 
   <div id="pg-detalle" role="tabpanel" aria-labelledby="tab-detalle" hidden>
     <section class="kpis k3" id="kpis-det" aria-label="Indicadores por tipo"></section>
+
+    <section class="panel" id="panel-tiempos" aria-label="Control de tiempos de ODTs abiertas">
+      <h2>Control de tiempos de ODTs abiertas</h2>
+      <p class="sub">Compara la hora actual con el plazo de cada ODT (fecha programada + ventana del CMMS). <b style="color:#C0392B">Atrasada</b>: ya pasó el plazo · <b style="color:#C98A00">En riesgo</b>: faltan 24 h o menos (o, si está en proceso, su fin proyectado queda después del plazo) · <b style="color:#1F8A5B">A tiempo</b>: faltan más de 24 h. Haz clic en cualquier número para ver esas ODTs.</p>
+      <div class="tc-grid" id="tc-grid"></div>
+      <h3 class="tc-h3">Las más atrasadas</h3>
+      <div class="tw"><table class="score tc-t" id="tc-t"></table></div>
+      <p class="foot" id="tc-foot"></p>
+    </section>
     <section class="panel" aria-label="ODTs por técnico">
       <h2>ODTs por técnico y estado</h2>
       <p class="sub">Igual que "Cantidad de ODTS Técnico" de tu Power BI. Toca un técnico para ver abajo la descripción de sus ODTs por área y máquina.</p>
@@ -575,6 +606,32 @@ const fdate = (iso) => (iso ? +iso.slice(8, 10) + " " + MES[+iso.slice(5, 7) - 1
 const now0 = new Date(); const TODAY = now0.getFullYear() + "-" + p2(now0.getMonth() + 1) + "-" + p2(now0.getDate());
 const daysBetween = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
 const NOWH = TODAY + " " + p2(now0.getHours()) + ":" + p2(now0.getMinutes());
+/* ---------- Control de tiempos de las ODTs abiertas ----------
+   Plazo = fecha programada + ventana del CMMS (la misma regla que produce "Atención/Solución atrasada").
+   Atrasada: ya pasó el plazo · En riesgo: faltan 24 h o menos · A tiempo: faltan más de 24 h.
+   En proceso además se proyecta el fin: inicio + horas estimadas; si queda después del plazo, va tarde. */
+const hDiff = (a, b) => (Date.parse(a.replace(" ", "T")) - Date.parse(b.replace(" ", "T"))) / 36e5;
+function fmtDH(h) {
+  if (h == null || !isFinite(h)) return "—";
+  const a = Math.abs(h), d = Math.floor(a / 24), hh = Math.floor(a % 24), mm = Math.round((a - Math.floor(a)) * 60);
+  if (d) return d + " d " + hh + " h";
+  if (hh) return hh + " h" + (mm ? " " + mm + " min" : "");
+  return mm + " min";
+}
+function situacion(d) {
+  if (d.term || !d.plazo) return null;
+  const falta = hDiff(d.plazo, NOWH);            /* horas que faltan (negativo = retraso) */
+  let cls = falta < 0 ? "atr" : falta <= 24 ? "riesgo" : "ok";
+  let proy = null, excede = false;
+  if (d.estado === "Proceso" && d.iniHora && d.hEst != null) {
+    const finProy = new Date(Date.parse(d.iniHora.replace(" ", "T")) + d.hEst * 36e5);
+    proy = finProy.getFullYear() + "-" + p2(finProy.getMonth() + 1) + "-" + p2(finProy.getDate()) + " " + p2(finProy.getHours()) + ":" + p2(finProy.getMinutes());
+    if (cls !== "atr" && proy > d.plazo) cls = "riesgo";
+  }
+  if (d.hDed != null && d.hEst != null && d.hDed > d.hEst) excede = true;
+  const txt = falta < 0 ? "Atrasada " + fmtDH(-falta) : "Faltan " + fmtDH(falta);
+  return { cls, falta, txt, proy, excede };
+}
 function groupBy(rows, f) { const m = new Map(); for (const d of rows) { const k = f(d); if (!m.has(k)) m.set(k, []); m.get(k).push(d); } return m; }
 const countEst = (v) => { const o = { Pendiente: 0, Pausado: 0, Proceso: 0, Terminado: 0 }; for (const d of v) o[d.estado] = (o[d.estado] || 0) + 1; return o; };
 function setStatus(msg, kind) { const s = $("status"); s.replaceChildren(); if (msg) s.append(el("span", kind || "", msg)); }
@@ -644,6 +701,9 @@ function normOdts(raw) {
     d.enTiempo = d.term && d.hEst != null && d.hDed != null ? d.hDed <= d.hEst : null;
     d.vencida = !d.term && d.plazo ? d.plazo < NOWH : false;
     d.fy = fin ? +fin.slice(0, 4) : null; d.fm = fin ? +fin.slice(5, 7) : null;
+    d.atrCMMS = cl(r.AtrasadaCMMS); d.pausaH = r.PausaHoras === "" || r.PausaHoras == null ? null : +r.PausaHoras;
+    d.nPausas = +s(r.NumPausas) || 0; d.nota = cl(r.NotaCMMS);
+    d.sit = situacion(d);
     out.push(d);
   }
   return out;
@@ -1085,8 +1145,70 @@ $("ap-area").addEventListener("change", (e) => { UI.apArea = e.target.value; dra
 document.querySelectorAll("#am-seg button").forEach((x) => x.addEventListener("click", () => { UI.am = x.dataset.m; render(); }));
 $("btn-print").addEventListener("click", () => window.print());
 
+/* ---------- Control de tiempos ---------- */
+const SITC = { atr: { l: "Atrasadas", c: "#C0392B" }, riesgo: { l: "En riesgo (≤ 24 h)", c: "#C98A00" }, ok: { l: "A tiempo", c: "#1F8A5B" } };
+function drawTiempos(rows) {
+  const open = rows.filter((d) => !d.term);
+  const grid = $("tc-grid"); grid.replaceChildren();
+  const avg = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
+  for (const st of ["Pendiente", "Pausado", "Proceso"]) {
+    const v = open.filter((d) => d.estado === st);
+    const card = el("div", "tc-card"); card.style.setProperty("--c", ESTC[st]);
+    card.append(el("h4", "", ESTL[st]), el("div", "big", NF.format(v.length)));
+    const cnt = { atr: 0, riesgo: 0, ok: 0 }, sinPlazo = v.filter((d) => !d.sit).length;
+    v.forEach((d) => { if (d.sit) cnt[d.sit.cls]++; });
+    const bar = el("div", "tc-bar"), leg = el("div", "tc-leg");
+    for (const k of ["atr", "riesgo", "ok"]) {
+      const go = () => drillTo({ pred: (d) => d.estado === st && d.sit && d.sit.cls === k, label: ESTL[st] + " · " + SITC[k].l.toLowerCase(), c: SITC[k].c });
+      if (cnt[k]) { const b = el("button", "", NF.format(cnt[k])); b.type = "button"; b.style.flex = cnt[k] + " 0 0"; b.style.background = SITC[k].c; b.title = SITC[k].l + ": " + cnt[k] + " · clic para ver"; b.addEventListener("click", go); bar.append(b); }
+      const lb = el("button"); lb.type = "button"; const nm = el("span"); const sw = el("i"); sw.style.background = SITC[k].c; nm.append(sw, document.createTextNode(SITC[k].l));
+      lb.append(nm, el("b", "", NF.format(cnt[k]))); lb.addEventListener("click", go); leg.append(lb);
+    }
+    card.append(bar, leg);
+    const atr = v.filter((d) => d.sit && d.sit.cls === "atr").map((d) => -d.sit.falta);
+    const meta = el("div", "tc-meta");
+    const lines = [];
+    if (atr.length) lines.push("Retraso promedio " + fmtDH(avg(atr)) + " · máximo " + fmtDH(Math.max(...atr)));
+    const okv = v.filter((d) => d.sit && d.sit.cls !== "atr").map((d) => d.sit.falta);
+    if (okv.length) lines.push("Margen promedio de las que van bien: " + fmtDH(avg(okv)));
+    if (st === "Pausado") {
+      const ph = v.map((d) => d.pausaH).filter((x) => x != null);
+      if (ph.length) lines.push("Tiempo promedio en pausa " + fmtDH(avg(ph)) + " · máximo " + fmtDH(Math.max(...ph)));
+      const conMot = v.filter((d) => d.nota).length;
+      lines.push("Con motivo de pausa registrado: " + conMot + " de " + v.length);
+    }
+    if (st === "Proceso") { const ex = v.filter((d) => d.sit && d.sit.excede).length; if (ex) lines.push(ex + " ya superan las horas estimadas"); }
+    if (sinPlazo) lines.push(sinPlazo + " sin plazo en el CMMS");
+    const cm = v.filter((d) => d.atrCMMS);
+    if (cm.length) { const ag = cm.filter((d) => (d.sit && d.sit.cls === "atr") === (d.atrCMMS.toLowerCase().startsWith("s"))).length; lines.push("Coincide con la marca de atraso del CMMS en " + ag + " de " + cm.length); }
+    lines.forEach((l) => meta.append(el("div", "", l)));
+    card.append(meta); grid.append(card);
+  }
+  /* tabla: las más atrasadas */
+  const tb = $("tc-t"); tb.replaceChildren();
+  const hr = el("tr"); ["N° ODT", "Máquina", "Estado", "Situación", "Plazo", "Responsable", "Motivo / nota del CMMS"].forEach((h) => hr.append(el("th", "", h)));
+  const th = el("thead"); th.append(hr); tb.append(th);
+  const bd = el("tbody");
+  const top = open.filter((d) => d.sit && d.sit.cls === "atr").sort((a, b) => a.sit.falta - b.sit.falta).slice(0, 15);
+  for (const d of top) {
+    const tr = el("tr");
+    tr.append(el("td", "nw", "ODT " + d.codigo), el("td", "", d.maquina));
+    const te = el("td", "nw"); const sp = el("span", "est", EST1[d.estado]); sp.style.setProperty("--c", ESTC[d.estado]); te.append(sp); tr.append(te);
+    const ts = el("td", "nw"); ts.append(el("span", "sit " + d.sit.cls, d.sit.txt)); if (d.estado === "Pausado" && d.pausaH != null) ts.append(el("div", "", "En pausa " + fmtDH(d.pausaH))); tr.append(ts);
+    tr.append(el("td", "nw", fdt(d.plazo)), el("td", "", d.responsable));
+    tr.append(el("td", "", d.estado === "Pausado" ? (d.nota || "Sin motivo registrado") : (d.nota || d.mensaje || "—")));
+    tr.style.cursor = "pointer"; tr.title = "Ver esta ODT en la tabla de descripciones";
+    tr.addEventListener("click", () => drillTo({ pred: (x) => x.codigo === d.codigo, label: "ODT " + d.codigo, c: SITC.atr.c }));
+    bd.append(tr);
+  }
+  if (!top.length) { const tr = el("tr"); const td = el("td", "empty", "No hay ODTs atrasadas con estos filtros."); td.colSpan = 7; tr.append(td); bd.append(tr); }
+  tb.append(bd);
+  $("tc-foot").textContent = "Cálculo con la hora actual (" + fdt(NOWH) + "). Los días y horas de retraso o margen se recalculan cada vez que abres o actualizas la página. Tiempo en pausa: el que reporta el CMMS en la última sincronización.";
+}
+
 /* ---------- Página ODTs ---------- */
 function drawDetalle(rows) {
+  drawTiempos(rows);
   const st = filt(["tipo"]);
   const prev = st.filter((d) => d.tipo === "PREVENTIVO").length, corr = st.filter((d) => d.tipo === "CORRECTIVO").length;
   kpis($("kpis-det"), [
@@ -1370,7 +1492,7 @@ function drillTo(dr) {
 function matrixRows(rows) {
   const q = UI.q;
   let r = rows;
-  if (UI.drill) r = r.filter((d) => d.estado === UI.drill.estado && d.dias != null && UI.drill.f(d.dias));
+  if (UI.drill) r = r.filter((d) => (UI.drill.pred ? UI.drill.pred(d) : d.estado === UI.drill.estado && d.dias != null && UI.drill.f(d.dias)));
   if (q) r = r.filter((d) => [d.codigo, d.maquina, d.descripcion, d.mensaje, d.obs, d.turnos.join(" "), d.responsable, d.area].some((x) => x && x.toLowerCase().includes(q)));
   return r;
 }
@@ -1418,6 +1540,8 @@ function drawMatrix(rows) {
         const line = (lab, v, cls) => { const dv = el("div", cls || ""); dv.append(el("b", "", lab), document.createTextNode(v ? fdt(v) : "—")); fx.append(dv); };
         line("Captura", d.fecha); line("Programada", d.ejec); line("Inicio", d.iniHora); line("Fin", d.finHora, d.term && d.enPlazo === false ? "late" : "");
         if (d.plazo) line("Plazo", d.plazo, !d.term && d.vencida ? "late" : "");
+        if (d.sit) { const sv = el("div", "sitl"); sv.append(el("span", "sit " + d.sit.cls, d.sit.txt)); fx.append(sv); }
+        if (d.estado === "Pausado" && d.pausaH != null) { const pv = el("div"); pv.append(el("b", "", "En pausa"), document.createTextNode(fmtDH(d.pausaH) + (d.nPausas > 1 ? " (" + d.nPausas + " pausas)" : ""))); fx.append(pv); }
         tr.append(fx);
         td(d.dias == null ? "" : NF.format(d.dias), "age" + (d.estado !== "Terminado" && d.dias > 30 ? " old" : ""));
         td(d.responsable);
@@ -1428,7 +1552,7 @@ function drawMatrix(rows) {
             d.turnos.forEach((x) => box.append(el("div", "", x)));
             c.append(box);
           }
-        } else td((d.obs ? d.obs + "\n" : "") + (d.mensaje ? "Abierta: " + d.mensaje : "Aún sin cerrar"), "obs pend");
+        } else td((d.estado === "Pausado" ? "Motivo de pausa: " + (d.nota || "sin motivo registrado en el CMMS") + "\n" : (d.nota ? "Nota: " + d.nota + "\n" : "")) + (d.obs ? d.obs + "\n" : "") + (d.mensaje ? "CMMS: " + d.mensaje : "Aún sin cerrar"), "obs pend");
         frag.append(tr);
       }
     }
@@ -1596,6 +1720,10 @@ async function completarObs(rows) {
     for (const d of rows) {
       const r = SNAPOBS.get(d.codigo); if (!r) continue;
       if (!d.obs) d.obs = s(r.ObservacionesFinales).trim();
+      if (!d.nota && r.NotaCMMS) d.nota = cl(r.NotaCMMS);
+      if (d.pausaH == null && r.PausaHoras) d.pausaH = +r.PausaHoras;
+      if (!d.nPausas && r.NumPausas) d.nPausas = +r.NumPausas || 0;
+      if (!d.atrCMMS && r.AtrasadaCMMS) d.atrCMMS = cl(r.AtrasadaCMMS);
       if (!d.turnos.length && r.TrabajoTurnos) d.turnos = s(r.TrabajoTurnos).split(" ¶ ").filter(Boolean);
       if (!d.descODT && r.DescripcionODT) { d.descODT = cl(s(r.DescripcionODT)); const kk = (x) => x.toLowerCase().replace(/[^a-z0-9áéíóúñ]/g, ""); if (!kk(d.asunto).includes(kk(d.descODT))) d.descripcion = (d.asunto ? d.asunto + " — " : "") + d.descODT; }
     }
@@ -1606,7 +1734,7 @@ async function fetchLive(isAuto) {
   try {
     const raw = gvizRows(await loadGviz(TAB_ODTS));
     const odts = normOdts(raw);
-    if (raw.length && (!("ObservacionesFinales" in raw[0]) || !("DescripcionODT" in raw[0]))) await completarObs(odts);
+    if (raw.length && (!("ObservacionesFinales" in raw[0]) || !("DescripcionODT" in raw[0]) || !("NotaCMMS" in raw[0]))) await completarObs(odts);
     if (!odts.length) throw new Error("vacia");
     const before = ALL.length;
     if (before && odts.length < before * 0.95) { // lectura incompleta mientras otra persona sincroniza: se conserva lo actual
