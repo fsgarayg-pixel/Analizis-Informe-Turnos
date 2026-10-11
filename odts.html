@@ -263,7 +263,7 @@ details.ms{display:block;width:100%;min-width:0}
 .trk{height:12px;position:relative}
 .trk.grp{height:auto;display:flex;flex-direction:column;gap:2px}
 .trk.grp i{display:block;height:8px;border-radius:3px;min-width:1px;position:relative}
-.trk.grp i::after{content:attr(data-v);position:absolute;left:100%;top:50%;transform:translateY(-50%);margin-left:4px;font-size:10px;line-height:1;color:var(--muted);font-family:var(--font-num);font-weight:600;font-style:normal}
+.trk.grp i::after{white-space:nowrap;content:attr(data-v);position:absolute;left:100%;top:50%;transform:translateY(-50%);margin-left:4px;font-size:10px;line-height:1;color:var(--muted);font-family:var(--font-num);font-weight:600;font-style:normal}
 .stk{display:flex;gap:1px;height:100%;border-radius:3px;overflow:hidden;min-width:2px}
 .stk i{display:block;height:100%;min-width:2px}
 .stk i.lab{font-style:normal;font-size:10.5px;line-height:16px;color:#fff;font-weight:700;text-align:center;overflow:hidden;white-space:nowrap;font-family:var(--font-num)}
@@ -302,15 +302,36 @@ details.ms{display:block;width:100%;min-width:0}
 .mx .cnt{font-family:var(--font-num);color:var(--muted);font-weight:600;margin-left:6px}
 .mx .mini{display:inline-flex;gap:8px;font-weight:500;font-size:12.5px;color:var(--muted)}
 .mx .mini i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:3px}
-.mx td.desc{min-width:300px;max-width:480px;overflow-wrap:anywhere}
-.mx td.desc .asunto{font-weight:600;font-size:12.5px;color:var(--muted);margin-bottom:2px}
+.mx td.desc{min-width:280px;max-width:460px;overflow-wrap:anywhere;font-size:12.5px;line-height:1.4}
+.mx td.desc .asunto{font-weight:600;font-size:11.5px;color:var(--muted);margin-bottom:1px}
 .mx td.desc .dodt{color:var(--ink)}
+.mx .dly{display:inline-block;margin-left:12px;padding:1px 8px;border-radius:999px;background:#C0392B;color:#fff;font-size:12px;font-weight:700;font-family:var(--font-num)}
+:root{--canc:#8A94A6}
+.tc-t .sm{font-size:11.5px;color:var(--muted);line-height:1.35;font-weight:400}
+.tc-t .dsc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:440px;margin-top:2px}
+.tc-t .mqn{font-weight:600}
+.tc-t td.big{font-family:var(--font-num);font-weight:700;color:#C0392B;font-size:15px}
+.mq-tw{margin-top:12px;max-height:560px}
+.mq-t{min-width:760px}
+.mq-t td,.mq-t th{font-size:13px}
+.mq-t tr.a td{background:var(--soft);font-weight:700}
+.mq-t tr.a td:first-child{cursor:pointer}
+.mq-t tr.m td:first-child{padding-left:30px;font-weight:500}
+.mq-t tr.tot td{font-weight:700;border-bottom:2px solid var(--ink)}
+.mq-t tbody tr{cursor:default}
+.mq-t .lnk{border:0;background:none;padding:0 2px;font:inherit;color:inherit;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+.mq-t .lnk:hover,.mq-t .lnk:focus-visible{color:var(--focus);text-decoration-style:solid}
+.mq-t .atr{color:#C0392B}
+.mq-t .tgm{display:inline-block;width:14px;color:var(--muted)}
+.mq-ctl input{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:min(220px,100%)}
 .mx td.msg{min-width:160px;max-width:260px;overflow-wrap:anywhere;color:var(--muted)}
 .mx td.obs{min-width:260px;max-width:440px;overflow-wrap:anywhere;white-space:pre-line}
 .mx td.obs.pend{color:var(--muted);font-style:italic}
 .tw-turno{margin-top:6px;padding:6px 8px;border-left:3px solid var(--prev);background:var(--soft);border-radius:0 5px 5px 0;font-size:12.5px;white-space:normal}
 .tw-turno .tt{display:block;font-weight:600;color:var(--prev);font-size:11.5px;margin-bottom:2px}
 #reporte{display:none}
+#b-ra .trk.grp{gap:3px}
+#b-ra .trk.grp i{height:9px}
 .mx td.fx{white-space:nowrap;font-size:12.5px;line-height:1.5;font-variant-numeric:tabular-nums}
 .mx td.fx b{display:inline-block;min-width:82px;color:var(--muted);font-weight:500}
 .mx td.fx .late{color:var(--paus);font-weight:600}
@@ -390,6 +411,42 @@ details.guia dd{margin:0;color:var(--muted)}
       <div class="exec-kpis" id="exec-kpis"></div>
       <ul class="exec-notes" id="exec-notes"></ul>
     </section>
+    <section class="panel" id="panel-tiempos" aria-label="Control de tiempos de ODTs abiertas">
+      <h2>Control de tiempos de ODTs abiertas</h2>
+      <p class="sub">Compara la hora actual con el plazo de cada ODT (fecha programada + ventana del CMMS). <b style="color:#C0392B">Atrasada</b>: ya pasó el plazo · <b style="color:#C98A00">En riesgo</b>: faltan 24 h o menos (o, si está en proceso, su fin proyectado queda después del plazo) · <b style="color:#1F8A5B">A tiempo</b>: faltan más de 24 h. Haz clic en cualquier número para ver esas ODTs.</p>
+      <div class="tc-grid" id="tc-grid"></div>
+      <h3 class="tc-h3">Las más atrasadas (de más a menos días de retraso)</h3>
+      <div class="tw"><table class="score tc-t" id="tc-t"></table></div>
+      <button class="linkbtn more" id="tc-all" type="button" hidden></button>
+      <p class="foot" id="tc-foot"></p>
+    </section>
+
+    <section class="panel" id="panel-mq" aria-label="Ingresan, salen y pendientes por área y máquina">
+      <div class="ph">
+        <div>
+          <h2>Ingresan, salen y pendientes por área y máquina</h2>
+          <p class="sub">Ingresan: ODTs capturadas con los filtros (todos los estados). Salen: de esas, las terminadas. Pendientes: las que siguen abiertas (pendiente, pausa o proceso). Ingresan = salen + pendientes. Toca un área para ver sus máquinas y cualquier número subrayado para ver esas ODTs.</p>
+        </div>
+        <div class="ap-ctl mq-ctl">
+          <label class="lbl">Área <select id="mq-area" aria-label="Área de la tabla"></select></label>
+          <input type="search" id="mq-q" placeholder="Buscar máquina…" aria-label="Buscar máquina en la tabla">
+          <div class="seg" role="group" aria-label="Mostrar" id="mq-seg">
+            <button type="button" data-v="all" aria-pressed="true">Todas</button>
+            <button type="button" data-v="pend" aria-pressed="false">Con pendientes</button>
+            <button type="button" data-v="atr" aria-pressed="false">Con atrasadas</button>
+          </div>
+        </div>
+      </div>
+      <div class="tw mq-tw"><table class="score mq-t" id="t-mq"></table></div>
+      <p class="foot" id="mq-foot"></p>
+    </section>
+
+    <section class="panel" id="panel-ra" aria-label="Rendimiento por área">
+      <h2>Rendimiento por área</h2>
+      <p class="sub" id="ra-sub">Con los filtros aplicados (todos los estados). Barras: % terminadas de lo que ingresó, % terminadas dentro del plazo y % dentro de las horas estimadas. Toca un área para filtrar.</p>
+      <div class="legend" id="lg-ra"></div>
+      <div class="bars" id="b-ra"></div>
+    </section>
 
     <section class="panel" id="panel-ap" aria-label="Áreas por periodo">
       <div class="ph">
@@ -442,17 +499,9 @@ details.guia dd{margin:0;color:var(--muted)}
   <div id="pg-detalle" role="tabpanel" aria-labelledby="tab-detalle" hidden>
     <section class="kpis k3" id="kpis-det" aria-label="Indicadores por tipo"></section>
 
-    <section class="panel" id="panel-tiempos" aria-label="Control de tiempos de ODTs abiertas">
-      <h2>Control de tiempos de ODTs abiertas</h2>
-      <p class="sub">Compara la hora actual con el plazo de cada ODT (fecha programada + ventana del CMMS). <b style="color:#C0392B">Atrasada</b>: ya pasó el plazo · <b style="color:#C98A00">En riesgo</b>: faltan 24 h o menos (o, si está en proceso, su fin proyectado queda después del plazo) · <b style="color:#1F8A5B">A tiempo</b>: faltan más de 24 h. Haz clic en cualquier número para ver esas ODTs.</p>
-      <div class="tc-grid" id="tc-grid"></div>
-      <h3 class="tc-h3">Las más atrasadas</h3>
-      <div class="tw"><table class="score tc-t" id="tc-t"></table></div>
-      <p class="foot" id="tc-foot"></p>
-    </section>
     <section class="panel" aria-label="ODTs por técnico">
       <h2>ODTs por técnico y estado</h2>
-      <p class="sub">Igual que "Cantidad de ODTS Técnico" de tu Power BI. Toca un técnico para ver abajo la descripción de sus ODTs por área y máquina.</p>
+      <p class="sub">Igual que "Cantidad de ODTS Técnico" de tu Power BI. Clic en un color para ver esas ODTs del técnico (ordenadas por atraso); clic en el nombre para filtrar por el técnico.</p>
       <div class="legend" id="lg-tec"></div>
       <div class="bars" id="b-tec"></div>
       <button class="linkbtn more" id="btn-todos" type="button" hidden></button>
@@ -460,7 +509,8 @@ details.guia dd{margin:0;color:var(--muted)}
     <div class="grid2">
       <section class="panel" aria-label="ODTs por área">
         <h2>Cantidad de ODTs por área</h2>
-        <p class="sub">Pasa el cursor para ver las máquinas con más ODTs. Toca un área para filtrar.</p>
+        <p class="sub">Según los estados filtrados. Clic en un color para ver esas ODTs; clic en el nombre del área para filtrar.</p>
+        <div class="legend" id="lg-area2"></div>
         <div class="bars" id="b-area2"></div>
       </section>
       <section class="panel" aria-label="ODTs por mes">
@@ -594,10 +644,11 @@ const DF = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 2 });
 const pct = (a, b) => (b ? (Math.round(a * 1000 / b) / 10).toLocaleString("es-CO") + " %" : "—");
 const MES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const MESL = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-const ESTADOS = ["Pendiente","Pausado","Proceso","Terminado"];
-const ESTL = { Pendiente:"Pendientes", Pausado:"En pausa", Proceso:"En proceso", Terminado:"Terminadas" };
-const EST1 = { Pendiente:"Pendiente", Pausado:"En pausa", Proceso:"En proceso", Terminado:"Terminada" };
-const ESTC = { Pendiente:"var(--pend)", Pausado:"var(--paus)", Proceso:"var(--proc)", Terminado:"var(--term)" };
+const ESTADOS = ["Pendiente","Pausado","Proceso","Terminado","Cancelado"];
+const ESTL = { Pendiente:"Pendientes", Pausado:"En pausa", Proceso:"En proceso", Terminado:"Terminadas", Cancelado:"Canceladas" };
+const EST1 = { Pendiente:"Pendiente", Pausado:"En pausa", Proceso:"En proceso", Terminado:"Terminada", Cancelado:"Cancelada" };
+const ESTC = { Pendiente:"var(--pend)", Pausado:"var(--paus)", Proceso:"var(--proc)", Terminado:"var(--term)", Cancelado:"var(--canc)" };
+const isOpen = (d) => !d.term && !d.cancel;
 const short = (a) => (a ? a.replace(/\s+PROD\.?$/i, "") : a);
 const cl = (t) => String(t == null ? "" : t).replace(/\s+/g, " ").trim();
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -620,7 +671,7 @@ function fmtDH(h) {
   return mm + " min";
 }
 function situacion(d) {
-  if (d.term || !d.plazo) return null;
+  if (d.term || d.cancel || !d.plazo) return null;
   const falta = hDiff(d.plazo, NOWH);            /* horas que faltan (negativo = retraso) */
   let cls = falta < 0 ? "atr" : falta <= 24 ? "riesgo" : "ok";
   let proy = null, excede = false;
@@ -634,7 +685,7 @@ function situacion(d) {
   return { cls, falta, txt, proy, excede };
 }
 function groupBy(rows, f) { const m = new Map(); for (const d of rows) { const k = f(d); if (!m.has(k)) m.set(k, []); m.get(k).push(d); } return m; }
-const countEst = (v) => { const o = { Pendiente: 0, Pausado: 0, Proceso: 0, Terminado: 0 }; for (const d of v) o[d.estado] = (o[d.estado] || 0) + 1; return o; };
+const countEst = (v) => { const o = { Pendiente: 0, Pausado: 0, Proceso: 0, Terminado: 0, Cancelado: 0 }; for (const d of v) o[d.estado] = (o[d.estado] || 0) + 1; return o; };
 function setStatus(msg, kind) { const s = $("status"); s.replaceChildren(); if (msg) s.append(el("span", kind || "", msg)); }
 
 /* ---------- Carga (JSONP de Google, igual que el informe de turnos) ---------- */
@@ -664,13 +715,13 @@ function gvizRows(resp) {
 }
 
 /* ---------- Normalización ---------- */
-const ESTMAP = { TERMINADO:"Terminado", PENDIENTE:"Pendiente", PAUSADO:"Pausado", PROCESO:"Proceso" };
+const ESTMAP = { TERMINADO:"Terminado", PENDIENTE:"Pendiente", PAUSADO:"Pausado", PROCESO:"Proceso", CANCELADO:"Cancelado" };
 const s = (v) => (v == null ? "" : String(v));
 function normOdts(raw) {
   const out = [];
   for (const r of raw) {
     const e0 = cl(r.EstadoOrden).toUpperCase();
-    if (!e0 || e0 === "CANCELADO") continue;
+    if (!e0) continue;  /* las canceladas se guardan, pero solo cuentan si se eligen en el filtro de estado */
     const codigo = cl(r.CodigoAlterno).replace(/\.0+$/, "");
     if (!codigo) continue;
     const fecha = /^\d{4}-\d{2}-\d{2}/.test(s(r.FechaCaptura)) ? s(r.FechaCaptura).slice(0, 10) : null;
@@ -683,11 +734,11 @@ function normOdts(raw) {
       clasif: cl(r.IdClasificacion).replace(/\.0+$/, "") || "Sin clasificación",
       responsable: s(r.Responsable).trim() || "SIN RESPONSABLE",
       maquina: s(r.Maquina_Limpia).trim() || "SIN MÁQUINA",
-      area, acabados: ACABADOS.includes(area),
+      area, acabados: ACABADOS.includes(area), cancel: estado === "Cancelado",
       asunto: cl(r.DescripcionInicial), descODT: cl(s(r.DescripcionODT).replace(/<[^>]+>/g, " ")), mensaje: cl(r.MensajeFalta),
       y: fecha ? +fecha.slice(0, 4) : null, m: fecha ? +fecha.slice(5, 7) : null,
     };
-    d.dias = fecha ? Math.max(0, daysBetween(fecha, estado === "Terminado" ? (fin || fecha) : TODAY)) : null;
+    d.dias = fecha ? Math.max(0, daysBetween(fecha, estado === "Terminado" || estado === "Cancelado" ? (fin || fecha) : TODAY)) : null;
     const hh = (v) => (/^\d{4}-\d{2}-\d{2}/.test(s(v)) ? s(v).slice(0, 16) : null);
     d.plazo = hh(r.Plazo); d.finHora = hh(r.FinHora); d.iniHora = hh(r.InicioHora); d.ejec = hh(r.FechaEjecucion);
     d.obs = s(r.ObservacionesFinales).trim();
@@ -700,7 +751,7 @@ function normOdts(raw) {
     d.term = estado === "Terminado";
     d.enPlazo = d.term && d.plazo && d.finHora ? d.finHora <= d.plazo : null;
     d.enTiempo = d.term && d.hEst != null && d.hDed != null ? d.hDed <= d.hEst : null;
-    d.vencida = !d.term && d.plazo ? d.plazo < NOWH : false;
+    d.vencida = isOpen(d) && d.plazo ? d.plazo < NOWH : false;
     d.fy = fin ? +fin.slice(0, 4) : null; d.fm = fin ? +fin.slice(5, 7) : null;
     d.atrCMMS = cl(r.AtrasadaCMMS); d.pausaH = r.PausaHoras === "" || r.PausaHoras == null ? null : +r.PausaHoras;
     d.nPausas = +s(r.NumPausas) || 0; d.nota = cl(r.NotaCMMS);
@@ -721,14 +772,15 @@ const DEF_TAB = {
 };
 /* Responsables de ODT que no son técnicos (se ocultan en el rendimiento con "Solo técnicos") */
 const NO_TECNICOS = ["JAVIER GAMEZ BLANCO", "RODRIGUEZ PENA JAIME ALFONSO", "BRIANDA BETANCOURT SANCHEZ", "JOSE SANTIAGO CASTAÑEDA BUITRAGO", "FABIAN STEVEN GARAY GOMEZ"];
-const UI = { tab: ["#detalle", "#rend"].includes(location.hash) ? location.hash.slice(1) : "cmi", todos: false, q: "", open: new Set(), auto: true, soloTec: true, hm: "rend", am: "ent", ap: "mes", apArea: "", apView: "flujo", sortK: "asig", sortDir: -1 };
+const UI = { tab: ["#detalle", "#rend"].includes(location.hash) ? location.hash.slice(1) : "cmi", todos: false, q: "", open: new Set(), auto: true, soloTec: true, hm: "rend", am: "ent", ap: "mes", apArea: "", apView: "flujo", sortK: "asig", sortDir: -1, mqArea: "", mqQ: "", mqShow: "all", mqSort: "maxA", mqDir: -1, mqOpen: new Set() };
 const FT = { cmi: DEF_TAB.cmi(), detalle: DEF_TAB.detalle(), rend: DEF_TAB.rend() };
 const DEF = () => DEF_TAB[UI.tab]();
 let F = FT[UI.tab];
 const FLABEL = { anio:"Año", mes:"Mes", planta:"Planta", area:"Área", maquina:"Máquina", resp:"Técnico", tipo:"Tipo", estado:"Estado", clasif:"Clasificación", odt:"ODT", plazo:"Plazo" };
 const PLANTAS = { acabados: "Planta Acabados", otras: "Otras áreas" };
 const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
-const has = (k, v) => !F[k].length || F[k].includes(v);
+/* Estado vacío = todos menos canceladas (medida 21); las canceladas solo aparecen si se eligen */
+const has = (k, v) => (k === "estado" ? (F.estado.length ? F.estado.includes(v) : v !== "Cancelado") : (!F[k].length || F[k].includes(v)));
 const plantaOk = (d) => !F.planta.length || F.planta.includes(d.acabados ? "acabados" : "otras");
 
 /* Cumplimiento de plazo de cada ODT (para el filtro) */
@@ -744,7 +796,7 @@ function filt(skip = []) {
     (sk.has("anio") || has("anio", String(d.y))) && (sk.has("mes") || has("mes", String(d.m))) &&
     (sk.has("planta") || plantaOk(d)) && (sk.has("area") || has("area", d.area)) &&
     (sk.has("maquina") || has("maquina", d.maquina)) && (sk.has("resp") || has("resp", d.responsable)) &&
-    (sk.has("tipo") || has("tipo", d.tipo)) && (sk.has("estado") || has("estado", d.estado)) &&
+    (sk.has("tipo") || has("tipo", d.tipo)) && (sk.has("estado") ? !d.cancel : has("estado", d.estado)) &&
     (sk.has("clasif") || has("clasif", d.clasif)) && (sk.has("odt") || has("odt", d.codigo)) &&
     (sk.has("plazo") || has("plazo", plazoCat(d))));
 }
@@ -774,7 +826,7 @@ const hideTip = () => { tip.hidden = true; };
 function bars(box, items, o) {
   box.replaceChildren();
   if (!items.length) { box.append(el("p", "empty", o.empty || "No hay ODTs con estos filtros.")); return; }
-  const max = Math.max(1, ...items.map((d) => o.mode === "group" ? Math.max(...o.series.map((sr) => d.vals[sr.k] || 0)) : d.total));
+  const max = o.max || Math.max(1, ...items.map((d) => o.mode === "group" ? Math.max(...o.series.map((sr) => d.vals[sr.k] || 0)) : d.total));
   for (const d of items) {
     const sel = o.sel && o.sel.length ? o.sel : null;
     const row = el("div", "br" + (sel ? (sel.includes(d.key) ? " on" : " dim") : ""));
@@ -782,7 +834,7 @@ function bars(box, items, o) {
     let trk;
     if (o.mode === "group") {
       trk = el("div", "trk grp");
-      for (const sr of o.series) { const i = el("i"); i.style.width = ((d.vals[sr.k] || 0) / max * 100) + "%"; i.style.background = sr.c; i.dataset.v = NF.format(d.vals[sr.k] || 0); trk.append(i); }
+      for (const sr of o.series) { const i = el("i"); i.style.width = ((d.vals[sr.k] || 0) / max * 100) + "%"; i.style.background = sr.c; i.dataset.v = o.fmtv ? o.fmtv(d.vals[sr.k]) : NF.format(d.vals[sr.k] || 0); trk.append(i); }
     } else {
       trk = el("div", "trk");
       const st = el("div", "stk"); st.style.width = (d.total / max * 100) + "%";
@@ -989,6 +1041,10 @@ function drawCMI(rows) {
   if (F.estado.length || F.resp.length || F.tipo.length) li("El informe cuenta todas las ODTs que entraron (todos los estados), con el resto de filtros activos.");
 
   const MB = [{ k: "term", l: "Terminadas", c: "var(--term)" }, { k: "proc", l: "En proceso", c: "var(--proc)" }, { k: "paus", l: "En pausa", c: "var(--paus)" }, { k: "pend", l: "Pendientes", c: "var(--pend)" }];
+  /* control de tiempos de las abiertas, tabla área/máquina y rendimiento por área */
+  drawTiempos(rows);
+  drawMQ(sinEstado);
+  drawRA(sinEstado);
   /* áreas por periodo (semana / mes / trimestre / semestre) */
   drawAreasPeriodo(sinEstado);
 
@@ -1031,6 +1087,109 @@ function drawCMI(rows) {
     tr.append(tot, pc); tbl.append(tr);
   }
   if (!areasTop.length) { const tr = el("tr"); tr.append(el("td", "empty", "Sin datos con estos filtros.")); tbl.append(tr); }
+}
+
+/* ---------- Prioridad por atraso ----------
+   horas de retraso (positivo = atrasada; negativo = margen). Abiertas sin plazo y terminadas van al final. */
+const atraso = (d) => (d.sit ? -d.sit.falta : isOpen(d) ? -1e6 + (d.dias || 0) : -2e6);
+const maxAtr = (v) => v.reduce((m, d) => Math.max(m, atraso(d)), -3e6);
+const byAtraso = (a, b) => maxAtr(b[1]) - maxAtr(a[1]) || b[1].length - a[1].length;
+const byAtrasoOdt = (x, y) => atraso(y) - atraso(x) || (y.fecha || "").localeCompare(x.fecha || "");
+
+/* ---------- Tabla ingresan / salen / pendientes por área y máquina ---------- */
+const MQCOLS = [["n", "Área / máquina"], ["ent", "Ingresan"], ["sal", "Salen"], ["pend", "Pendientes"], ["atr", "Atrasadas"], ["pP", "% salen"], ["plazo", "% en plazo"], ["maxA", "Máx. atraso"]];
+function mqStats(v) {
+  const ab = v.filter(isOpen), t = v.filter((d) => d.term), tp = t.filter((d) => d.enPlazo != null);
+  return { ent: v.length, sal: t.length, pend: ab.length, atr: ab.filter((d) => d.sit && d.sit.cls === "atr").length,
+    pP: ratio(t.length, v.length), plazo: ratio(tp.filter((d) => d.enPlazo).length, tp.length), maxA: maxAtr(v) };
+}
+function drawMQ(base) {
+  const sel = $("mq-area");
+  const areasAll = [...groupBy(base, (d) => d.area)].sort((a, b) => b[1].length - a[1].length).map(([a]) => a);
+  if (UI.mqArea && !areasAll.includes(UI.mqArea)) UI.mqArea = "";
+  sel.replaceChildren(new Option("Todas las áreas", ""), ...areasAll.map((a) => new Option(short(a), a)));
+  sel.value = UI.mqArea;
+  document.querySelectorAll("#mq-seg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === UI.mqShow)));
+  const q = norm(UI.mqQ.trim());
+  const rows = base.filter((d) => (!UI.mqArea || d.area === UI.mqArea) && (!q || norm(d.maquina).includes(q)));
+  const keep = (s0) => (UI.mqShow === "pend" ? s0.pend > 0 : UI.mqShow === "atr" ? s0.atr > 0 : true);
+  const k = UI.mqSort, dir = UI.mqDir;
+  const val = (x) => (k === "n" ? x.n : x.s[k] == null ? -1 : x.s[k]);
+  const cmp = (a, b) => (k === "n" ? a.n.localeCompare(b.n) * dir : (val(b) - val(a)) * -dir) || b.s.pend - a.s.pend || b.s.ent - a.s.ent;
+  const areas = [...groupBy(rows, (d) => d.area)].map(([a, v]) => ({ key: a, n: short(a), v, s: mqStats(v),
+    maqs: [...groupBy(v, (d) => d.maquina)].map(([m, vm]) => ({ key: m, n: m, v: vm, s: mqStats(vm) })).filter((x) => keep(x.s)).sort(cmp) }))
+    .filter((x) => keep(x.s) && x.maqs.length).sort(cmp);
+  const openAll = !!(UI.mqArea || q);
+  const tb = $("t-mq"); tb.replaceChildren();
+  const hr = el("tr");
+  for (const [ck, cl0] of MQCOLS) {
+    const h = el("th"); const b = el("button", "", cl0 + (k === ck ? (dir < 0 ? " ▼" : " ▲") : "")); b.type = "button";
+    if (ck !== "n") h.style.textAlign = "right";
+    h.setAttribute("aria-sort", k === ck ? (dir < 0 ? "descending" : "ascending") : "none");
+    b.addEventListener("click", () => { if (UI.mqSort === ck) UI.mqDir = -UI.mqDir; else { UI.mqSort = ck; UI.mqDir = ck === "n" ? 1 : -1; } drawMQ(filt(["estado"])); });
+    h.append(b); hr.append(h);
+  }
+  const th = el("thead"); th.append(hr); tb.append(th);
+  const bd = el("tbody");
+  const link = (td, n, pred, label, c) => {
+    if (!n) { td.textContent = "·"; return; }
+    const b = el("button", "lnk", NF.format(n)); b.type = "button"; b.title = "Ver estas ODTs en la tabla de descripciones";
+    b.addEventListener("click", (e) => { e.stopPropagation(); drillTo({ pred, skip: ["estado"], label, c }); });
+    td.append(b);
+  };
+  const line = (cls, x, name, sc, lab) => {
+    const tr = el("tr", cls); const s0 = x.s;
+    const t0 = el("td"); t0.append(name); tr.append(t0);
+    const td = (c) => { const e = el("td", "num" + (c ? " " + c : "")); tr.append(e); return e; };
+    link(td(), s0.ent, sc, lab + " · ingresaron", "var(--proc)");
+    link(td(), s0.sal, (d) => sc(d) && d.term, lab + " · salieron (terminadas)", "var(--term)");
+    link(td(), s0.pend, (d) => sc(d) && isOpen(d), lab + " · pendientes (abiertas)", "var(--pend)");
+    link(td("atr"), s0.atr, (d) => sc(d) && isOpen(d) && d.sit && d.sit.cls === "atr", lab + " · atrasadas", "#C0392B");
+    const p1 = td(); p1.append(el("span", "pill " + pillCls(s0.pP), fmtPct(s0.pP)));
+    const p2c = td(); p2c.append(el("span", "pill " + pillCls(s0.plazo), fmtPct(s0.plazo)));
+    td(s0.maxA > 0 ? "atr" : "").textContent = s0.maxA > 0 ? fmtDH(s0.maxA) : "—";
+    bd.append(tr); return tr;
+  };
+  if (areas.length) {
+    const all = areas.flatMap((a) => a.maqs.flatMap((m) => m.v)), allS = new Set(all);
+    line("tot", { s: mqStats(all) }, "Total (" + NF.format(areas.length) + " áreas · " + NF.format(areas.reduce((n, a) => n + a.maqs.length, 0)) + " máquinas)", (d) => allS.has(d), "total de la tabla");
+  }
+  for (const a of areas) {
+    const op = openAll || UI.mqOpen.has(a.key);
+    const nm = document.createDocumentFragment(); nm.append(el("span", "tgm", op ? "▾" : "▸"), document.createTextNode(a.n + " "), el("span", "cnt", "(" + a.maqs.length + ")"));
+    const aS = new Set(a.maqs.flatMap((m) => m.v));
+    const tr = line("a", { s: mqStats([...aS]) }, nm, (d) => aS.has(d), short(a.key));
+    const first = tr.firstChild; first.tabIndex = 0; first.setAttribute("role", "button"); first.setAttribute("aria-expanded", String(op));
+    const tog = () => { if (UI.mqOpen.has(a.key)) UI.mqOpen.delete(a.key); else UI.mqOpen.add(a.key); drawMQ(filt(["estado"])); };
+    first.addEventListener("click", tog);
+    first.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tog(); } });
+    if (op) for (const m of a.maqs) line("m", m, m.n, (d) => d.area === a.key && d.maquina === m.key, m.n + " (" + short(a.key) + ")");
+  }
+  if (!areas.length) { const tr = el("tr"); const td = el("td", "empty", "Sin ODTs con estos filtros."); td.colSpan = MQCOLS.length; tr.append(td); bd.append(tr); }
+  tb.append(bd);
+  $("mq-foot").textContent = "Cuenta las ODTs según la fecha de captura y los filtros de la página (el filtro de estado no aplica aquí para que ingresan = salen + pendientes). Atrasadas: abiertas que ya pasaron su plazo. % en plazo: de las terminadas, las que cerraron antes del plazo. Ordenado por " + MQCOLS.find((c) => c[0] === k)[1].toLowerCase() + "; toca un encabezado para cambiar el orden.";
+}
+$("mq-area").addEventListener("change", (e) => { UI.mqArea = e.target.value; drawMQ(filt(["estado"])); });
+let mqT; $("mq-q").addEventListener("input", (e) => { clearTimeout(mqT); mqT = setTimeout(() => { UI.mqQ = e.target.value; drawMQ(filt(["estado"])); }, 200); });
+document.querySelectorAll("#mq-seg button").forEach((b) => b.addEventListener("click", () => { UI.mqShow = b.dataset.v; drawMQ(filt(["estado"])); }));
+
+/* ---------- Rendimiento por área (según los filtros) ---------- */
+function drawRA(base) {
+  const RS = [{ k: "rend", l: "% terminadas (salen ÷ ingresan)", c: "var(--term)" }, { k: "plazo", l: "% terminadas en plazo", c: "var(--proc)" }, { k: "tiempo", l: "% dentro de horas estimadas", c: "var(--pend)" }];
+  legend($("lg-ra"), RS);
+  const p100 = (x) => (x == null ? null : Math.round(x * 1000) / 10);
+  const items = [...groupBy(base, (d) => d.area)].map(([a, v]) => { const s0 = stats(v); return { key: a, label: short(a), total: v.length, s: s0, vals: { rend: p100(s0.rend), plazo: p100(s0.plazo), tiempo: p100(s0.tiempo) } }; })
+    .sort((x, y) => y.total - x.total);
+  const tot = stats(base);
+  $("ra-sub").textContent = "Con los filtros aplicados (todos los estados): " + NF.format(tot.asig) + " ODTs, " + fmtPct(tot.rend) + " terminadas, " + fmtPct(tot.plazo) + " en plazo. Barras por área: % terminadas de lo que ingresó, % terminadas dentro del plazo y % dentro de las horas estimadas. Áreas con más ODTs primero; en rojo las que tienen menos de 60 % terminado. Toca un área para filtrar.";
+  bars($("b-ra"), items.slice(0, 15), {
+    mode: "group", series: RS, max: 112, sel: F.area, click: (d) => toggleF("area", d.key),
+    fmtv: (v) => (v == null ? "—" : Math.round(v) + " %"),
+    bad: (d) => d.s.rend != null && d.s.rend < 0.6,
+    value: (d) => NF.format(d.total) + " ODTs · " + NF.format(d.s.proc + d.s.paus + d.s.pend) + " ab.",
+    tip: (d) => [{ t: d.label + " · " + NF.format(d.total) + " ingresaron" }, { c: "var(--term)", t: "Terminadas: " + NF.format(d.s.term) + " (" + fmtPct(d.s.rend) + ")" }, { c: "var(--proc)", t: "En plazo: " + fmtPct(d.s.plazo) }, { c: "var(--pend)", t: "Dentro de horas estimadas: " + fmtPct(d.s.tiempo) }, { t: "Abiertas: " + NF.format(d.s.proc + d.s.paus + d.s.pend) + " · vencidas: " + NF.format(d.s.venc) }],
+  });
+  if (items.length > 15) $("b-ra").append(el("p", "empty", "Se muestran 15 de " + items.length + " áreas."));
 }
 /* ---------- Áreas por periodo ---------- */
 function periodKey(iso, g) {
@@ -1157,7 +1316,7 @@ $("btn-print").addEventListener("click", () => window.print());
 /* ---------- Control de tiempos ---------- */
 const SITC = { atr: { l: "Atrasadas", c: "#C0392B" }, riesgo: { l: "En riesgo (≤ 24 h)", c: "#C98A00" }, ok: { l: "A tiempo", c: "#1F8A5B" } };
 function drawTiempos(rows) {
-  const open = rows.filter((d) => !d.term);
+  const open = rows.filter(isOpen);
   const grid = $("tc-grid"); grid.replaceChildren();
   const avg = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
   for (const st of ["Pendiente", "Pausado", "Proceso"]) {
@@ -1195,15 +1354,20 @@ function drawTiempos(rows) {
   }
   /* tabla: las más atrasadas */
   const tb = $("tc-t"); tb.replaceChildren();
-  const hr = el("tr"); ["N° ODT", "Máquina", "Estado", "Situación", "Plazo", "Responsable", "Motivo / nota del CMMS"].forEach((h) => hr.append(el("th", "", h)));
+  const hr = el("tr"); ["N° ODT", "Atraso", "Máquina, área y descripción", "Estado", "Plazo", "Responsable", "Motivo / nota del CMMS"].forEach((h) => hr.append(el("th", "", h)));
   const th = el("thead"); th.append(hr); tb.append(th);
   const bd = el("tbody");
-  const top = open.filter((d) => d.sit && d.sit.cls === "atr").sort((a, b) => a.sit.falta - b.sit.falta).slice(0, 15);
+  const atrAll = open.filter((d) => d.sit && d.sit.cls === "atr").sort((a, b) => a.sit.falta - b.sit.falta);
+  const top = atrAll.slice(0, 15);
   for (const d of top) {
     const tr = el("tr");
-    tr.append(el("td", "nw", "ODT " + d.codigo), el("td", "", d.maquina));
+    tr.append(el("td", "nw", "ODT " + d.codigo));
+    const ts = el("td", "nw big", fmtDH(-d.sit.falta)); if (d.estado === "Pausado" && d.pausaH != null) ts.append(el("div", "sm", "En pausa " + fmtDH(d.pausaH))); tr.append(ts);
+    const tm = el("td"); tm.append(el("div", "mqn", d.maquina), el("div", "sm", short(d.area)));
+    const ds = d.descODT && d.descODT !== d.asunto ? (d.asunto ? d.asunto + " · " : "") + d.descODT : d.asunto || d.descODT;
+    if (ds) { const x = el("div", "sm dsc", ds); x.title = ds; tm.append(x); }
+    tr.append(tm);
     const te = el("td", "nw"); const sp = el("span", "est", EST1[d.estado]); sp.style.setProperty("--c", ESTC[d.estado]); te.append(sp); tr.append(te);
-    const ts = el("td", "nw"); ts.append(el("span", "sit " + d.sit.cls, d.sit.txt)); if (d.estado === "Pausado" && d.pausaH != null) ts.append(el("div", "", "En pausa " + fmtDH(d.pausaH))); tr.append(ts);
     tr.append(el("td", "nw", fdt(d.plazo)), el("td", "", d.responsable));
     tr.append(el("td", "", d.estado === "Pausado" ? (d.nota || "Sin motivo registrado") : (d.nota || d.mensaje || "—")));
     tr.style.cursor = "pointer"; tr.title = "Ver esta ODT en la tabla de descripciones";
@@ -1212,12 +1376,14 @@ function drawTiempos(rows) {
   }
   if (!top.length) { const tr = el("tr"); const td = el("td", "empty", "No hay ODTs atrasadas con estos filtros."); td.colSpan = 7; tr.append(td); bd.append(tr); }
   tb.append(bd);
+  const ba = $("tc-all"); ba.hidden = atrAll.length <= top.length;
+  ba.textContent = "Ver las " + NF.format(atrAll.length) + " atrasadas en la tabla de descripciones (de más a menos días)";
+  ba.onclick = () => drillTo({ pred: (x) => isOpen(x) && x.sit && x.sit.cls === "atr", label: "abiertas atrasadas, de más a menos días de retraso", c: SITC.atr.c });
   $("tc-foot").textContent = "Cálculo con la hora actual (" + fdt(NOWH) + "). Los días y horas de retraso o margen se recalculan cada vez que abres o actualizas la página. Tiempo en pausa: el que reporta el CMMS en la última sincronización.";
 }
 
 /* ---------- Página ODTs ---------- */
 function drawDetalle(rows) {
-  drawTiempos(rows);
   const st = filt(["tipo"]);
   const prev = st.filter((d) => d.tipo === "PREVENTIVO").length, corr = st.filter((d) => d.tipo === "CORRECTIVO").length;
   kpis($("kpis-det"), [
@@ -1225,11 +1391,14 @@ function drawDetalle(rows) {
     { n: NF.format(prev), l: "Preventivas", c: "var(--prev)", p: "sin filtro de tipo (medida 22)" },
     { n: NF.format(corr), l: "Correctivas", c: "var(--corr)", p: "sin filtro de tipo (medida 23)" },
   ]);
-  const byArea = [...groupBy(rows, (d) => d.area)].map(([k, v]) => ({ key: k, label: short(k), total: v.length, rows: v, vals: { n: v.length } }))
+  const byArea = [...groupBy(rows, (d) => d.area)].map(([k, v]) => ({ key: k, label: short(k), total: v.length, rows: v, vals: countEst(v) }))
     .sort((a, b) => b.total - a.total).slice(0, 12);
+  const SA = ESTADOS.filter((st) => has("estado", st) && rows.some((d) => d.estado === st)).map((k) => ({ k, l: ESTL[k], c: ESTC[k] }));
+  legend($("lg-area2"), SA);
   bars($("b-area2"), byArea, {
-    series: [{ k: "n", c: "var(--proc)" }], sel: F.area, click: (d) => toggleF("area", d.key),
-    tip: (d) => [{ t: d.label + " · " + NF.format(d.total) + " ODTs" },
+    series: SA, sel: F.area, click: (d) => toggleF("area", d.key),
+    segClick: (d, sr) => drillTo({ pred: (x) => x.area === d.key && x.estado === sr.k, label: d.label + " · " + sr.l.toLowerCase(), c: sr.c }),
+    tip: (d) => [{ t: d.label + " · " + NF.format(d.total) + " ODTs" }, ...SA.map((sr) => ({ c: sr.c, t: sr.l + ": " + NF.format(d.vals[sr.k]) })), { t: "Máquinas con más ODTs:" },
       ...[...groupBy(d.rows, (r) => r.maquina)].map(([m, v]) => [m, v.length]).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([m, c]) => ({ t: m + ": " + NF.format(c) }))],
   });
   const series = ESTADOS.filter((st) => has("estado", st)).map((k) => ({ k, l: ESTL[k], c: ESTC[k] }));
@@ -1244,6 +1413,7 @@ function drawDetalle(rows) {
   bars($("b-tec"), items, {
     series, sel: F.resp,
     tip: (d) => [{ t: d.label }, ...series.map((sr) => ({ c: sr.c, t: sr.l + ": " + NF.format(d.vals[sr.k]) })), { t: "Total: " + NF.format(d.total) }],
+    segClick: (d, sr) => drillTo({ pred: (x) => x.responsable === d.key && x.estado === sr.k, skip: ["resp"], label: d.label + " · " + sr.l.toLowerCase(), c: sr.c }),
     click: (d) => { toggleF("resp", d.key); if (F.resp.length) $("matriz").scrollIntoView({ behavior: "smooth", block: "start" }); },
   });
 
@@ -1500,7 +1670,7 @@ function drillTo(dr) {
 }
 function matrixRows(rows) {
   const q = UI.q;
-  let r = rows;
+  let r = UI.drill && UI.drill.skip ? filt(UI.drill.skip) : rows;
   if (UI.drill) r = r.filter((d) => (UI.drill.pred ? UI.drill.pred(d) : d.estado === UI.drill.estado && d.dias != null && UI.drill.f(d.dias)));
   if (q) r = r.filter((d) => [d.codigo, d.maquina, d.descripcion, d.mensaje, d.obs, d.turnos.join(" "), d.responsable, d.area].some((x) => x && x.toLowerCase().includes(q)));
   return r;
@@ -1517,9 +1687,9 @@ function drawDrill(n) {
 function drawMatrix(rows) {
   const r = matrixRows(rows); MXROWS = r; drawDrill(r.length);
   const body = $("mx-body");
-  const areas = [...groupBy(r, (d) => d.area)].sort((a, b) => b[1].length - a[1].length);
+  const areas = [...groupBy(r, (d) => d.area)].sort(byAtraso);
   const nMaq = new Set(r.map((d) => d.area + "|" + d.maquina)).size;
-  $("mx-sub").textContent = NF.format(r.length) + " ODTs en " + NF.format(areas.length) + " áreas y " + NF.format(nMaq) + " máquinas, según los filtros" + (UI.drill ? " y el color elegido en el gráfico" : "") + (UI.q ? " y la búsqueda" : "") + ".";
+  $("mx-sub").textContent = NF.format(r.length) + " ODTs en " + NF.format(areas.length) + " áreas y " + NF.format(nMaq) + " máquinas, según los filtros" + (UI.drill ? " y el color elegido en el gráfico" : "") + (UI.q ? " y la búsqueda" : "") + ". Ordenadas por atraso: primero las de más días de retraso.";
   if (UI.auto) { // abre solo lo que tiene sentido para la selección
     UI.open = new Set();
     areas.forEach(([a]) => UI.open.add("A|" + a));
@@ -1534,17 +1704,16 @@ function drawMatrix(rows) {
     const ka = "A|" + a, oa = UI.open.has(ka);
     frag.append(groupRow("g1", ka, oa, short(a), va));
     if (!oa) continue;
-    const maqs = [...groupBy(va, (d) => d.maquina)].sort((x, y) => y[1].length - x[1].length);
+    const maqs = [...groupBy(va, (d) => d.maquina)].sort(byAtraso);
     for (const [m, vm] of maqs) {
       const km = "M|" + a + "|" + m, om = UI.open.has(km);
       frag.append(groupRow("g2", km, om, m, vm));
       if (!om) continue;
-      const byPlazo = F.plazo.length > 0;
-      for (const d of vm.slice().sort((x, y) => byPlazo && x.sit && y.sit ? x.sit.falta - y.sit.falta : (y.fecha || "").localeCompare(x.fecha || ""))) {
+      for (const d of vm.slice().sort(byAtrasoOdt)) {
         if (shown++ >= CAP) break;
         const tr = el("tr", "od");
         const td = (t, c) => { const x = el("td", c || "", t); tr.append(x); return x; };
-        const c0 = td("ODT " + d.codigo); c0.append(el("small", "", d.tipo)); descCell(tr, d);
+        const c0 = td("ODT " + d.codigo); c0.append(el("small", "", d.tipo), el("small", "", short(d.area))); descCell(tr, d);
         const te = el("td"); const sp = el("span", "est", EST1[d.estado] || d.estado); sp.style.setProperty("--c", ESTC[d.estado] || "var(--mute)"); te.append(sp); tr.append(te);
         const fx = el("td", "fx");
         const line = (lab, v, cls) => { const dv = el("div", cls || ""); dv.append(el("b", "", lab), document.createTextNode(v ? fdt(v) : "—")); fx.append(dv); };
@@ -1553,9 +1722,10 @@ function drawMatrix(rows) {
         if (d.sit) { const sv = el("div", "sitl"); sv.append(el("span", "sit " + d.sit.cls, d.sit.txt)); fx.append(sv); }
         if (d.estado === "Pausado" && d.pausaH != null) { const pv = el("div"); pv.append(el("b", "", "En pausa"), document.createTextNode(fmtDH(d.pausaH) + (d.nPausas > 1 ? " (" + d.nPausas + " pausas)" : ""))); fx.append(pv); }
         tr.append(fx);
-        td(d.dias == null ? "" : NF.format(d.dias), "age" + (d.estado !== "Terminado" && d.dias > 30 ? " old" : ""));
+        td(d.dias == null ? "" : NF.format(d.dias), "age" + (isOpen(d) && d.dias > 30 ? " old" : ""));
         td(d.responsable);
-        if (d.term) {
+        if (d.cancel) td("Cancelada" + (d.obs ? ": " + d.obs : "") + (d.nota ? "\nNota: " + d.nota : ""), "obs pend");
+        else if (d.term) {
           const c = td(d.obs || (d.turnos.length ? "" : "(sin observaciones finales en el CMMS)"), "obs");
           if (d.turnos.length) {
             const box = el("div", "tw-turno"); box.append(el("span", "tt", "Registrado en el informe de turnos:"));
@@ -1586,7 +1756,10 @@ function groupRow(cls, key, open, label, v) {
   td.append(el("span", "tg", "▸"), document.createTextNode(" " + label), el("span", "cnt", NF.format(v.length)));
   const e = countEst(v), mini = el("span", "mini"); mini.style.marginLeft = "14px";
   ESTADOS.forEach((st) => { if (!e[st]) return; const sp = el("span"); const i = el("i"); i.style.background = ESTC[st]; sp.append(i, document.createTextNode(EST1[st] + " " + NF.format(e[st]))); mini.append(sp); });
-  td.append(mini); tr.append(td);
+  td.append(mini);
+  const ab = v.filter(isOpen), atr = ab.filter((d) => d.sit && d.sit.cls === "atr");
+  if (atr.length) { const mx = Math.max(...atr.map((d) => -d.sit.falta)); const b = el("span", "dly", atr.length + " atrasada" + (atr.length > 1 ? "s" : "") + " · máx. " + fmtDH(mx)); b.title = "La más atrasada lleva " + fmtDH(mx) + " de retraso"; td.append(b); }
+  tr.append(td);
   return tr;
 }
 $("mx-body").addEventListener("click", (e) => {
@@ -1697,7 +1870,7 @@ function render() {
   else {
     lead.append(el("b", null, NF.format(rows.length)), " ODTs con los filtros: ");
     lead.append(ESTADOS.filter((st) => e[st]).map((st) => NF.format(e[st]) + " " + ESTL[st].toLowerCase()).join(", ") + ".");
-    const open = rows.filter((d) => d.estado !== "Terminado");
+    const open = rows.filter(isOpen);
     const old = open.filter((d) => d.dias > 30).length;
     if (old) lead.append(" ", el("b", null, NF.format(old)), " llevan más de 30 días abiertas.");
   }
@@ -1713,7 +1886,7 @@ $("btn-todos").addEventListener("click", () => { UI.todos = !UI.todos; render();
 /* ---------- Datos: en vivo, copia y botón "Actualizar datos" (igual que el informe de turnos) ---------- */
 function setRange() {
   const ds = ALL.map((d) => d.fecha).filter(Boolean).sort();
-  $("range").textContent = ds.length ? NF.format(ALL.length) + " ODTs sin canceladas · captura del " + fdate(ds[0]) + " al " + fdate(ds[ds.length - 1]) : "Sin datos";
+  $("range").textContent = ds.length ? NF.format(ALL.filter((d) => !d.cancel).length) + " ODTs sin canceladas · captura del " + fdate(ds[0]) + " al " + fdate(ds[ds.length - 1]) : "Sin datos";
 }
 async function loadSnapshot() {
   try {
