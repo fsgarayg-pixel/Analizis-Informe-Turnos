@@ -361,6 +361,7 @@ details.guia dd{margin:0;color:var(--muted)}
       <div class="field"><span class="lbl" id="l-clasif">Clasificación ODT</span><div class="msw" data-k="clasif"></div></div>
       <div class="field"><span class="lbl" id="l-tipo">Tipo de ODT</span><div class="msw" data-k="tipo"></div></div>
       <div class="field"><span class="lbl" id="l-odt">N° de ODT</span><div class="msw" data-k="odt"></div></div>
+      <div class="field"><span class="lbl" id="l-plazo">Cumplimiento de plazo</span><div class="msw" data-k="plazo"></div></div>
     </div>
     <div class="chips" id="chips"></div>
   </section>
@@ -711,12 +712,12 @@ function normOdts(raw) {
 
 /* ---------- Estado de filtros (cada filtro es una lista: vacía = todos) ---------- */
 let ALL = [];
-const KEYS = ["anio", "mes", "planta", "area", "maquina", "resp", "estado", "clasif", "tipo", "odt"];
+const KEYS = ["anio", "mes", "planta", "area", "maquina", "resp", "estado", "clasif", "tipo", "odt", "plazo"];
 /* Cada página tiene sus filtros, igual que las páginas del Power BI */
 const DEF_TAB = {
-  cmi: () => ({ anio: [], mes: [], planta: [], area: [], maquina: [], resp: [], tipo: [], odt: [], estado: PBI_ESTADO.slice(), clasif: PBI_CLASIF.slice() }),
-  detalle: () => ({ anio: [], mes: [], planta: [], area: ACABADOS.slice(), maquina: [], resp: [], tipo: [], odt: [], estado: PBI_ESTADO.slice(), clasif: PBI_CLASIF.slice() }),
-  rend: () => ({ anio: [], mes: [], planta: [], area: [], maquina: [], resp: [], tipo: [], odt: [], estado: [], clasif: PBI_CLASIF.slice() }),
+  cmi: () => ({ anio: [], mes: [], planta: [], area: [], maquina: [], resp: [], tipo: [], odt: [], plazo: [], estado: PBI_ESTADO.slice(), clasif: PBI_CLASIF.slice() }),
+  detalle: () => ({ anio: [], mes: [], planta: [], area: ACABADOS.slice(), maquina: [], resp: [], tipo: [], odt: [], plazo: [], estado: PBI_ESTADO.slice(), clasif: PBI_CLASIF.slice() }),
+  rend: () => ({ anio: [], mes: [], planta: [], area: [], maquina: [], resp: [], tipo: [], odt: [], plazo: [], estado: [], clasif: PBI_CLASIF.slice() }),
 };
 /* Responsables de ODT que no son técnicos (se ocultan en el rendimiento con "Solo técnicos") */
 const NO_TECNICOS = ["JAVIER GAMEZ BLANCO", "RODRIGUEZ PENA JAIME ALFONSO", "BRIANDA BETANCOURT SANCHEZ", "JOSE SANTIAGO CASTAÑEDA BUITRAGO", "FABIAN STEVEN GARAY GOMEZ"];
@@ -724,12 +725,18 @@ const UI = { tab: ["#detalle", "#rend"].includes(location.hash) ? location.hash.
 const FT = { cmi: DEF_TAB.cmi(), detalle: DEF_TAB.detalle(), rend: DEF_TAB.rend() };
 const DEF = () => DEF_TAB[UI.tab]();
 let F = FT[UI.tab];
-const FLABEL = { anio:"Año", mes:"Mes", planta:"Planta", area:"Área", maquina:"Máquina", resp:"Técnico", tipo:"Tipo", estado:"Estado", clasif:"Clasificación", odt:"ODT" };
+const FLABEL = { anio:"Año", mes:"Mes", planta:"Planta", area:"Área", maquina:"Máquina", resp:"Técnico", tipo:"Tipo", estado:"Estado", clasif:"Clasificación", odt:"ODT", plazo:"Plazo" };
 const PLANTAS = { acabados: "Planta Acabados", otras: "Otras áreas" };
 const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
 const has = (k, v) => !F[k].length || F[k].includes(v);
 const plantaOk = (d) => !F.planta.length || F.planta.includes(d.acabados ? "acabados" : "otras");
 
+/* Cumplimiento de plazo de cada ODT (para el filtro) */
+const PLAZO_OPTS = [["atr", "Abiertas atrasadas"], ["riesgo", "Abiertas en riesgo (≤ 24 h)"], ["ok", "Abiertas a tiempo (falta tiempo)"], ["term_ok", "Terminadas en plazo"], ["term_tarde", "Terminadas fuera de plazo"], ["sinplazo", "Sin plazo en el CMMS"]];
+function plazoCat(d) {
+  if (d.term) return d.enPlazo === true ? "term_ok" : d.enPlazo === false ? "term_tarde" : "sinplazo";
+  return d.sit ? d.sit.cls : "sinplazo";
+}
 /* filt(skip): aplica todos los filtros menos los nombrados en skip (para imitar CALCULATE de Power BI) */
 function filt(skip = []) {
   const sk = new Set(skip);
@@ -738,7 +745,8 @@ function filt(skip = []) {
     (sk.has("planta") || plantaOk(d)) && (sk.has("area") || has("area", d.area)) &&
     (sk.has("maquina") || has("maquina", d.maquina)) && (sk.has("resp") || has("resp", d.responsable)) &&
     (sk.has("tipo") || has("tipo", d.tipo)) && (sk.has("estado") || has("estado", d.estado)) &&
-    (sk.has("clasif") || has("clasif", d.clasif)) && (sk.has("odt") || has("odt", d.codigo)));
+    (sk.has("clasif") || has("clasif", d.clasif)) && (sk.has("odt") || has("odt", d.codigo)) &&
+    (sk.has("plazo") || has("plazo", plazoCat(d))));
 }
 function setF(k, v) { F[k] = v; FT[UI.tab] = F; UI.auto = true; UI.drill = null; render(); }
 /* clic en una barra: filtra solo por ese valor; otro clic lo quita */
@@ -834,6 +842,7 @@ function optionsFor(k) {
     case "maquina": return keep(uniq((d) => d.maquina, pool)).sort().map((v) => [v, v]);
     case "resp": return keep(uniq((d) => d.responsable, pool)).sort().map((v) => [v, v]);
     case "estado": return ESTADOS.map((v) => [v, EST1[v]]);
+    case "plazo": { const cnt = {}; pool.forEach((d) => { const c = plazoCat(d); cnt[c] = (cnt[c] || 0) + 1; }); return PLAZO_OPTS.map(([v, l]) => [v, l, NF.format(cnt[v] || 0) + " ODTs"]); }
     case "clasif": return uniq((d) => d.clasif, ALL).sort((a, b) => (+a || 9e9) - (+b || 9e9)).map((v) => [v, v]);
     case "tipo": return keep(uniq((d) => d.tipo, ALL)).sort().map((v) => [v, v]);
     case "odt": {
@@ -1514,7 +1523,7 @@ function drawMatrix(rows) {
   if (UI.auto) { // abre solo lo que tiene sentido para la selección
     UI.open = new Set();
     areas.forEach(([a]) => UI.open.add("A|" + a));
-    if (r.length <= 60 || UI.drill || F.maquina.length || F.resp.length || F.odt.length || UI.q) r.forEach((d) => UI.open.add("M|" + d.area + "|" + d.maquina));
+    if (r.length <= 60 || (F.plazo.length && r.length <= 400) || UI.drill || F.maquina.length || F.resp.length || F.odt.length || UI.q) r.forEach((d) => UI.open.add("M|" + d.area + "|" + d.maquina));
     if (areas.length > 6 && r.length > 150 && !(F.maquina.length || F.resp.length || F.odt.length || UI.q)) { UI.open = new Set(); if (UI.drill) areas.forEach(([a]) => UI.open.add("A|" + a)); }
     UI.auto = false;
   }
@@ -1530,7 +1539,8 @@ function drawMatrix(rows) {
       const km = "M|" + a + "|" + m, om = UI.open.has(km);
       frag.append(groupRow("g2", km, om, m, vm));
       if (!om) continue;
-      for (const d of vm.slice().sort((x, y) => (y.fecha || "").localeCompare(x.fecha || ""))) {
+      const byPlazo = F.plazo.length > 0;
+      for (const d of vm.slice().sort((x, y) => byPlazo && x.sit && y.sit ? x.sit.falta - y.sit.falta : (y.fecha || "").localeCompare(x.fecha || ""))) {
         if (shown++ >= CAP) break;
         const tr = el("tr", "od");
         const td = (t, c) => { const x = el("td", c || "", t); tr.append(x); return x; };
