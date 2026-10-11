@@ -267,7 +267,7 @@ details.ms{display:block;width:100%;min-width:0}
 .stk{display:flex;gap:1px;height:100%;border-radius:3px;overflow:hidden;min-width:2px}
 .stk i{display:block;height:100%;min-width:2px}
 .stk i.lab{font-style:normal;font-size:10.5px;line-height:16px;color:#fff;font-weight:700;text-align:center;overflow:hidden;white-space:nowrap;font-family:var(--font-num)}
-.stk i.lab.tight{color:transparent}
+.stk i.lab.tight{color:transparent!important}
 .trk:has(.lab){height:16px}
 .more{margin-top:8px}
 
@@ -501,7 +501,7 @@ details.guia dd{margin:0;color:var(--muted)}
 
     <section class="panel" aria-label="ODTs por técnico">
       <h2>ODTs por técnico y estado</h2>
-      <p class="sub">Igual que "Cantidad de ODTS Técnico" de tu Power BI. Clic en un color para ver esas ODTs del técnico (ordenadas por atraso); clic en el nombre para filtrar por el técnico.</p>
+      <p class="sub">Igual que "Cantidad de ODTS Técnico" de tu Power BI. Las pendientes se dividen en <b>atrasadas</b> (ya pasó su plazo: se debieron ejecutar) y <b>a tiempo</b> (aún tienen plazo). Clic en un color para ver esas ODTs del técnico (ordenadas por atraso); clic en el nombre para filtrar por el técnico.</p>
       <div class="legend" id="lg-tec"></div>
       <div class="bars" id="b-tec"></div>
       <button class="linkbtn more" id="btn-todos" type="button" hidden></button>
@@ -840,7 +840,7 @@ function bars(box, items, o) {
       const st = el("div", "stk"); st.style.width = (d.total / max * 100) + "%";
       for (const sr of o.series) {
         const v = d.vals[sr.k] || 0; if (!v) continue;
-        const i = el("i"); i.style.flex = v + " 0 0"; i.style.background = sr.c; st.append(i);
+        const i = el("i"); i.style.flex = v + " 0 0"; i.style.background = sr.c; if (sr.tc) i.style.color = sr.tc; st.append(i);
         if (o.series.length > 1) { i.textContent = NF.format(v); i.classList.add("lab"); }
         if (o.segClick) {
           i.classList.add("seg-link"); i.tabIndex = 0; i.setAttribute("role", "link");
@@ -1401,19 +1401,25 @@ function drawDetalle(rows) {
     tip: (d) => [{ t: d.label + " · " + NF.format(d.total) + " ODTs" }, ...SA.map((sr) => ({ c: sr.c, t: sr.l + ": " + NF.format(d.vals[sr.k]) })), { t: "Máquinas con más ODTs:" },
       ...[...groupBy(d.rows, (r) => r.maquina)].map(([m, v]) => [m, v.length]).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([m, c]) => ({ t: m + ": " + NF.format(c) }))],
   });
-  const series = ESTADOS.filter((st) => has("estado", st)).map((k) => ({ k, l: ESTL[k], c: ESTC[k] }));
-  legend($("lg-tec"), series);
+  /* Pendientes partidas en atrasadas (ya pasó el plazo: se debieron ejecutar) y a tiempo (aún hay plazo) */
   const base = filt(["resp"]);
-  let items = [...groupBy(base, (d) => d.responsable)].map(([k, v]) => ({ key: k, label: k, vals: countEst(v), total: v.length }))
+  const series = ESTADOS.filter((st) => has("estado", st)).flatMap((k) => k !== "Pendiente" ? [{ k, l: ESTL[k], c: ESTC[k], f: (x) => x.estado === k }] : [
+    { k: "PendAtr", l: "Pendientes atrasadas", c: "#A86A00", f: (x) => x.estado === "Pendiente" && x.sit && x.sit.cls === "atr" },
+    { k: "PendOk", l: "Pendientes a tiempo", c: "#F2CC6B", tc: "#3D2A00", f: (x) => x.estado === "Pendiente" && x.sit && x.sit.cls !== "atr" },
+    { k: "PendSp", l: "Pendientes sin plazo", c: "#C9D0DC", tc: "#14213D", f: (x) => x.estado === "Pendiente" && !x.sit },
+  ]).filter((sr) => sr.k.indexOf("Pend") !== 0 || base.some(sr.f));
+  legend($("lg-tec"), series);
+  const tvals = (v) => Object.fromEntries(series.map((sr) => [sr.k, v.filter(sr.f).length]));
+  let items = [...groupBy(base, (d) => d.responsable)].map(([k, v]) => ({ key: k, label: k, vals: tvals(v), total: v.length }))
     .sort((a, b) => b.total - a.total || a.label.localeCompare(b.label));
   const n = items.length, LIM = 15, btn = $("btn-todos");
   btn.hidden = n <= LIM; btn.textContent = UI.todos ? "Ver solo los 15 primeros" : "Ver los " + n + " responsables";
   if (!UI.todos) items = items.slice(0, LIM);
-  for (const r0 of F.resp) if (!items.some((d) => d.key === r0)) { const v = base.filter((d) => d.responsable === r0); items.push({ key: r0, label: r0, vals: countEst(v), total: v.length }); }
+  for (const r0 of F.resp) if (!items.some((d) => d.key === r0)) { const v = base.filter((d) => d.responsable === r0); items.push({ key: r0, label: r0, vals: tvals(v), total: v.length }); }
   bars($("b-tec"), items, {
     series, sel: F.resp,
-    tip: (d) => [{ t: d.label }, ...series.map((sr) => ({ c: sr.c, t: sr.l + ": " + NF.format(d.vals[sr.k]) })), { t: "Total: " + NF.format(d.total) }],
-    segClick: (d, sr) => drillTo({ pred: (x) => x.responsable === d.key && x.estado === sr.k, skip: ["resp"], label: d.label + " · " + sr.l.toLowerCase(), c: sr.c }),
+    tip: (d) => [{ t: d.label }, ...series.filter((sr) => d.vals[sr.k]).map((sr) => ({ c: sr.c, t: sr.l + ": " + NF.format(d.vals[sr.k]) })), { t: "Total: " + NF.format(d.total) }],
+    segClick: (d, sr) => drillTo({ pred: (x) => x.responsable === d.key && sr.f(x), skip: ["resp"], label: d.label + " · " + sr.l.toLowerCase(), c: sr.c }),
     click: (d) => { toggleF("resp", d.key); if (F.resp.length) $("matriz").scrollIntoView({ behavior: "smooth", block: "start" }); },
   });
 
