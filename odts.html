@@ -844,11 +844,11 @@ function bars(box, items, o) {
       for (const sr of o.series) {
         const v = d.vals[sr.k] || 0; if (!v) continue;
         const i = el("i"); i.style.flex = v + " 0 0"; i.style.background = sr.c; if (sr.tc) i.style.color = sr.tc; st.append(i);
-        if (o.series.length > 1) { i.textContent = NF.format(v); i.classList.add("lab"); }
+        if (o.series.length > 1) { const pc = Math.round(v * 100 / d.total) + " %"; i.textContent = o.pct ? NF.format(v) + " · " + pc : NF.format(v); i.dataset.s = NF.format(v); i.classList.add("lab"); }
         if (o.segClick) {
           i.classList.add("seg-link"); i.tabIndex = 0; i.setAttribute("role", "link");
           i.setAttribute("aria-label", d.label + " · " + sr.l + ": " + NF.format(v) + " ODTs. Ver ODTs");
-          i.addEventListener("mousemove", (e) => { e.stopPropagation(); showTip(e, [{ t: d.label + " · " + sr.l }, { c: sr.c, t: NF.format(v) + " ODTs" }, { t: "Clic para ver estas ODTs" }]); });
+          i.addEventListener("mousemove", (e) => { e.stopPropagation(); showTip(e, [{ t: d.label + " · " + sr.l }, { c: sr.c, t: NF.format(v) + " de " + NF.format(d.total) + " ODTs (" + pct(v, d.total) + ")" }, { t: "Clic para ver estas ODTs" }]); });
           const go = (e) => { e.stopPropagation(); hideTip(); o.segClick(d, sr); };
           i.addEventListener("click", go);
           i.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(e); } });
@@ -869,7 +869,10 @@ function bars(box, items, o) {
     box.append(row);
   }
   /* oculta los números que no caben en su tramo */
-  requestAnimationFrame(() => box.querySelectorAll(".stk i.lab").forEach((i) => { if (i.clientWidth < 16 || i.scrollWidth > i.clientWidth + 1) i.classList.add("tight"); }));
+  requestAnimationFrame(() => box.querySelectorAll(".stk i.lab").forEach((i) => {
+    if (i.scrollWidth > i.clientWidth + 1 && i.dataset.s) i.textContent = i.dataset.s;   /* sin espacio para el %: solo el número */
+    if (i.clientWidth < 16 || i.scrollWidth > i.clientWidth + 1) i.classList.add("tight");
+  }));
 }
 function legend(box, series) {
   box.replaceChildren(...series.map((sr) => { const sp = el("span"); const i = el("i", "dot"); i.style.background = sr.c; sp.append(i, document.createTextNode(sr.l)); return sp; }));
@@ -1408,9 +1411,9 @@ function drawDetalle(rows) {
     .sort((a, b) => b.total - a.total).slice(0, 12);
   legend($("lg-area2"), SA);
   bars($("b-area2"), byArea, {
-    series: SA, sel: F.area, click: (d) => toggleF("area", d.key),
+    series: SA, sel: F.area, pct: true, value: (d) => NF.format(d.total) + (d.vals.PendAtr ? " · " + Math.round(d.vals.PendAtr * 100 / d.total) + " % atras." : ""), bad: (d) => d.vals.PendAtr / d.total >= 0.4,  click: (d) => toggleF("area", d.key),
     segClick: (d, sr) => drillTo({ pred: (x) => x.area === d.key && sr.f(x), label: d.label + " · " + sr.l.toLowerCase(), c: sr.c }),
-    tip: (d) => [{ t: d.label + " · " + NF.format(d.total) + " ODTs" }, ...SA.filter((sr) => d.vals[sr.k]).map((sr) => ({ c: sr.c, t: sr.l + ": " + NF.format(d.vals[sr.k]) })), { t: "Máquinas con más ODTs:" },
+    tip: (d) => [{ t: d.label + " · " + NF.format(d.total) + " ODTs" }, ...SA.filter((sr) => d.vals[sr.k]).map((sr) => ({ c: sr.c, t: sr.l + ": " + NF.format(d.vals[sr.k]) + " (" + pct(d.vals[sr.k], d.total) + ")" })), { t: "Máquinas con más ODTs:" },
       ...[...groupBy(d.rows, (r) => r.maquina)].map(([m, v]) => [m, v.length]).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([m, c]) => ({ t: m + ": " + NF.format(c) }))],
   });
   const base = filt(["resp"]);
@@ -1424,8 +1427,8 @@ function drawDetalle(rows) {
   if (!UI.todos) items = items.slice(0, LIM);
   for (const r0 of F.resp) if (!items.some((d) => d.key === r0)) { const v = base.filter((d) => d.responsable === r0); items.push({ key: r0, label: r0, vals: tvals(v), total: v.length }); }
   bars($("b-tec"), items, {
-    series, sel: F.resp,
-    tip: (d) => [{ t: d.label }, ...series.filter((sr) => d.vals[sr.k]).map((sr) => ({ c: sr.c, t: sr.l + ": " + NF.format(d.vals[sr.k]) })), { t: "Total: " + NF.format(d.total) }],
+    series, sel: F.resp, pct: true, value: (d) => NF.format(d.total) + (d.vals.PendAtr ? " · " + Math.round(d.vals.PendAtr * 100 / d.total) + " % atras." : ""), bad: (d) => d.vals.PendAtr / d.total >= 0.4, 
+    tip: (d) => [{ t: d.label }, ...series.filter((sr) => d.vals[sr.k]).map((sr) => ({ c: sr.c, t: sr.l + ": " + NF.format(d.vals[sr.k]) + " (" + pct(d.vals[sr.k], d.total) + ")" })), { t: "Total: " + NF.format(d.total) }],
     segClick: (d, sr) => drillTo({ pred: (x) => x.responsable === d.key && sr.f(x), skip: ["resp"], label: d.label + " · " + sr.l.toLowerCase(), c: sr.c }),
     click: (d) => { toggleF("resp", d.key); if (F.resp.length) $("matriz").scrollIntoView({ behavior: "smooth", block: "start" }); },
   });
