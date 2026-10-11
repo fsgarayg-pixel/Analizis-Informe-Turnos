@@ -371,10 +371,14 @@ details.guia dd{margin:0;color:var(--muted)}
     <section class="panel" id="panel-ap" aria-label="Áreas por periodo">
       <div class="ph">
         <div>
-          <h2>Áreas por periodo: entradas, cumplidas y pendientes</h2>
-          <p class="sub">Entradas: ODTs creadas en el periodo. Cumplidas: ODTs terminadas en el periodo. Pendientes: de las que entraron en el periodo, las que siguen abiertas hoy. Línea: cumplidas ÷ entradas.</p>
+          <h2>ODTs por periodo y área</h2>
+          <p class="sub" id="ap-sub"></p>
         </div>
         <div class="ap-ctl">
+          <div class="seg" role="group" aria-label="Vista" id="ap-view">
+            <button type="button" data-v="flujo" aria-pressed="true">Entradas vs cumplidas</button>
+            <button type="button" data-v="estado" aria-pressed="false">Estado de lo que entró</button>
+          </div>
           <label class="lbl">Área <select id="ap-area" aria-label="Área del gráfico"></select></label>
           <div class="seg" role="group" aria-label="Agrupar por" id="ap-seg">
             <button type="button" data-g="sem" aria-pressed="false">Semana</button>
@@ -389,12 +393,6 @@ details.guia dd{margin:0;color:var(--muted)}
       <div class="ap-tw tw"><table class="score ap-t" id="t-ap"></table></div>
     </section>
 
-    <section class="panel" aria-label="Entradas por mes">
-      <h2>ODTs que entran cada mes y cómo están hoy</h2>
-      <p class="sub">Cada barra son las ODTs creadas en ese mes, divididas según su estado actual. Línea: % de esas ODTs que ya están terminadas.</p>
-      <div class="legend" id="lg-cmi-mes"></div>
-      <div class="chart" id="c-cmi-mes"></div>
-    </section>
 
     <section class="panel" aria-label="Áreas: entradas, terminadas y abiertas">
       <h2>Por área: entradas, terminadas y abiertas</h2>
@@ -662,7 +660,7 @@ const DEF_TAB = {
 };
 /* Responsables de ODT que no son técnicos (se ocultan en el rendimiento con "Solo técnicos") */
 const NO_TECNICOS = ["JAVIER GAMEZ BLANCO", "RODRIGUEZ PENA JAIME ALFONSO", "BRIANDA BETANCOURT SANCHEZ", "JOSE SANTIAGO CASTAÑEDA BUITRAGO", "FABIAN STEVEN GARAY GOMEZ"];
-const UI = { tab: ["#detalle", "#rend"].includes(location.hash) ? location.hash.slice(1) : "cmi", todos: false, q: "", open: new Set(), auto: true, soloTec: true, hm: "rend", am: "ent", ap: "mes", apArea: "", sortK: "asig", sortDir: -1 };
+const UI = { tab: ["#detalle", "#rend"].includes(location.hash) ? location.hash.slice(1) : "cmi", todos: false, q: "", open: new Set(), auto: true, soloTec: true, hm: "rend", am: "ent", ap: "mes", apArea: "", apView: "flujo", sortK: "asig", sortDir: -1 };
 const FT = { cmi: DEF_TAB.cmi(), detalle: DEF_TAB.detalle(), rend: DEF_TAB.rend() };
 const DEF = () => DEF_TAB[UI.tab]();
 let F = FT[UI.tab];
@@ -921,15 +919,7 @@ function drawCMI(rows) {
   if (old) li(b(NF.format(old)), " ODTs llevan más de 30 días abiertas.");
   if (F.estado.length || F.resp.length || F.tipo.length) li("El informe cuenta todas las ODTs que entraron (todos los estados), con el resto de filtros activos.");
 
-  /* entradas por mes y estado actual */
   const MB = [{ k: "term", l: "Terminadas", c: "var(--term)" }, { k: "proc", l: "En proceso", c: "var(--proc)" }, { k: "paus", l: "En pausa", c: "var(--paus)" }, { k: "pend", l: "Pendientes", c: "var(--pend)" }];
-  const ML = [{ k: "rend", l: "% terminadas", c: "var(--ink)" }];
-  legend($("lg-cmi-mes"), [...MB, ...ML]);
-  svgChart($("c-cmi-mes"), months.map((ym) => ({ key: ym, label: mlabel(ym), v: stats(byM.get(ym) || []) })), {
-    bars: MB, stacked: true, lines: ML, totalLabel: true, label: "ODTs que entran por mes según su estado actual",
-    tip: (c) => [{ t: MESL[c.key % 100 - 1] + " " + Math.floor(c.key / 100) + " · " + NF.format(c.v.asig) + " entraron" }, ...MB.map((x) => ({ c: x.c, t: x.l + ": " + NF.format(c.v[x.k]) })), { t: "Terminadas: " + fmtPct(c.v.rend) }],
-  });
-
   /* áreas por periodo (semana / mes / trimestre / semestre) */
   drawAreasPeriodo(sinEstado);
 
@@ -1010,6 +1000,20 @@ function drawAreasPeriodo(base) {
     const pend = e.filter((d) => !d.term).length;
     return { key: k, label: periodLabel(k, g), v: { e: e.length, c: c.length, p: pend, r: ratio(c.length, e.length) } };
   });
+  document.querySelectorAll("#ap-view button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === UI.apView)));
+  const scope = UI.apArea ? " · " + (UI.apArea === "__acab" ? "Planta Acabados" : short(UI.apArea)) : "";
+  if (UI.apView === "estado") {
+    $("ap-sub").textContent = "Cada barra son las ODTs que entraron en el periodo, divididas según su estado de hoy. Línea: % de esas ODTs que ya están terminadas.";
+    const MB = [{ k: "term", l: "Terminadas", c: "var(--term)" }, { k: "proc", l: "En proceso", c: "var(--proc)" }, { k: "paus", l: "En pausa", c: "var(--paus)" }, { k: "pend", l: "Pendientes", c: "var(--pend)" }];
+    const ML = [{ k: "rend", l: "% terminadas", c: "var(--ink)" }];
+    legend($("lg-ap"), [...MB, ...ML]);
+    const ed = keys.filter((k) => ent.has(k)).map((k) => ({ key: k, label: periodLabel(k, g), v: stats(ent.get(k)) }));
+    svgChart($("c-ap"), ed, {
+      bars: MB, stacked: true, lines: ML, totalLabel: true, label: "Estado actual de las ODTs que entraron por periodo", empty: "Sin ODTs con estos filtros.",
+      tip: (c) => [{ t: periodLabel(c.key, g, true) + scope + " · " + NF.format(c.v.asig) + " entraron" }, ...MB.map((x) => ({ c: x.c, t: x.l + ": " + NF.format(c.v[x.k]) })), { t: "Terminadas: " + fmtPct(c.v.rend) }],
+    });
+  } else {
+  $("ap-sub").textContent = "Entradas: ODTs creadas en el periodo. Cumplidas: ODTs terminadas en el periodo (aunque hayan entrado antes). Pendientes: de las que entraron, las que siguen abiertas hoy. Línea: cumplidas ÷ entradas (sobre 100 % = ese periodo se redujo el atraso).";
   const B = [{ k: "e", l: "Entradas", c: "var(--proc)" }, { k: "c", l: "Cumplidas", c: "var(--term)" }, { k: "p", l: "Pendientes (siguen abiertas)", c: "var(--pend)" }];
   const L = [{ k: "r", l: "Cumplidas ÷ entradas", c: "var(--ink)" }];
   legend($("lg-ap"), [...B, ...L]);
@@ -1021,6 +1025,7 @@ function drawAreasPeriodo(base) {
       { c: "var(--proc)", t: "Entradas: " + NF.format(c.v.e) }, { c: "var(--term)", t: "Cumplidas: " + NF.format(c.v.c) },
       { c: "var(--pend)", t: "Pendientes: " + NF.format(c.v.p) + (c.v.e ? " (" + fmtPct(c.v.p / c.v.e) + " de lo que entró)" : "") }, { t: "Cumplidas ÷ entradas: " + fmtPct(c.v.r) }],
   });
+  }
   /* tabla área × periodo (últimos periodos) */
   const tb = $("t-ap"); tb.replaceChildren();
   const last = keys.slice(g === "sem" ? -8 : g === "mes" ? -6 : -4);
@@ -1046,6 +1051,7 @@ function drawAreasPeriodo(base) {
   tb.append(bd);
 }
 document.querySelectorAll("#ap-seg button").forEach((b) => b.addEventListener("click", () => { UI.ap = b.dataset.g; drawAreasPeriodo(filt(["estado"])); }));
+document.querySelectorAll("#ap-view button").forEach((b) => b.addEventListener("click", () => { UI.apView = b.dataset.v; drawAreasPeriodo(filt(["estado"])); }));
 $("ap-area").addEventListener("change", (e) => { UI.apArea = e.target.value; drawAreasPeriodo(filt(["estado"])); });
 
 document.querySelectorAll("#am-seg button").forEach((x) => x.addEventListener("click", () => { UI.am = x.dataset.m; render(); }));
