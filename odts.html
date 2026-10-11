@@ -230,6 +230,12 @@ details.ms{display:block;width:100%;min-width:0}
 .br .lb{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .br .vl{font-family:var(--font-num);font-weight:600;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .br .vl.bad{color:var(--paus)}
+.stk i.seg-link{cursor:pointer;transition:filter .12s,transform .12s}
+.stk i.seg-link:hover,.stk i.seg-link:focus-visible{filter:brightness(1.15) saturate(1.2);outline:2px solid var(--ink);outline-offset:-2px}
+.trk:has(.seg-link){height:16px}
+.drill{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px;padding:8px 12px;border-radius:6px;background:var(--soft);border-left:4px solid var(--c,var(--focus));font-size:14px}
+.drill b{font-family:var(--font-num);font-size:15px}
+.drill button{margin-left:auto}
 .trk{height:12px;position:relative}
 .trk.grp{height:auto;display:flex;flex-direction:column;gap:2px}
 .trk.grp i{display:block;height:6px;border-radius:3px;min-width:1px}
@@ -428,7 +434,7 @@ details.guia dd{margin:0;color:var(--muted)}
     </div>
     <section class="panel" aria-label="Antigüedad">
         <h2>¿Hace cuánto están abiertas?</h2>
-        <p class="sub">Días desde la captura de las ODTs no terminadas. Más de 30 días merece revisión.</p>
+        <p class="sub">Días desde la captura de las ODTs no terminadas. Más de 30 días merece revisión. Haz clic en cualquier color para ver esas ODTs.</p>
         <div class="legend" id="lg-age"></div>
         <div class="bars" id="b-age"></div>
       </section>
@@ -501,6 +507,7 @@ details.guia dd{margin:0;color:var(--muted)}
         </button>
       </div>
     </div>
+    <div class="drill" id="mx-drill" hidden></div>
     <div class="tw">
       <table class="mx">
         <thead><tr><th>Área ▸ Máquina ▸ N° de ODT</th><th>Asunto y descripción de la ODT</th><th>Estado</th><th>Fechas de ejecución</th><th>Días</th><th>Responsable</th><th>Observaciones finales (qué se hizo)</th></tr></thead>
@@ -667,7 +674,7 @@ function filt(skip = []) {
     (sk.has("tipo") || has("tipo", d.tipo)) && (sk.has("estado") || has("estado", d.estado)) &&
     (sk.has("clasif") || has("clasif", d.clasif)) && (sk.has("odt") || has("odt", d.codigo)));
 }
-function setF(k, v) { F[k] = v; FT[UI.tab] = F; UI.auto = true; render(); }
+function setF(k, v) { F[k] = v; FT[UI.tab] = F; UI.auto = true; UI.drill = null; render(); }
 /* clic en una barra: filtra solo por ese valor; otro clic lo quita */
 const toggleF = (k, v) => setF(k, F[k].length === 1 && F[k][0] === v ? [] : [v]);
 const one = (k) => (F[k].length === 1 ? F[k][0] : null);
@@ -705,7 +712,18 @@ function bars(box, items, o) {
     } else {
       trk = el("div", "trk");
       const st = el("div", "stk"); st.style.width = (d.total / max * 100) + "%";
-      for (const sr of o.series) { const v = d.vals[sr.k] || 0; if (!v) continue; const i = el("i"); i.style.flex = v + " 0 0"; i.style.background = sr.c; st.append(i); }
+      for (const sr of o.series) {
+        const v = d.vals[sr.k] || 0; if (!v) continue;
+        const i = el("i"); i.style.flex = v + " 0 0"; i.style.background = sr.c; st.append(i);
+        if (o.segClick) {
+          i.classList.add("seg-link"); i.tabIndex = 0; i.setAttribute("role", "link");
+          i.setAttribute("aria-label", d.label + " · " + sr.l + ": " + NF.format(v) + " ODTs. Ver ODTs");
+          i.addEventListener("mousemove", (e) => { e.stopPropagation(); showTip(e, [{ t: d.label + " · " + sr.l }, { c: sr.c, t: NF.format(v) + " ODTs" }, { t: "Clic para ver estas ODTs" }]); });
+          const go = (e) => { e.stopPropagation(); hideTip(); o.segClick(d, sr); };
+          i.addEventListener("click", go);
+          i.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(e); } });
+        }
+      }
       trk.append(st);
     }
     const vl = el("div", "vl" + (o.bad && o.bad(d) ? " bad" : ""), o.value ? o.value(d) : NF.format(d.total));
@@ -1085,7 +1103,9 @@ function drawDetalle(rows) {
     return { key: stt, label: ESTL[stt], vals, total: v.length };
   }).filter((d) => d.total > 0), {
     series: BK, empty: "No hay ODTs abiertas con estos filtros.",
-    tip: (d) => [{ t: d.label }, ...BK.map((b) => ({ c: b.c, t: b.l + ": " + NF.format(d.vals[b.k]) }))],
+    tip: (d) => [{ t: d.label + " · clic en un color para ver esas ODTs" }, ...BK.map((b) => ({ c: b.c, t: b.l + ": " + NF.format(d.vals[b.k]) }))],
+    segClick: (d, sr) => drillTo({ estado: d.key, f: sr.f, label: ESTL[d.key] + " · " + (sr.k === "a" ? "0 a 7 días" : sr.k === "d" ? "más de 90 días" : sr.l + " días"), c: sr.c }),
+    click: (d) => drillTo({ estado: d.key, f: () => true, label: ESTL[d.key] + " · todas las edades", c: ESTC[d.key] }),
   });
 }
 
@@ -1287,23 +1307,38 @@ let rzT; window.addEventListener("resize", () => { clearTimeout(rzT); rzT = setT
 
 /* ---------- Matriz Área ▸ Máquina ▸ ODT ---------- */
 let MXROWS = [];
+function drillTo(dr) {
+  UI.drill = dr; UI.auto = true;
+  drawMatrix(filt());
+  $("matriz").scrollIntoView({ behavior: "smooth", block: "start" });
+}
 function matrixRows(rows) {
   const q = UI.q;
   let r = rows;
+  if (UI.drill) r = r.filter((d) => d.estado === UI.drill.estado && d.dias != null && UI.drill.f(d.dias));
   if (q) r = r.filter((d) => [d.codigo, d.maquina, d.descripcion, d.mensaje, d.obs, d.turnos.join(" "), d.responsable, d.area].some((x) => x && x.toLowerCase().includes(q)));
   return r;
 }
+function drawDrill(n) {
+  const box = $("mx-drill"); box.replaceChildren();
+  if (!UI.drill) { box.hidden = true; return; }
+  box.hidden = false; box.style.setProperty("--c", UI.drill.c || "var(--focus)");
+  box.append(document.createTextNode("Mostrando "), el("b", null, NF.format(n)), document.createTextNode(" ODTs: " + UI.drill.label));
+  const x = el("button", "linkbtn", "Ver todas ×"); x.type = "button";
+  x.addEventListener("click", () => { UI.drill = null; UI.auto = true; drawMatrix(filt()); });
+  box.append(x);
+}
 function drawMatrix(rows) {
-  const r = matrixRows(rows); MXROWS = r;
+  const r = matrixRows(rows); MXROWS = r; drawDrill(r.length);
   const body = $("mx-body");
   const areas = [...groupBy(r, (d) => d.area)].sort((a, b) => b[1].length - a[1].length);
   const nMaq = new Set(r.map((d) => d.area + "|" + d.maquina)).size;
-  $("mx-sub").textContent = NF.format(r.length) + " ODTs en " + NF.format(areas.length) + " áreas y " + NF.format(nMaq) + " máquinas, según los filtros" + (UI.q ? " y la búsqueda" : "") + ".";
+  $("mx-sub").textContent = NF.format(r.length) + " ODTs en " + NF.format(areas.length) + " áreas y " + NF.format(nMaq) + " máquinas, según los filtros" + (UI.drill ? " y el color elegido en el gráfico" : "") + (UI.q ? " y la búsqueda" : "") + ".";
   if (UI.auto) { // abre solo lo que tiene sentido para la selección
     UI.open = new Set();
     areas.forEach(([a]) => UI.open.add("A|" + a));
-    if (r.length <= 60 || F.maquina.length || F.resp.length || F.odt.length || UI.q) r.forEach((d) => UI.open.add("M|" + d.area + "|" + d.maquina));
-    if (areas.length > 6 && !(F.maquina.length || F.resp.length || F.odt.length || UI.q)) UI.open = new Set();
+    if (r.length <= 60 || UI.drill || F.maquina.length || F.resp.length || F.odt.length || UI.q) r.forEach((d) => UI.open.add("M|" + d.area + "|" + d.maquina));
+    if (areas.length > 6 && r.length > 150 && !(F.maquina.length || F.resp.length || F.odt.length || UI.q)) { UI.open = new Set(); if (UI.drill) areas.forEach(([a]) => UI.open.add("A|" + a)); }
     UI.auto = false;
   }
   const frag = document.createDocumentFragment();
@@ -1483,7 +1518,7 @@ function render() {
   if (UI.tab === "cmi") drawCMI(rows); else if (UI.tab === "detalle") drawDetalle(rows); else drawRend(rows);
   drawMatrix(rows);
 }
-document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => { FT[UI.tab] = F; UI.tab = b.dataset.tab; F = FT[UI.tab]; UI.auto = true; history.replaceState(null, "", "#" + UI.tab); render(); }));
+document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => { FT[UI.tab] = F; UI.tab = b.dataset.tab; F = FT[UI.tab]; UI.auto = true; UI.drill = null; history.replaceState(null, "", "#" + UI.tab); render(); }));
 $("btn-todos").addEventListener("click", () => { UI.todos = !UI.todos; render(); });
 
 /* ---------- Datos: en vivo, copia y botón "Actualizar datos" (igual que el informe de turnos) ---------- */
