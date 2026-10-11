@@ -330,6 +330,9 @@ details.ms{display:block;width:100%;min-width:0}
 .tw-turno{margin-top:6px;padding:6px 8px;border-left:3px solid var(--prev);background:var(--soft);border-radius:0 5px 5px 0;font-size:12.5px;white-space:normal}
 .tw-turno .tt{display:block;font-weight:600;color:var(--prev);font-size:11.5px;margin-bottom:2px}
 #reporte{display:none}
+.pmot{margin-top:6px;min-width:180px;max-width:230px;font-size:11.5px;line-height:1.35;white-space:normal;padding:4px 6px;border-left:3px solid var(--paus);background:var(--soft);border-radius:0 4px 4px 0}
+.pmot b{display:block;font-size:10.5px;color:var(--paus);text-transform:uppercase;letter-spacing:.03em}
+.pmot.no{color:var(--muted);font-style:italic}
 #b-ra .trk.grp{gap:3px}
 #b-ra .trk.grp i{height:9px}
 .mx td.fx{white-space:nowrap;font-size:12.5px;line-height:1.5;font-variant-numeric:tabular-nums}
@@ -1720,7 +1723,9 @@ function drawMatrix(rows) {
         const tr = el("tr", "od");
         const td = (t, c) => { const x = el("td", c || "", t); tr.append(x); return x; };
         const c0 = td("ODT " + d.codigo); c0.append(el("small", "", d.tipo), el("small", "", short(d.area))); descCell(tr, d);
-        const te = el("td"); const sp = el("span", "est", EST1[d.estado] || d.estado); sp.style.setProperty("--c", ESTC[d.estado] || "var(--mute)"); te.append(sp); tr.append(te);
+        const te = el("td"); const sp = el("span", "est", EST1[d.estado] || d.estado); sp.style.setProperty("--c", ESTC[d.estado] || "var(--mute)"); te.append(sp);
+        if (d.estado === "Pausado") { const mv = el("div", "pmot" + (d.nota ? "" : " no")); mv.append(el("b", "", "Motivo de pausa"), document.createTextNode(d.nota || "Sin motivo registrado en el CMMS")); te.append(mv); }
+        tr.append(te);
         const fx = el("td", "fx");
         const line = (lab, v, cls) => { const dv = el("div", cls || ""); dv.append(el("b", "", lab), document.createTextNode(v ? fdt(v) : "—")); fx.append(dv); };
         line("Captura", d.fecha); line("Programada", d.ejec); line("Inicio", d.iniHora); line("Fin", d.finHora, d.term && d.enPlazo === false ? "late" : "");
