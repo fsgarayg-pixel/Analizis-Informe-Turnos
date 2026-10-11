@@ -88,6 +88,12 @@ details.ms{display:block;width:100%;min-width:0}
 .kpis.k6{grid-template-columns:repeat(6,1fr)}
 .kpi .n small{font-size:18px;font-weight:600;color:var(--muted);margin-left:2px}
 .chk{display:inline-flex;gap:6px;align-items:center;font-size:13.5px;cursor:pointer}
+.ap-ctl{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.ap-ctl select{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 8px;max-width:260px}
+.ap-tw{margin-top:12px;max-height:none}
+.ap-t{min-width:0}
+.ap-t th,.ap-t td{padding:6px 8px;font-size:12.5px}
+.ap-t tbody tr{cursor:default}
 .exec{background:linear-gradient(180deg,var(--surface),var(--surface));border:1px solid var(--line);border-left:5px solid var(--band);border-radius:8px;padding:18px 22px;margin-bottom:16px}
 .exec-h{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:flex-start}
 .exec-k{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--band);font-weight:700}
@@ -346,6 +352,27 @@ details.guia dd{margin:0;color:var(--muted)}
       </div>
       <div class="exec-kpis" id="exec-kpis"></div>
       <ul class="exec-notes" id="exec-notes"></ul>
+    </section>
+
+    <section class="panel" id="panel-ap" aria-label="Áreas por periodo">
+      <div class="ph">
+        <div>
+          <h2>Áreas por periodo: entradas, cumplidas y pendientes</h2>
+          <p class="sub">Entradas: ODTs creadas en el periodo. Cumplidas: ODTs terminadas en el periodo. Pendientes: de las que entraron en el periodo, las que siguen abiertas hoy. Línea: cumplidas ÷ entradas.</p>
+        </div>
+        <div class="ap-ctl">
+          <label class="lbl">Área <select id="ap-area" aria-label="Área del gráfico"></select></label>
+          <div class="seg" role="group" aria-label="Agrupar por" id="ap-seg">
+            <button type="button" data-g="sem" aria-pressed="false">Semana</button>
+            <button type="button" data-g="mes" aria-pressed="true">Mes</button>
+            <button type="button" data-g="tri" aria-pressed="false">Trimestre</button>
+            <button type="button" data-g="smt" aria-pressed="false">Semestre</button>
+          </div>
+        </div>
+      </div>
+      <div class="legend" id="lg-ap"></div>
+      <div class="chart" id="c-ap"></div>
+      <div class="ap-tw tw"><table class="score ap-t" id="t-ap"></table></div>
     </section>
 
     <section class="panel" aria-label="Entradas por mes">
@@ -620,7 +647,7 @@ const DEF_TAB = {
 };
 /* Responsables de ODT que no son técnicos (se ocultan en el rendimiento con "Solo técnicos") */
 const NO_TECNICOS = ["JAVIER GAMEZ BLANCO", "RODRIGUEZ PENA JAIME ALFONSO", "BRIANDA BETANCOURT SANCHEZ", "JOSE SANTIAGO CASTAÑEDA BUITRAGO", "FABIAN STEVEN GARAY GOMEZ"];
-const UI = { tab: ["#detalle", "#rend"].includes(location.hash) ? location.hash.slice(1) : "cmi", todos: false, q: "", open: new Set(), auto: true, soloTec: true, hm: "rend", am: "ent", sortK: "asig", sortDir: -1 };
+const UI = { tab: ["#detalle", "#rend"].includes(location.hash) ? location.hash.slice(1) : "cmi", todos: false, q: "", open: new Set(), auto: true, soloTec: true, hm: "rend", am: "ent", ap: "mes", apArea: "", sortK: "asig", sortDir: -1 };
 const FT = { cmi: DEF_TAB.cmi(), detalle: DEF_TAB.detalle(), rend: DEF_TAB.rend() };
 const DEF = () => DEF_TAB[UI.tab]();
 let F = FT[UI.tab];
@@ -874,6 +901,9 @@ function drawCMI(rows) {
     tip: (c) => [{ t: MESL[c.key % 100 - 1] + " " + Math.floor(c.key / 100) + " · " + NF.format(c.v.asig) + " entraron" }, ...MB.map((x) => ({ c: x.c, t: x.l + ": " + NF.format(c.v[x.k]) })), { t: "Terminadas: " + fmtPct(c.v.rend) }],
   });
 
+  /* áreas por periodo (semana / mes / trimestre / semestre) */
+  drawAreasPeriodo(sinEstado);
+
   /* por área */
   const AB = [{ k: "term", l: "Terminadas", c: "var(--term)" }, { k: "proc", l: "En proceso", c: "var(--proc)" }, { k: "paus", l: "En pausa", c: "var(--paus)" }, { k: "pend", l: "Pendientes", c: "var(--pend)" }];
   legend($("lg-cmi-area"), AB);
@@ -914,6 +944,81 @@ function drawCMI(rows) {
   }
   if (!areasTop.length) { const tr = el("tr"); tr.append(el("td", "empty", "Sin datos con estos filtros.")); tbl.append(tr); }
 }
+/* ---------- Áreas por periodo ---------- */
+function periodKey(iso, g) {
+  if (!iso) return null;
+  const y = +iso.slice(0, 4), m = +iso.slice(5, 7);
+  if (g === "mes") return y * 100 + m;
+  if (g === "tri") return y * 10 + Math.ceil(m / 3);
+  if (g === "smt") return y * 10 + (m <= 6 ? 1 : 2);
+  const d = new Date(Date.UTC(y, m - 1, +iso.slice(8, 10)));       /* semana ISO */
+  const day = (d.getUTCDay() + 6) % 7; d.setUTCDate(d.getUTCDate() - day + 3);
+  const fy = d.getUTCFullYear(), w1 = new Date(Date.UTC(fy, 0, 4));
+  const wk = 1 + Math.round(((d - w1) / 864e5 - 3 + ((w1.getUTCDay() + 6) % 7)) / 7);
+  return fy * 100 + wk;
+}
+function periodLabel(k, g, long) {
+  if (g === "mes") return long ? MESL[k % 100 - 1] + " " + Math.floor(k / 100) : MES[k % 100 - 1] + " " + String(Math.floor(k / 100)).slice(2);
+  if (g === "tri") return (long ? "Trimestre " : "T") + (k % 10) + " " + (long ? Math.floor(k / 10) : String(Math.floor(k / 10)).slice(2));
+  if (g === "smt") return (long ? "Semestre " : "Sem ") + (k % 10) + " " + (long ? Math.floor(k / 10) : String(Math.floor(k / 10)).slice(2));
+  return (long ? "Semana " : "S") + (k % 100) + " " + (long ? Math.floor(k / 100) : String(Math.floor(k / 100)).slice(2));
+}
+function drawAreasPeriodo(base) {
+  const g = UI.ap;
+  document.querySelectorAll("#ap-seg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.g === g)));
+  /* selector de área (respeta los demás filtros) */
+  const sel = $("ap-area"), areas = [...groupBy(base, (d) => d.area)].sort((a, b) => b[1].length - a[1].length).map(([a]) => a);
+  if (UI.apArea && UI.apArea !== "__acab" && !areas.includes(UI.apArea)) UI.apArea = "";
+  sel.replaceChildren(new Option("Todas las áreas", ""), new Option("Planta Acabados (6 áreas)", "__acab"), ...areas.map((a) => new Option(short(a), a)));
+  sel.value = UI.apArea;
+  const rows = base.filter((d) => !UI.apArea || (UI.apArea === "__acab" ? d.acabados : d.area === UI.apArea));
+  const ent = groupBy(rows.filter((d) => d.fecha), (d) => periodKey(d.fecha, g));
+  const cum = groupBy(rows.filter((d) => d.term && d.fin), (d) => periodKey(d.fin, g));
+  let keys = [...new Set([...ent.keys(), ...cum.keys()])].filter((k) => k != null).sort((a, b) => a - b);
+  if (g === "sem") keys = keys.slice(-26);
+  const data = keys.map((k) => {
+    const e = ent.get(k) || [], c = cum.get(k) || [];
+    const pend = e.filter((d) => !d.term).length;
+    return { key: k, label: periodLabel(k, g), v: { e: e.length, c: c.length, p: pend, r: ratio(c.length, e.length) } };
+  });
+  const B = [{ k: "e", l: "Entradas", c: "var(--proc)" }, { k: "c", l: "Cumplidas", c: "var(--term)" }, { k: "p", l: "Pendientes (siguen abiertas)", c: "var(--pend)" }];
+  const L = [{ k: "r", l: "Cumplidas ÷ entradas", c: "var(--ink)" }];
+  legend($("lg-ap"), [...B, ...L]);
+  const pmax = Math.max(1, ...data.map((d) => d.v.r || 0));
+  svgChart($("c-ap"), data, {
+    bars: B, lines: L, pctMax: [1, 1.2, 1.6, 2, 3].find((x) => x >= pmax) || Math.ceil(pmax), valueLabels: data.length <= 18, label: "Entradas, cumplidas y pendientes por periodo",
+    empty: "Sin ODTs con estos filtros.",
+    tip: (c) => [{ t: periodLabel(c.key, g, true) + (UI.apArea ? " · " + (UI.apArea === "__acab" ? "Planta Acabados" : short(UI.apArea)) : "") },
+      { c: "var(--proc)", t: "Entradas: " + NF.format(c.v.e) }, { c: "var(--term)", t: "Cumplidas: " + NF.format(c.v.c) },
+      { c: "var(--pend)", t: "Pendientes: " + NF.format(c.v.p) + (c.v.e ? " (" + fmtPct(c.v.p / c.v.e) + " de lo que entró)" : "") }, { t: "Cumplidas ÷ entradas: " + fmtPct(c.v.r) }],
+  });
+  /* tabla área × periodo (últimos periodos) */
+  const tb = $("t-ap"); tb.replaceChildren();
+  const last = keys.slice(g === "sem" ? -8 : g === "mes" ? -6 : -4);
+  if (!last.length) return;
+  const hr = el("tr"); hr.append(el("th", "", "Área"));
+  last.forEach((k) => { const h = el("th", "", periodLabel(k, g)); h.colSpan = 3; h.style.textAlign = "center"; hr.append(h); });
+  const hr2 = el("tr"); hr2.append(el("th", "", ""));
+  last.forEach(() => ["Ent.", "Cum.", "Pend."].forEach((x) => hr2.append(el("th", "", x))));
+  const th = el("thead"); th.append(hr, hr2); tb.append(th);
+  const bd = el("tbody");
+  const list = UI.apArea ? [UI.apArea === "__acab" ? "__acab" : UI.apArea] : areas.slice(0, 12);
+  for (const a of list) {
+    const ra = base.filter((d) => (a === "__acab" ? d.acabados : d.area === a));
+    const tr = el("tr"); tr.append(el("td", "", a === "__acab" ? "Planta Acabados" : short(a)));
+    for (const k of last) {
+      const e = ra.filter((d) => d.fecha && periodKey(d.fecha, g) === k), c = ra.filter((d) => d.term && d.fin && periodKey(d.fin, g) === k);
+      const p = e.filter((d) => !d.term).length;
+      tr.append(el("td", "num", e.length ? NF.format(e.length) : "·"), el("td", "num", c.length ? NF.format(c.length) : "·"));
+      const tp = el("td", "num", p ? NF.format(p) : "·"); if (p) tp.style.color = "var(--paus)"; tr.append(tp);
+    }
+    bd.append(tr);
+  }
+  tb.append(bd);
+}
+document.querySelectorAll("#ap-seg button").forEach((b) => b.addEventListener("click", () => { UI.ap = b.dataset.g; drawAreasPeriodo(filt(["estado"])); }));
+$("ap-area").addEventListener("change", (e) => { UI.apArea = e.target.value; drawAreasPeriodo(filt(["estado"])); });
+
 document.querySelectorAll("#am-seg button").forEach((x) => x.addEventListener("click", () => { UI.am = x.dataset.m; render(); }));
 $("btn-print").addEventListener("click", () => window.print());
 
@@ -1086,7 +1191,7 @@ function drawRend(rows) {
   legend($("lg-flujo"), [...FB, ...FL]);
   const pmax = Math.max(1, ...flujo.map((f) => f.v.cumpl || 0));
   svgChart($("c-flujo"), flujo, {
-    bars: FB, lines: FL, pctMax: pmax > 1 ? Math.ceil(pmax * 4) / 4 : 1, valueLabels: true, label: "ODTs entradas y cumplidas por mes",
+    bars: FB, lines: FL, pctMax: [1, 1.2, 1.6, 2, 3].find((x) => x >= pmax) || Math.ceil(pmax), valueLabels: true, label: "ODTs entradas y cumplidas por mes",
     tip: (c) => [{ t: MESL[c.key % 100 - 1] + " " + Math.floor(c.key / 100) }, { c: "var(--proc)", t: "Entradas: " + NF.format(c.v.e) }, { c: "var(--term)", t: "Cumplidas: " + NF.format(c.v.c) },
       { t: "Cumplidas ÷ entradas: " + fmtPct(c.v.cumpl) }, { c: "var(--corr)", t: "En plazo: " + fmtPct(c.v.plazo) }],
   });
