@@ -330,6 +330,18 @@ details.ms{display:block;width:100%;min-width:0}
 .tw-turno{margin-top:6px;padding:6px 8px;border-left:3px solid var(--prev);background:var(--soft);border-radius:0 5px 5px 0;font-size:12.5px;white-space:normal}
 .tw-turno .tt{display:block;font-weight:600;color:var(--prev);font-size:11.5px;margin-bottom:2px}
 #reporte{display:none}
+.arr-kpis{margin-top:8px}
+.arr-kpis .ek.hl{border-color:var(--paus);box-shadow:inset 4px 0 0 var(--paus)}
+.arr-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+@media (max-width:900px){.arr-strip{grid-template-columns:repeat(3,1fr)}}
+.arr-m{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--surface);text-align:left;cursor:pointer;color:var(--ink);font:inherit}
+.arr-m:hover,.arr-m:focus-visible{background:var(--soft)}
+.arr-m .t{font-size:12.5px;color:var(--muted)}
+.arr-m .n{font-family:var(--font-num);font-size:26px;font-weight:700;line-height:1.15}
+.arr-m .s{font-size:12px;color:var(--muted)}
+.arr-m .bar{height:6px;border-radius:3px;background:var(--soft);margin-top:6px;overflow:hidden}
+.arr-m .bar i{display:block;height:100%;background:var(--paus)}
+#b-arr .br.cur .lb{font-weight:700}
 .dia-list{padding:10px;min-width:250px}
 .dia-q{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
 .dia-q button{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:6px 8px;cursor:pointer;font-size:13px;color:var(--ink)}
@@ -433,6 +445,18 @@ details.guia dd{margin:0;color:var(--muted)}
       </div>
       <div class="exec-kpis" id="exec-kpis"></div>
       <ul class="exec-notes" id="exec-notes"></ul>
+    </section>
+
+    <section class="panel" id="panel-arr" aria-label="ODTs que vienen de meses anteriores">
+      <h2>ODTs abiertas que vienen de meses anteriores</h2>
+      <p class="sub" id="arr-sub"></p>
+      <div class="exec-kpis arr-kpis" id="arr-kpis"></div>
+      <h3 class="tc-h3">Abiertas hoy según el mes en que se crearon</h3>
+      <div class="legend" id="lg-arr"></div>
+      <div class="bars" id="b-arr"></div>
+      <h3 class="tc-h3">Arrastre al inicio de cada mes</h3>
+      <p class="sub" style="margin-top:0">ODTs que ya estaban abiertas el día 1 de cada mes (vienen de meses anteriores) y cuántas de ellas siguen abiertas hoy.</p>
+      <div class="arr-strip" id="arr-strip"></div>
     </section>
     <section class="panel" id="panel-tiempos" aria-label="Control de tiempos de ODTs abiertas">
       <h2>Control de tiempos de ODTs abiertas</h2>
@@ -1086,7 +1110,8 @@ function drawCMI(rows) {
   if (F.estado.length || F.resp.length || F.tipo.length) li("El informe cuenta todas las ODTs que entraron (todos los estados), con el resto de filtros activos.");
 
   const MB = [{ k: "term", l: "Terminadas", c: "var(--term)" }, { k: "proc", l: "En proceso", c: "var(--proc)" }, { k: "paus", l: "En pausa", c: "var(--paus)" }, { k: "pend", l: "Pendientes", c: "var(--pend)" }];
-  /* control de tiempos de las abiertas, tabla área/máquina y rendimiento por área */
+  /* arrastre de meses anteriores, control de tiempos, tabla área/máquina y rendimiento por área */
+  drawArrastre();
   drawTiempos(rows);
   drawMQ(sinEstado);
   drawRA(sinEstado);
@@ -1135,6 +1160,60 @@ function drawCMI(rows) {
   if (!areasTop.length) { const tr = el("tr"); tr.append(el("td", "empty", "Sin datos con estos filtros.")); tbl.append(tr); }
 }
 
+
+/* ---------- ODTs abiertas que vienen de meses anteriores ----------
+   Ignora año, mes, día y estado: lo abierto hoy viene de cualquier fecha. Mes de referencia: el mes filtrado (si es uno) o el actual. */
+function drawArrastre() {
+  const SK = ["estado", "anio", "mes", "dia"];
+  const all = filt(SK), open = all.filter(isOpen);
+  const ry = F.anio.length === 1 ? +F.anio[0] : now0.getFullYear();
+  const rm = F.mes.length === 1 ? +F.mes[0] : now0.getMonth() + 1;
+  const refYM = ry * 100 + rm, refIso = ry + "-" + p2(rm) + "-01";
+  const esActual = refYM === now0.getFullYear() * 100 + now0.getMonth() + 1;
+  const refTxt = MESL[rm - 1].toLowerCase() + " " + ry;
+  const ym = (d) => (d.fecha ? +d.fecha.slice(0, 4) * 100 + +d.fecha.slice(5, 7) : 0);
+  const antes = open.filter((d) => ym(d) < refYM), delMes = open.filter((d) => ym(d) === refYM);
+  const atrAntes = antes.filter((d) => d.sit && d.sit.cls === "atr").length;
+  $("arr-sub").textContent = "Todas las ODTs abiertas hoy (pendientes, en pausa y en proceso), con los filtros de área, máquina, técnico, clasificación y tipo. No aplica el filtro de año, mes ni día, para no esconder lo que viene de antes. Mes de referencia: " + refTxt + (esActual ? " (mes actual)" : "") + ". Haz clic en un color o en un mes para ver esas ODTs.";
+  const box = $("arr-kpis"); box.replaceChildren();
+  const card = (n, l, d, hl) => { const c = el("div", "ek" + (hl ? " hl" : "")); c.append(el("div", "n", n), el("div", "l", l)); if (d) c.append(el("div", "d up", d)); box.append(c); };
+  const oldest = antes.map((d) => d.fecha).filter(Boolean).sort()[0];
+  card(NF.format(open.length), "Abiertas hoy", "");
+  card(NF.format(antes.length), "Vienen de antes de " + refTxt, fmtPct(ratio(antes.length, open.length)) + " de las abiertas · " + NF.format(atrAntes) + " ya vencidas", true);
+  card(NF.format(delMes.length), "Creadas en " + refTxt + " y aún abiertas", "");
+  card(oldest ? fdate(oldest) : "—", "La más antigua abierta", oldest ? NF.format(daysBetween(oldest, TODAY)) + " días" : "");
+  /* barras: un renglón por mes de creación */
+  const SA = estSeries(open, true);
+  legend($("lg-arr"), SA);
+  const byM = [...groupBy(open.filter((d) => d.fecha), ym)].sort((a, b) => a[0] - b[0]);
+  const items = byM.map(([k, v]) => ({ key: k, label: MESL[k % 100 - 1] + " " + Math.floor(k / 100) + (k === refYM ? " (ref.)" : ""), total: v.length, vals: Object.fromEntries(SA.map((sr) => [sr.k, v.filter(sr.f).length])) }));
+  const pm = (k) => (d) => isOpen(d) && ym(d) === k;
+  bars($("b-arr"), items, {
+    series: SA, empty: "No hay ODTs abiertas con estos filtros.",
+    value: (d) => NF.format(d.total) + (d.key < refYM ? "" : ""),
+    tip: (d) => [{ t: "Creadas en " + d.label.replace(" (ref.)", "") + " · " + NF.format(d.total) + " siguen abiertas" }, ...SA.filter((sr) => d.vals[sr.k]).map((sr) => ({ c: sr.c, t: sr.l + ": " + NF.format(d.vals[sr.k]) + " (" + pct(d.vals[sr.k], d.total) + ")" })), { t: "Clic en un color para ver esas ODTs" }],
+    segClick: (d, sr) => drillTo({ pred: (x) => pm(d.key)(x) && sr.f(x), skip: SK, label: "creadas en " + d.label.replace(" (ref.)", "") + " · " + sr.l.toLowerCase(), c: sr.c }),
+    click: (d) => drillTo({ pred: pm(d.key), skip: SK, label: "abiertas creadas en " + d.label.replace(" (ref.)", ""), c: "var(--paus)" }),
+  });
+  $("b-arr").querySelectorAll(".br").forEach((r, i) => { if (items[i] && items[i].key === refYM) r.classList.add("cur"); });
+  /* arrastre al inicio de los últimos 6 meses (hasta el de referencia) */
+  const strip = $("arr-strip"); strip.replaceChildren();
+  const ms = []; for (let i = 5; i >= 0; i--) { const t = new Date(ry, rm - 1 - i, 1); ms.push(isoOf(t)); }
+  const vals = ms.map((iso) => {
+    const v = all.filter((d) => d.fecha && d.fecha < iso && (isOpen(d) || (d.term && (d.fin || d.fecha) >= iso)));
+    return { iso, n: v.length, hoy: v.filter(isOpen).length };
+  });
+  const mx = Math.max(1, ...vals.map((x) => x.n));
+  for (const x of vals) {
+    const b = el("button", "arr-m"); b.type = "button";
+    const m = +x.iso.slice(5, 7), y = +x.iso.slice(0, 4);
+    b.append(el("div", "t", "Al 1 de " + MESL[m - 1].toLowerCase() + " " + y), el("div", "n", NF.format(x.n)), el("div", "s", "venían abiertas · hoy siguen " + NF.format(x.hoy)));
+    const br = el("div", "bar"); const bi = el("i"); bi.style.width = (x.n / mx * 100) + "%"; br.append(bi); b.append(br);
+    b.title = "Ver las " + x.n + " ODTs que estaban abiertas al iniciar " + MESL[m - 1].toLowerCase();
+    b.addEventListener("click", () => drillTo({ pred: (d) => d.fecha && d.fecha < x.iso && (isOpen(d) || (d.term && (d.fin || d.fecha) >= x.iso)), skip: SK, label: "abiertas al 1 de " + MESL[m - 1].toLowerCase() + " " + y + " (venían de meses anteriores)", c: "var(--paus)" }));
+    strip.append(b);
+  }
+}
 /* ---------- Prioridad por atraso ----------
    horas de retraso (positivo = atrasada; negativo = margen). Abiertas sin plazo y terminadas van al final. */
 const atraso = (d) => (d.sit ? -d.sit.falta : isOpen(d) ? -1e6 + (d.dias || 0) : -2e6);
@@ -1438,8 +1517,8 @@ function drawTiempos(rows) {
 
 /* Series por estado con las pendientes partidas en atrasadas (ya pasó el plazo: se debieron ejecutar),
    a tiempo (aún hay plazo) y sin plazo. Solo incluye las partes que existen en base. */
-function estSeries(base) {
-  return ESTADOS.filter((st) => has("estado", st)).flatMap((k) => k !== "Pendiente" ? [{ k, l: ESTL[k], c: ESTC[k], f: (x) => x.estado === k }] : [
+function estSeries(base, todos) {
+  return ESTADOS.filter((st) => todos || has("estado", st)).flatMap((k) => k !== "Pendiente" ? [{ k, l: ESTL[k], c: ESTC[k], f: (x) => x.estado === k }] : [
     { k: "PendAtr", l: "Pendientes atrasadas", c: "#A86A00", f: (x) => x.estado === "Pendiente" && x.sit && x.sit.cls === "atr" },
     { k: "PendOk", l: "Pendientes a tiempo", c: "#F2CC6B", tc: "#3D2A00", f: (x) => x.estado === "Pendiente" && x.sit && x.sit.cls !== "atr" },
     { k: "PendSp", l: "Pendientes sin plazo", c: "#C9D0DC", tc: "#14213D", f: (x) => x.estado === "Pendiente" && !x.sit },
