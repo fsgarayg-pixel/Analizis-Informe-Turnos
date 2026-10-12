@@ -1171,7 +1171,7 @@ function renderTable(){
 /* ---------- Eventos ---------- */
 // Boton "Actualizar datos": primero sincroniza Excel -> Google Sheet (servicio local), luego recarga
 const ROBOT_URL = "http://127.0.0.1:8766/actualizar";   /* robot HTM del PC de Fabian */
-const PEDIDOS_URL = "";   /* URL /exec del Apps Script de pedidos (botón desde cualquier equipo); vacío = solo este PC */
+const PEDIDOS_URL = "https://script.google.com/macros/s/AKfycbxWrmnQYNfAf5wYNzaX6zimntGY84iF2dMwYCvRsQ2jm_jAm77hS_qBq-UKiuwS1jtW/exec";   /* URL /exec del Apps Script de pedidos (botón desde cualquier equipo); vacío = solo este PC */
 
 /* Pedido remoto: si este equipo no es el PC del robot, se anota un pedido en el Google Sheet
    (Apps Script) y el robot del PC de Fabian lo atiende; aquí se espera el resultado. */
