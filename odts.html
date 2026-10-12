@@ -863,7 +863,10 @@ function plazoCat(d) {
   return d.sit ? d.sit.cls : "sinplazo";
 }
 /* Fecha que usan los filtros de año, mes y día: captura, cierre (solo terminadas) o inicio de ejecución */
-const fb = (d) => d.fecha || "";
+/* Si el filtro de estado es solo "Terminada", año, mes y día cuentan por la fecha de CIERRE
+   (lo natural: "terminadas del 9 al 12 oct" = las que se cerraron esos días). En los demás casos, por fecha de captura. */
+const porCierre = () => F.estado.length === 1 && F.estado[0] === "Terminado";
+const fb = (d) => (porCierre() ? (d.term ? d.fin || "" : "") : d.fecha || "");
 /* filt(skip): aplica todos los filtros menos los nombrados en skip (para imitar CALCULATE de Power BI) */
 function filt(skip = []) {
   const sk = new Set(skip);
@@ -987,6 +990,7 @@ function optionsFor(k) {
 }
 function summaryText(k, opts) {
   const cur = F[k];
+  if (k === "dia" && cur.length && porCierre()) return "cierre " + (cur[0] === cur[1] ? fdate(cur[0]) : fdate(cur[0]) + " – " + fdate(cur[1]));
   if (k === "dia") return !cur.length ? "Todos" : cur[0] === cur[1] ? fdate(cur[0]) : fdate(cur[0]) + " – " + fdate(cur[1]);
   if (!cur.length) return "Todos";
   const lab = new Map(opts.map((o) => [o[0], o[1]]));
@@ -1060,7 +1064,10 @@ function fillDia() {
   const sm = $("dia-sum"); sm.textContent = summaryText("dia"); sm.classList.toggle("on", F.dia.length > 0);
   $("dia-d").value = F.dia[0] || ""; $("dia-h").value = F.dia[1] || "";
 }
-function fillFilters() { Object.values(MS).forEach((m) => m.refresh()); fillDia(); }
+function fillFilters() {
+  Object.values(MS).forEach((m) => m.refresh()); fillDia();
+  $("l-dia").textContent = porCierre() ? "Día de cierre" : "Día de captura";
+}
 
 function chips() {
   const box = $("chips"); box.replaceChildren();
