@@ -330,6 +330,9 @@ details.ms{display:block;width:100%;min-width:0}
 .tw-turno{margin-top:6px;padding:6px 8px;border-left:3px solid var(--prev);background:var(--soft);border-radius:0 5px 5px 0;font-size:12.5px;white-space:normal}
 .tw-turno .tt{display:block;font-weight:600;color:var(--prev);font-size:11.5px;margin-bottom:2px}
 #reporte{display:none}
+.dia-por{display:flex;flex-direction:column;gap:4px;padding:0 0 10px;margin-bottom:10px;border-bottom:1px solid var(--line);font-size:13px}
+.dia-por span{color:var(--muted);font-size:12px}
+.dia-por label{display:flex!important;justify-content:flex-start!important;gap:6px;margin:0!important;cursor:pointer}
 .hd-kpis{grid-template-columns:repeat(4,1fr);margin-top:8px}
 @media (max-width:900px){.hd-kpis{grid-template-columns:repeat(2,1fr)}}
 .hd-kpis .ek{cursor:pointer}
@@ -405,6 +408,11 @@ details.guia dd{margin:0;color:var(--muted)}
       <div class="field"><span class="lbl" id="l-dia">Día de captura</span>
         <details class="ms" id="dia-w"><summary aria-labelledby="l-dia" id="dia-sum">Todos</summary>
           <div class="ms-list dia-list">
+            <div class="dia-por" role="radiogroup" aria-label="Contar por">
+              <span>Contar por:</span>
+              <label><input type="radio" name="dia-por" value="captura" checked> Fecha de captura</label>
+              <label><input type="radio" name="dia-por" value="cierre"> Fecha de cierre</label>
+            </div>
             <div class="dia-q">
               <button type="button" data-q="0">Hoy</button><button type="button" data-q="1">Ayer</button>
               <button type="button" data-q="7">Últimos 7 días</button><button type="button" data-q="15">Últimos 15 días</button>
@@ -865,7 +873,7 @@ function plazoCat(d) {
 /* Fecha que usan los filtros de año, mes y día: captura, cierre (solo terminadas) o inicio de ejecución */
 /* Si el filtro de estado es solo "Terminada", año, mes y día cuentan por la fecha de CIERRE
    (lo natural: "terminadas del 9 al 12 oct" = las que se cerraron esos días). En los demás casos, por fecha de captura. */
-const porCierre = () => F.estado.length === 1 && F.estado[0] === "Terminado";
+const porCierre = () => F.diaPor === "cierre" || (F.estado.length === 1 && F.estado[0] === "Terminado");
 const fb = (d) => (porCierre() ? (d.term ? d.fin || "" : "") : d.fecha || "");
 /* filt(skip): aplica todos los filtros menos los nombrados en skip (para imitar CALCULATE de Power BI) */
 function filt(skip = []) {
@@ -1060,6 +1068,12 @@ document.querySelectorAll(".dia-q button").forEach((b) => b.addEventListener("cl
 }));
 $("dia-ok").addEventListener("click", () => { const a = $("dia-d").value, b = $("dia-h").value; setDia(a || b, b || a); });
 $("dia-x").addEventListener("click", () => setDia());
+/* Contar por fecha de captura o de cierre (por cierre solo cuentan las terminadas) */
+document.querySelectorAll("input[name=dia-por]").forEach((r) => r.addEventListener("change", () => {
+  if (r.value === "cierre") { F.diaPor = "cierre"; if (!(F.estado.length === 1 && F.estado[0] === "Terminado")) F.estado = ["Terminado"]; }
+  else { F.diaPor = "captura"; if (F.estado.length === 1 && F.estado[0] === "Terminado") F.estado = []; }
+  FT[UI.tab] = F; UI.auto = true; UI.drill = null; render();
+}));
 function fillDia() {
   const sm = $("dia-sum"); sm.textContent = summaryText("dia"); sm.classList.toggle("on", F.dia.length > 0);
   $("dia-d").value = F.dia[0] || ""; $("dia-h").value = F.dia[1] || "";
@@ -1067,6 +1081,7 @@ function fillDia() {
 function fillFilters() {
   Object.values(MS).forEach((m) => m.refresh()); fillDia();
   $("l-dia").textContent = porCierre() ? "Día de cierre" : "Día de captura";
+  document.querySelectorAll("input[name=dia-por]").forEach((r) => { r.checked = r.value === (porCierre() ? "cierre" : "captura"); });
 }
 
 function chips() {
