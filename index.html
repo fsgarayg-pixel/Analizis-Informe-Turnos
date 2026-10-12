@@ -1221,6 +1221,8 @@ async function syncAndRefresh(){
   btn.disabled = false;
   pxLoadTodo();
   await fetchLive(false);
+  /* Google puede tardar unos segundos en servir la hoja recién escrita: se vuelve a leer a los 20 s */
+  if (hecho && !aviso) setTimeout(() => fetchLive(true), 20000);
   if (aviso){
     $("status").insertAdjacentHTML("beforeend", ' <span class="err">Aviso: '+esc(aviso)+'</span>');
   }
