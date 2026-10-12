@@ -330,6 +330,13 @@ details.ms{display:block;width:100%;min-width:0}
 .tw-turno{margin-top:6px;padding:6px 8px;border-left:3px solid var(--prev);background:var(--soft);border-radius:0 5px 5px 0;font-size:12.5px;white-space:normal}
 .tw-turno .tt{display:block;font-weight:600;color:var(--prev);font-size:11.5px;margin-bottom:2px}
 #reporte{display:none}
+.hd-kpis{grid-template-columns:repeat(4,1fr)}
+@media (max-width:900px){.hd-kpis{grid-template-columns:repeat(2,1fr)}}
+.hd-kpis .ek{cursor:pointer}
+.hd-kpis .ek:hover{background:var(--soft)}
+.hd-kpis .ek.na{cursor:default;opacity:.6}
+.hd-t{min-width:720px}
+.hd-t td.num button{border:0;background:none;font:inherit;color:inherit;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px;padding:0 2px}
 .arr-kpis{margin-top:8px}
 .arr-kpis .ek.hl{border-color:var(--paus);box-shadow:inset 4px 0 0 var(--paus)}
 .arr-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
@@ -394,8 +401,15 @@ details.guia dd{margin:0;color:var(--muted)}
   <section aria-label="Filtros">
     <div class="filters">
       <div class="field"><span class="lbl" id="l-anio">Año</span><div class="msw" data-k="anio"></div></div>
+      <div class="field"><span class="lbl" id="l-fbase">Fecha a usar</span>
+        <select id="fbase" aria-labelledby="l-fbase">
+          <option value="captura">Captura (cuándo se creó)</option>
+          <option value="cierre">Cierre (cuándo se terminó)</option>
+          <option value="inicio">Inicio de ejecución</option>
+        </select>
+      </div>
       <div class="field"><span class="lbl" id="l-mes">Mes</span><div class="msw" data-k="mes"></div></div>
-      <div class="field"><span class="lbl" id="l-dia">Día de captura</span>
+      <div class="field"><span class="lbl" id="l-dia">Día</span>
         <details class="ms" id="dia-w"><summary aria-labelledby="l-dia" id="dia-sum">Todos</summary>
           <div class="ms-list dia-list">
             <div class="dia-q">
@@ -458,6 +472,21 @@ details.guia dd{margin:0;color:var(--muted)}
       <p class="sub" style="margin-top:0">ODTs que ya estaban abiertas el día 1 de cada mes (vienen de meses anteriores) y cuántas de ellas siguen abiertas hoy.</p>
       <div class="arr-strip" id="arr-strip"></div>
     </section>
+    <section class="panel" id="panel-hd" aria-label="Movimiento de ODTs por día">
+      <div class="ph">
+        <div>
+          <h2>Movimiento de las ODTs en un día</h2>
+          <p class="sub" id="hd-sub">Qué pasó en el día elegido: cuántas entraron, iniciaron, se pausaron y se cerraron, y cómo quedaron al final del día. Usa los filtros de área, máquina, técnico, clasificación y tipo de arriba.</p>
+        </div>
+        <div class="ap-ctl"><label class="lbl">Día <input type="date" id="hd-fecha" aria-label="Día a consultar"></label>
+          <button type="button" class="linkbtn" id="hd-hoy">Hoy</button><button type="button" class="linkbtn" id="hd-ayer">Ayer</button></div>
+      </div>
+      <div class="exec-kpis hd-kpis" id="hd-kpis"></div>
+      <h3 class="tc-h3">Por técnico</h3>
+      <div class="tw"><table class="score hd-t" id="hd-t"></table></div>
+      <p class="foot" id="hd-foot"></p>
+    </section>
+
     <section class="panel" id="panel-tiempos" aria-label="Control de tiempos de ODTs abiertas">
       <h2>Control de tiempos de ODTs abiertas</h2>
       <p class="sub">Compara la hora actual con el plazo de cada ODT (fecha programada + ventana del CMMS). <b style="color:#C0392B">Atrasada</b>: ya pasó el plazo · <b style="color:#C98A00">En riesgo</b>: faltan 24 h o menos (o, si está en proceso, su fin proyectado queda después del plazo) · <b style="color:#1F8A5B">A tiempo</b>: faltan más de 24 h. Haz clic en cualquier número para ver esas ODTs.</p>
@@ -676,6 +705,7 @@ details.guia dd{margin:0;color:var(--muted)}
 /* ---------- Fuente de datos: el mismo Google Sheet del informe de turnos ---------- */
 const SHEET_ID = "1-ijA2fAWpzOVr-NxaxWjHyoozuZaLjfe31cbtcn-xmQ";
 const TAB_ODTS = "ODTs_Tablero";
+const TAB_HIST = "Historial_Estados";   /* cambios de estado que registra el robot en cada exportación */
 const SYNC_URL = "http://127.0.0.1:8765/sync";
 const ROBOT_URL = "http://127.0.0.1:8766/actualizar";   /* robot HTM del PC de Fabian: trae de HTM y sincroniza */
 const PEDIDOS_URL = "https://script.google.com/macros/s/AKfycbxWrmnQYNfAf5wYNzaX6zimntGY84iF2dMwYCvRsQ2jm_jAm77hS_qBq-UKiuwS1jtW/exec";   /* URL /exec del Apps Script de pedidos (botón desde cualquier equipo); vacío = solo este PC */
@@ -816,9 +846,9 @@ let ALL = [];
 const KEYS = ["anio", "mes", "dia", "planta", "area", "maquina", "resp", "estado", "clasif", "tipo", "odt", "plazo"];
 /* Cada página tiene sus filtros, igual que las páginas del Power BI */
 const DEF_TAB = {
-  cmi: () => ({ anio: [], mes: [], dia: [], planta: [], area: [], maquina: [], resp: [], tipo: [], odt: [], plazo: [], estado: PBI_ESTADO.slice(), clasif: PBI_CLASIF.slice() }),
-  detalle: () => ({ anio: [], mes: [], dia: [], planta: [], area: ACABADOS.slice(), maquina: [], resp: [], tipo: [], odt: [], plazo: [], estado: PBI_ESTADO.slice(), clasif: PBI_CLASIF.slice() }),
-  rend: () => ({ anio: [], mes: [], dia: [], planta: [], area: [], maquina: [], resp: [], tipo: [], odt: [], plazo: [], estado: [], clasif: PBI_CLASIF.slice() }),
+  cmi: () => ({ fbase: "captura", anio: [], mes: [], dia: [], planta: [], area: [], maquina: [], resp: [], tipo: [], odt: [], plazo: [], estado: PBI_ESTADO.slice(), clasif: PBI_CLASIF.slice() }),
+  detalle: () => ({ fbase: "captura", anio: [], mes: [], dia: [], planta: [], area: ACABADOS.slice(), maquina: [], resp: [], tipo: [], odt: [], plazo: [], estado: PBI_ESTADO.slice(), clasif: PBI_CLASIF.slice() }),
+  rend: () => ({ fbase: "captura", anio: [], mes: [], dia: [], planta: [], area: [], maquina: [], resp: [], tipo: [], odt: [], plazo: [], estado: [], clasif: PBI_CLASIF.slice() }),
 };
 /* Responsables de ODT que no son técnicos (se ocultan en el rendimiento con "Solo técnicos") */
 const NO_TECNICOS = ["JAVIER GAMEZ BLANCO", "RODRIGUEZ PENA JAIME ALFONSO", "BRIANDA BETANCOURT SANCHEZ", "JOSE SANTIAGO CASTAÑEDA BUITRAGO", "FABIAN STEVEN GARAY GOMEZ"];
@@ -839,12 +869,15 @@ function plazoCat(d) {
   if (d.term) return d.enPlazo === true ? "term_ok" : d.enPlazo === false ? "term_tarde" : "sinplazo";
   return d.sit ? d.sit.cls : "sinplazo";
 }
+/* Fecha que usan los filtros de año, mes y día: captura, cierre (solo terminadas) o inicio de ejecución */
+const fb = (d) => (F.fbase === "cierre" ? (d.term ? d.fin || "" : "") : F.fbase === "inicio" ? (d.iniHora || "").slice(0, 10) : d.fecha || "");
 /* filt(skip): aplica todos los filtros menos los nombrados en skip (para imitar CALCULATE de Power BI) */
 function filt(skip = []) {
   const sk = new Set(skip);
   return ALL.filter((d) =>
-    (sk.has("anio") || has("anio", String(d.y))) && (sk.has("mes") || has("mes", String(d.m))) &&
-    (sk.has("dia") || !F.dia.length || (d.fecha && d.fecha >= F.dia[0] && d.fecha <= F.dia[1])) &&
+    (sk.has("anio") || !F.anio.length || F.anio.includes(fb(d).slice(0, 4))) &&
+    (sk.has("mes") || !F.mes.length || F.mes.includes(String(+fb(d).slice(5, 7)))) &&
+    (sk.has("dia") || !F.dia.length || (fb(d) && fb(d).slice(0, 10) >= F.dia[0] && fb(d).slice(0, 10) <= F.dia[1])) &&
     (sk.has("planta") || plantaOk(d)) && (sk.has("area") || has("area", d.area)) &&
     (sk.has("maquina") || has("maquina", d.maquina)) && (sk.has("resp") || has("resp", d.responsable)) &&
     (sk.has("tipo") || has("tipo", d.tipo)) && (sk.has("estado") ? !d.cancel : has("estado", d.estado)) &&
@@ -941,8 +974,8 @@ function optionsFor(k) {
   const pool = filt([k]); // opciones disponibles según los demás filtros
   const keep = (vals) => [...new Set([...vals, ...F[k]])];
   switch (k) {
-    case "anio": return keep(uniq((d) => d.y && String(d.y), ALL)).sort().map((v) => [v, v]);
-    case "mes": return keep(uniq((d) => d.m && String(d.m), ALL)).sort((a, b) => a - b).map((v) => [v, MESL[v - 1]]);
+    case "anio": return keep(uniq((d) => fb(d).slice(0, 4) || null, ALL)).sort().map((v) => [v, v]);
+    case "mes": return keep(uniq((d) => (fb(d) ? String(+fb(d).slice(5, 7)) : null), ALL)).sort((a, b) => a - b).map((v) => [v, MESL[v - 1]]);
     case "planta": return Object.entries(PLANTAS);
     case "area": return keep(uniq((d) => d.area, pool)).sort().map((v) => [v, short(v)]);
     case "maquina": return keep(uniq((d) => d.maquina, pool)).sort().map((v) => [v, v]);
@@ -1034,7 +1067,11 @@ function fillDia() {
   const sm = $("dia-sum"); sm.textContent = summaryText("dia"); sm.classList.toggle("on", F.dia.length > 0);
   $("dia-d").value = F.dia[0] || ""; $("dia-h").value = F.dia[1] || "";
 }
-function fillFilters() { Object.values(MS).forEach((m) => m.refresh()); fillDia(); }
+function fillFilters() { Object.values(MS).forEach((m) => m.refresh()); fillDia(); $("fbase").value = F.fbase || "captura"; }
+$("fbase").addEventListener("change", (e) => { F.fbase = e.target.value;
+  /* por fecha de cierre solo cuentan las terminadas: si el filtro de estado las excluye, se cambia a Terminadas */
+  if (F.fbase === "cierre" && F.estado.length && !F.estado.includes("Terminado")) F.estado = ["Terminado"];
+  FT[UI.tab] = F; UI.auto = true; UI.drill = null; render(); });
 
 function chips() {
   const box = $("chips"); box.replaceChildren();
@@ -1048,6 +1085,7 @@ function chips() {
     const pbi = (k === "estado" && sameSet(F.estado, PBI_ESTADO)) || (k === "clasif" && sameSet(F.clasif, PBI_CLASIF)) || (k === "area" && sameSet(F.area, ACABADOS));
     add(FLABEL[k] + ": " + summaryText(k, MS[k] ? MS[k].opts : []), () => setF(k, []), pbi ? "pbi" : "");
   }
+  if (F.fbase && F.fbase !== "captura") add("Fechas por: " + (F.fbase === "cierre" ? "cierre" : "inicio de ejecución"), () => { F.fbase = "captura"; FT[UI.tab] = F; render(); }, "");
   const isDef = JSON.stringify(F) === JSON.stringify(DEF());
   const r = el("button", "linkbtn", isDef ? "Ver todo (sin filtros)" : "Restablecer filtros de Power BI"); r.type = "button";
   r.addEventListener("click", () => {
@@ -1114,6 +1152,7 @@ function drawCMI(rows) {
   const MB = [{ k: "term", l: "Terminadas", c: "var(--term)" }, { k: "proc", l: "En proceso", c: "var(--proc)" }, { k: "paus", l: "En pausa", c: "var(--paus)" }, { k: "pend", l: "Pendientes", c: "var(--pend)" }];
   /* arrastre de meses anteriores, control de tiempos, tabla área/máquina y rendimiento por área */
   drawArrastre();
+  drawHistDia();
   drawTiempos(rows);
   drawMQ(sinEstado);
   drawRA(sinEstado);
@@ -1216,6 +1255,94 @@ function drawArrastre() {
     strip.append(b);
   }
 }
+
+/* ---------- Movimiento de ODTs en un día ----------
+   Entraron / iniciaron / se cerraron: salen de las fechas de cada ODT (sirven para cualquier día).
+   Se pausaron y cómo quedaron al final del día: salen del historial de cambios de estado que guarda el robot
+   (pestaña Historial_Estados), disponible desde el día en que empezó a registrarlo. */
+let HIST = null;
+async function loadHist() {
+  try {
+    const raw = gvizRows(await loadGviz(TAB_HIST));
+    HIST = raw.map((r) => ({ t: s(r.fecha).slice(0, 16), c: cl(r.codigo).replace(/\.0+$/, ""), a: cl(r.anterior).toUpperCase(), n: cl(r.nuevo).toUpperCase() }))
+      .filter((x) => x.c && /^\d{4}-\d{2}-\d{2}/.test(x.t)).sort((x, y) => x.t.localeCompare(y.t));
+  } catch (e) { HIST = []; }
+}
+const HD_EST = { PENDIENTE: "Pendiente", PAUSADO: "Pausado", PROCESO: "Proceso", TERMINADO: "Terminado", CANCELADO: "Cancelado" };
+function drawHistDia() {
+  const inp = $("hd-fecha"); if (!inp.value) inp.value = TODAY;
+  const D = inp.value, Dfin = D + " 23:59";
+  const SK = ["estado", "anio", "mes", "dia", "plazo"];
+  const base = filt(SK), cods = new Set(base.map((d) => d.codigo)), byCod = new Map(base.map((d) => [d.codigo, d]));
+  const entraron = base.filter((d) => d.fecha === D);
+  const iniciaron = base.filter((d) => (d.iniHora || "").slice(0, 10) === D);
+  const cerraron = base.filter((d) => d.term && d.fin === D);
+  const H = (HIST || []).filter((x) => cods.has(x.c));
+  const desde = HIST && HIST.length ? HIST[0].t.slice(0, 10) : null;
+  const conHist = desde && D >= desde;
+  let pausaron = [], alFinal = null;
+  if (conHist) {
+    pausaron = [...new Set(H.filter((x) => x.t.slice(0, 10) === D && x.n === "PAUSADO" && x.a && x.a !== "PAUSADO").map((x) => x.c))].map((c) => byCod.get(c)).filter(Boolean);
+    const est = new Map();
+    for (const x of H) { if (x.t <= Dfin) est.set(x.c, x.n); else break; }
+    alFinal = { PENDIENTE: [], PAUSADO: [], PROCESO: [] };
+    for (const [c, e] of est) if (alFinal[e]) { const d = byCod.get(c); if (d) alFinal[e].push(d); }
+  }
+  const lbl = fdate(D);
+  const box = $("hd-kpis"); box.replaceChildren();
+  const SKD = SK;
+  const card = (rows, l, color, extra, na) => {
+    const c = el("div", "ek" + (na ? " na" : ""));
+    if (color) c.style.boxShadow = "inset 4px 0 0 " + color;
+    c.append(el("div", "n", na ? "—" : NF.format(rows.length)), el("div", "l", l));
+    if (extra) c.append(el("div", "d", extra));
+    if (!na && rows.length) {
+      c.tabIndex = 0; c.setAttribute("role", "button"); c.title = "Ver estas ODTs";
+      const set = new Set(rows.map((d) => d.codigo));
+      const go = () => drillTo({ pred: (x) => set.has(x.codigo), skip: SKD, label: l.toLowerCase() + " · " + lbl, c: color || "var(--focus)" });
+      c.addEventListener("click", go); c.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+    }
+    box.append(c);
+  };
+  card(entraron, "Entraron (capturadas)", "var(--proc)");
+  card(iniciaron, "Iniciaron ejecución", "#6B5BD2");
+  card(cerraron, "Se cerraron (terminadas)", "var(--term)");
+  card(pausaron, "Se pausaron ese día", "var(--paus)", conHist ? "" : "historial desde " + (desde ? fdate(desde) : "hoy"), !conHist);
+  card(alFinal ? alFinal.PENDIENTE : [], "Pendientes al final del día", "var(--pend)", "", !conHist);
+  card(alFinal ? alFinal.PAUSADO : [], "En pausa al final del día", "var(--paus)", "", !conHist);
+  card(alFinal ? alFinal.PROCESO : [], "En proceso al final del día", "var(--proc)", "", !conHist);
+  card(alFinal ? [...alFinal.PENDIENTE, ...alFinal.PAUSADO, ...alFinal.PROCESO] : [], "Abiertas al final del día", "var(--ink)", "", !conHist);
+  /* por técnico */
+  const tb = $("hd-t"); tb.replaceChildren();
+  const cols = [["Técnico"], ["Entraron", entraron], ["Iniciaron", iniciaron], ["Cerraron", cerraron], ["Se pausaron", conHist ? pausaron : null],
+    ["Pend. al final", alFinal && alFinal.PENDIENTE], ["Pausa al final", alFinal && alFinal.PAUSADO], ["Proceso al final", alFinal && alFinal.PROCESO]];
+  const hr = el("tr"); cols.forEach(([h], i) => { const th = el("th", "", h); if (i) th.style.textAlign = "right"; hr.append(th); });
+  const thd = el("thead"); thd.append(hr); tb.append(thd);
+  const tecs = new Map();
+  cols.forEach(([, rows], i) => { if (rows) rows.forEach((d) => { if (!tecs.has(d.responsable)) tecs.set(d.responsable, cols.map(() => [])); tecs.get(d.responsable)[i].push(d); }); });
+  const bd = el("tbody");
+  const filas = [...tecs].sort((a, b) => b[1][3].length - a[1][3].length || b[1].reduce((n, x) => n + x.length, 0) - a[1].reduce((n, x) => n + x.length, 0));
+  for (const [t, arr] of filas) {
+    const tr = el("tr"); tr.append(el("td", "", t));
+    cols.slice(1).forEach(([h, rows], j) => {
+      const td = el("td", "num"); const v = arr[j + 1];
+      if (!rows) td.textContent = "—";
+      else if (!v.length) td.textContent = "·";
+      else { const b = el("button", "", NF.format(v.length)); b.type = "button"; const set = new Set(v.map((d) => d.codigo));
+        b.addEventListener("click", () => drillTo({ pred: (x) => set.has(x.codigo), skip: SKD, label: t + " · " + h.toLowerCase() + " · " + lbl, c: "var(--focus)" })); td.append(b); }
+      tr.append(td);
+    });
+    bd.append(tr);
+  }
+  if (!filas.length) { const tr = el("tr"); const td = el("td", "empty", "Sin movimiento de ODTs ese día con estos filtros."); td.colSpan = cols.length; tr.append(td); bd.append(tr); }
+  tb.append(bd);
+  $("hd-foot").textContent = "Entraron, iniciaron y se cerraron salen de las fechas de cada ODT (captura, inicio real y finalización) y sirven para cualquier día. " +
+    "Se pausaron y el estado al final del día salen del historial de cambios que guarda el robot en cada exportación" + (desde ? " (disponible desde el " + fdate(desde) + ")." : "; empezará a llenarse con la próxima exportación del robot.") +
+    " Toca cualquier número para ver esas ODTs.";
+}
+$("hd-fecha").addEventListener("change", () => drawHistDia());
+$("hd-hoy").addEventListener("click", () => { $("hd-fecha").value = TODAY; drawHistDia(); });
+$("hd-ayer").addEventListener("click", () => { const t = new Date(now0); t.setDate(t.getDate() - 1); $("hd-fecha").value = t.getFullYear() + "-" + p2(t.getMonth() + 1) + "-" + p2(t.getDate()); drawHistDia(); });
 /* ---------- Prioridad por atraso ----------
    horas de retraso (positivo = atrasada; negativo = margen). Abiertas sin plazo y terminadas van al final. */
 const atraso = (d) => (d.sit ? -d.sit.falta : isOpen(d) ? -1e6 + (d.dias || 0) : -2e6);
@@ -2074,6 +2201,7 @@ async function fetchLive(isAuto) {
     }
     ALL = odts;
     setRange(); render();
+    loadHist().then(() => { if (UI.tab === "cmi") drawHistDia(); });
     const d = new Date(), diff = ALL.length - before;
     setStatus("Datos en vivo · actualizado a las " + p2(d.getHours()) + ":" + p2(d.getMinutes()) +
       (before && diff ? " (" + (diff > 0 ? "+" : "") + NF.format(diff) + " ODTs)" : "") + ".", "ok");
