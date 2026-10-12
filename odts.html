@@ -677,6 +677,7 @@ details.guia dd{margin:0;color:var(--muted)}
 const SHEET_ID = "1-ijA2fAWpzOVr-NxaxWjHyoozuZaLjfe31cbtcn-xmQ";
 const TAB_ODTS = "ODTs_Tablero";
 const SYNC_URL = "http://127.0.0.1:8765/sync";
+const ROBOT_URL = "http://127.0.0.1:8766/actualizar";   /* robot HTM del PC de Fabian: trae de HTM y sincroniza */
 const SNAPSHOT_URL = "odts-data.json";
 const SNAPSHOT_LABEL = "copia guardada del 11 oct 2026";
 
@@ -2087,15 +2088,29 @@ async function fetchLive(isAuto) {
 async function syncAndRefresh() {
   const btn = $("btnUpdate"); btn.disabled = true;
   let aviso = "";
+  let hecho = false;
   try {
-    setStatus("Sincronizando los Excel con Google Sheets… (puede tardar hasta 2 minutos)");
-    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 240000);
-    const r = await fetch(SYNC_URL, { signal: ctl.signal }); clearTimeout(t);
+    /* 1) Robot HTM: exporta de HTM, deja los Excel en Backlong y sincroniza (hasta ~3 min) */
+    setStatus("Trayendo las ODTs desde HTM y actualizando el tablero… (puede tardar 2 a 3 minutos)");
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 450000);
+    const r = await fetch(ROBOT_URL, { signal: ctl.signal }); clearTimeout(t);
     const j = await r.json();
-    if (!j.ok) aviso = j.message || "no se pudo sincronizar.";
-  } catch (e) {
-    aviso = "no se pudo sincronizar el Excel (el servicio local no responde o este equipo no es el del Excel). Se muestra lo que ya está en la hoja.";
-  } finally { btn.disabled = false; }
+    hecho = true;
+    if (!j.ok) aviso = j.message || "el robot no pudo traer los datos de HTM.";
+    else setStatus(j.message);
+  } catch (e) { /* robot no disponible en este equipo: se usa la sincronización de Excel de siempre */ }
+  if (!hecho) {
+    try {
+      setStatus("Sincronizando los Excel con Google Sheets… (puede tardar hasta 2 minutos)");
+      const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 240000);
+      const r = await fetch(SYNC_URL, { signal: ctl.signal }); clearTimeout(t);
+      const j = await r.json();
+      if (!j.ok) aviso = j.message || "no se pudo sincronizar.";
+    } catch (e) {
+      aviso = "no se pudo sincronizar (el robot y el servicio local no responden, o este equipo no es el de Fabian). Se muestra lo que ya está en la hoja.";
+    }
+  }
+  btn.disabled = false;
   await fetchLive(false);
   if (aviso) $("status").append(" ", el("span", "err", "Aviso: " + aviso));
 }
