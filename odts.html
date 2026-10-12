@@ -330,7 +330,7 @@ details.ms{display:block;width:100%;min-width:0}
 .tw-turno{margin-top:6px;padding:6px 8px;border-left:3px solid var(--prev);background:var(--soft);border-radius:0 5px 5px 0;font-size:12.5px;white-space:normal}
 .tw-turno .tt{display:block;font-weight:600;color:var(--prev);font-size:11.5px;margin-bottom:2px}
 #reporte{display:none}
-.hd-kpis{grid-template-columns:repeat(4,1fr)}
+.hd-kpis{grid-template-columns:repeat(4,1fr);margin-top:8px}
 @media (max-width:900px){.hd-kpis{grid-template-columns:repeat(2,1fr)}}
 .hd-kpis .ek{cursor:pointer}
 .hd-kpis .ek:hover{background:var(--soft)}
@@ -401,15 +401,8 @@ details.guia dd{margin:0;color:var(--muted)}
   <section aria-label="Filtros">
     <div class="filters">
       <div class="field"><span class="lbl" id="l-anio">Año</span><div class="msw" data-k="anio"></div></div>
-      <div class="field"><span class="lbl" id="l-fbase">Fecha a usar</span>
-        <select id="fbase" aria-labelledby="l-fbase">
-          <option value="captura">Captura (cuándo se creó)</option>
-          <option value="cierre">Cierre (cuándo se terminó)</option>
-          <option value="inicio">Inicio de ejecución</option>
-        </select>
-      </div>
       <div class="field"><span class="lbl" id="l-mes">Mes</span><div class="msw" data-k="mes"></div></div>
-      <div class="field"><span class="lbl" id="l-dia">Día</span>
+      <div class="field"><span class="lbl" id="l-dia">Día de captura</span>
         <details class="ms" id="dia-w"><summary aria-labelledby="l-dia" id="dia-sum">Todos</summary>
           <div class="ms-list dia-list">
             <div class="dia-q">
@@ -476,7 +469,7 @@ details.guia dd{margin:0;color:var(--muted)}
       <div class="ph">
         <div>
           <h2>Movimiento de las ODTs en un día</h2>
-          <p class="sub" id="hd-sub">Qué pasó en el día elegido: cuántas entraron, iniciaron, se pausaron y se cerraron, y cómo quedaron al final del día. Usa los filtros de área, máquina, técnico, clasificación y tipo de arriba.</p>
+          <p class="sub" id="hd-sub">Qué pasó en el día elegido. Toca un número para ver esas ODTs.</p>
         </div>
         <div class="ap-ctl"><label class="lbl">Día <input type="date" id="hd-fecha" aria-label="Día a consultar"></label>
           <button type="button" class="linkbtn" id="hd-hoy">Hoy</button><button type="button" class="linkbtn" id="hd-ayer">Ayer</button></div>
@@ -846,9 +839,9 @@ let ALL = [];
 const KEYS = ["anio", "mes", "dia", "planta", "area", "maquina", "resp", "estado", "clasif", "tipo", "odt", "plazo"];
 /* Cada página tiene sus filtros, igual que las páginas del Power BI */
 const DEF_TAB = {
-  cmi: () => ({ fbase: "captura", anio: [], mes: [], dia: [], planta: [], area: [], maquina: [], resp: [], tipo: [], odt: [], plazo: [], estado: PBI_ESTADO.slice(), clasif: PBI_CLASIF.slice() }),
-  detalle: () => ({ fbase: "captura", anio: [], mes: [], dia: [], planta: [], area: ACABADOS.slice(), maquina: [], resp: [], tipo: [], odt: [], plazo: [], estado: PBI_ESTADO.slice(), clasif: PBI_CLASIF.slice() }),
-  rend: () => ({ fbase: "captura", anio: [], mes: [], dia: [], planta: [], area: [], maquina: [], resp: [], tipo: [], odt: [], plazo: [], estado: [], clasif: PBI_CLASIF.slice() }),
+  cmi: () => ({ anio: [], mes: [], dia: [], planta: [], area: [], maquina: [], resp: [], tipo: [], odt: [], plazo: [], estado: PBI_ESTADO.slice(), clasif: PBI_CLASIF.slice() }),
+  detalle: () => ({ anio: [], mes: [], dia: [], planta: [], area: ACABADOS.slice(), maquina: [], resp: [], tipo: [], odt: [], plazo: [], estado: PBI_ESTADO.slice(), clasif: PBI_CLASIF.slice() }),
+  rend: () => ({ anio: [], mes: [], dia: [], planta: [], area: [], maquina: [], resp: [], tipo: [], odt: [], plazo: [], estado: [], clasif: PBI_CLASIF.slice() }),
 };
 /* Responsables de ODT que no son técnicos (se ocultan en el rendimiento con "Solo técnicos") */
 const NO_TECNICOS = ["JAVIER GAMEZ BLANCO", "RODRIGUEZ PENA JAIME ALFONSO", "BRIANDA BETANCOURT SANCHEZ", "JOSE SANTIAGO CASTAÑEDA BUITRAGO", "FABIAN STEVEN GARAY GOMEZ"];
@@ -870,7 +863,7 @@ function plazoCat(d) {
   return d.sit ? d.sit.cls : "sinplazo";
 }
 /* Fecha que usan los filtros de año, mes y día: captura, cierre (solo terminadas) o inicio de ejecución */
-const fb = (d) => (F.fbase === "cierre" ? (d.term ? d.fin || "" : "") : F.fbase === "inicio" ? (d.iniHora || "").slice(0, 10) : d.fecha || "");
+const fb = (d) => d.fecha || "";
 /* filt(skip): aplica todos los filtros menos los nombrados en skip (para imitar CALCULATE de Power BI) */
 function filt(skip = []) {
   const sk = new Set(skip);
@@ -1067,11 +1060,7 @@ function fillDia() {
   const sm = $("dia-sum"); sm.textContent = summaryText("dia"); sm.classList.toggle("on", F.dia.length > 0);
   $("dia-d").value = F.dia[0] || ""; $("dia-h").value = F.dia[1] || "";
 }
-function fillFilters() { Object.values(MS).forEach((m) => m.refresh()); fillDia(); $("fbase").value = F.fbase || "captura"; }
-$("fbase").addEventListener("change", (e) => { F.fbase = e.target.value;
-  /* por fecha de cierre solo cuentan las terminadas: si el filtro de estado las excluye, se cambia a Terminadas */
-  if (F.fbase === "cierre" && F.estado.length && !F.estado.includes("Terminado")) F.estado = ["Terminado"];
-  FT[UI.tab] = F; UI.auto = true; UI.drill = null; render(); });
+function fillFilters() { Object.values(MS).forEach((m) => m.refresh()); fillDia(); }
 
 function chips() {
   const box = $("chips"); box.replaceChildren();
@@ -1085,7 +1074,6 @@ function chips() {
     const pbi = (k === "estado" && sameSet(F.estado, PBI_ESTADO)) || (k === "clasif" && sameSet(F.clasif, PBI_CLASIF)) || (k === "area" && sameSet(F.area, ACABADOS));
     add(FLABEL[k] + ": " + summaryText(k, MS[k] ? MS[k].opts : []), () => setF(k, []), pbi ? "pbi" : "");
   }
-  if (F.fbase && F.fbase !== "captura") add("Fechas por: " + (F.fbase === "cierre" ? "cierre" : "inicio de ejecución"), () => { F.fbase = "captura"; FT[UI.tab] = F; render(); }, "");
   const isDef = JSON.stringify(F) === JSON.stringify(DEF());
   const r = el("button", "linkbtn", isDef ? "Ver todo (sin filtros)" : "Restablecer filtros de Power BI"); r.type = "button";
   r.addEventListener("click", () => {
@@ -1304,24 +1292,21 @@ function drawHistDia() {
     }
     box.append(c);
   };
-  card(entraron, "Entraron (capturadas)", "var(--proc)");
-  card(iniciaron, "Iniciaron ejecución", "#6B5BD2");
-  card(cerraron, "Se cerraron (terminadas)", "var(--term)");
-  card(pausaron, "Se pausaron ese día", "var(--paus)", conHist ? "" : "historial desde " + (desde ? fdate(desde) : "hoy"), !conHist);
-  card(alFinal ? alFinal.PENDIENTE : [], "Pendientes al final del día", "var(--pend)", "", !conHist);
-  card(alFinal ? alFinal.PAUSADO : [], "En pausa al final del día", "var(--paus)", "", !conHist);
-  card(alFinal ? alFinal.PROCESO : [], "En proceso al final del día", "var(--proc)", "", !conHist);
-  card(alFinal ? [...alFinal.PENDIENTE, ...alFinal.PAUSADO, ...alFinal.PROCESO] : [], "Abiertas al final del día", "var(--ink)", "", !conHist);
+  const abiertas = alFinal ? [...alFinal.PENDIENTE, ...alFinal.PAUSADO, ...alFinal.PROCESO] : [];
+  card(entraron, "Entraron", "var(--proc)");
+  card(cerraron, "Se cerraron", "var(--term)");
+  card(pausaron, "Se pausaron", "var(--paus)", conHist ? "" : "disponible desde " + (desde ? fdate(desde) : "la próxima actualización"), !conHist);
+  card(abiertas, "Quedaron abiertas", "var(--pend)",
+    alFinal ? NF.format(alFinal.PENDIENTE.length) + " pendientes · " + NF.format(alFinal.PAUSADO.length) + " en pausa · " + NF.format(alFinal.PROCESO.length) + " en proceso" : "disponible desde " + (desde ? fdate(desde) : "la próxima actualización"), !conHist);
   /* por técnico */
   const tb = $("hd-t"); tb.replaceChildren();
-  const cols = [["Técnico"], ["Entraron", entraron], ["Iniciaron", iniciaron], ["Cerraron", cerraron], ["Se pausaron", conHist ? pausaron : null],
-    ["Pend. al final", alFinal && alFinal.PENDIENTE], ["Pausa al final", alFinal && alFinal.PAUSADO], ["Proceso al final", alFinal && alFinal.PROCESO]];
+  const cols = [["Técnico"], ["Entraron", entraron], ["Cerraron", cerraron], ["Se pausaron", conHist ? pausaron : null], ["Quedaron abiertas", alFinal && abiertas]];
   const hr = el("tr"); cols.forEach(([h], i) => { const th = el("th", "", h); if (i) th.style.textAlign = "right"; hr.append(th); });
   const thd = el("thead"); thd.append(hr); tb.append(thd);
   const tecs = new Map();
   cols.forEach(([, rows], i) => { if (rows) rows.forEach((d) => { if (!tecs.has(d.responsable)) tecs.set(d.responsable, cols.map(() => [])); tecs.get(d.responsable)[i].push(d); }); });
   const bd = el("tbody");
-  const filas = [...tecs].sort((a, b) => b[1][3].length - a[1][3].length || b[1].reduce((n, x) => n + x.length, 0) - a[1].reduce((n, x) => n + x.length, 0));
+  const filas = [...tecs].sort((a, b) => b[1][2].length - a[1][2].length || b[1].reduce((n, x) => n + x.length, 0) - a[1].reduce((n, x) => n + x.length, 0));
   for (const [t, arr] of filas) {
     const tr = el("tr"); tr.append(el("td", "", t));
     cols.slice(1).forEach(([h, rows], j) => {
@@ -1336,9 +1321,7 @@ function drawHistDia() {
   }
   if (!filas.length) { const tr = el("tr"); const td = el("td", "empty", "Sin movimiento de ODTs ese día con estos filtros."); td.colSpan = cols.length; tr.append(td); bd.append(tr); }
   tb.append(bd);
-  $("hd-foot").textContent = "Entraron, iniciaron y se cerraron salen de las fechas de cada ODT (captura, inicio real y finalización) y sirven para cualquier día. " +
-    "Se pausaron y el estado al final del día salen del historial de cambios que guarda el robot en cada exportación" + (desde ? " (disponible desde el " + fdate(desde) + ")." : "; empezará a llenarse con la próxima exportación del robot.") +
-    " Toca cualquier número para ver esas ODTs.";
+  $("hd-foot").textContent = conHist ? "" : "«Se pausaron» y «Quedaron abiertas» se calculan con el registro diario de cambios de estado" + (desde ? ", que empezó el " + fdate(desde) + "." : ", que empieza con la próxima actualización de datos.");
 }
 $("hd-fecha").addEventListener("change", () => drawHistDia());
 $("hd-hoy").addEventListener("click", () => { $("hd-fecha").value = TODAY; drawHistDia(); });
