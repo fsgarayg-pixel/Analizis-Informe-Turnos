@@ -678,6 +678,7 @@ const SHEET_ID = "1-ijA2fAWpzOVr-NxaxWjHyoozuZaLjfe31cbtcn-xmQ";
 const TAB_ODTS = "ODTs_Tablero";
 const SYNC_URL = "http://127.0.0.1:8765/sync";
 const ROBOT_URL = "http://127.0.0.1:8766/actualizar";   /* robot HTM del PC de Fabian: trae de HTM y sincroniza */
+const PEDIDOS_URL = "";   /* URL /exec del Apps Script de pedidos (botón desde cualquier equipo); vacío = solo este PC */
 const SNAPSHOT_URL = "odts-data.json";
 const SNAPSHOT_LABEL = "copia guardada del 11 oct 2026";
 
@@ -2085,6 +2086,24 @@ async function fetchLive(isAuto) {
     return false;
   }
 }
+
+/* Pedido remoto: si este equipo no es el PC del robot, se anota un pedido en el Google Sheet
+   (Apps Script) y el robot del PC de Fabian lo atiende; aquí se espera el resultado. */
+async function pedirRemoto(pagina, setMsg) {
+  if (!PEDIDOS_URL) return null;
+  const get = async (q) => { const r = await fetch(PEDIDOS_URL + "?" + q, { cache: "no-store" }); return r.json(); };
+  const p = await get("accion=pedir&pagina=" + encodeURIComponent(pagina));
+  if (!p || !p.ok) return null;
+  const id = p.id, t0 = Date.now();
+  if (p.repetido && p.estado === "listo") return { ok: true, message: "Los datos se actualizaron hace " + (p.edad_min || 0) + " min." };
+  while (Date.now() - t0 < 7 * 60000) {
+    const s = await get("accion=estado");
+    if (s && s.id === id && (s.estado === "listo" || s.estado === "error")) return { ok: s.estado === "listo", message: s.mensaje };
+    setMsg("Pedido enviado al robot de mantenimiento: " + (s && s.estado === "en curso" ? "trayendo datos de HTM…" : "esperando que el PC lo reciba…") + " (" + Math.round((Date.now() - t0) / 1000) + " s)");
+    await new Promise((r) => setTimeout(r, 10000));
+  }
+  return { ok: false, message: "el PC del robot no respondió a tiempo (puede estar apagado). Se muestran los datos actuales de la hoja." };
+}
 async function syncAndRefresh() {
   const btn = $("btnUpdate"); btn.disabled = true;
   let aviso = "";
@@ -2098,8 +2117,14 @@ async function syncAndRefresh() {
     hecho = true;
     if (!j.ok) aviso = j.message || "el robot no pudo traer los datos de HTM.";
     else setStatus(j.message);
-  } catch (e) { /* robot no disponible en este equipo: se usa la sincronización de Excel de siempre */ }
-  if (!hecho) {
+  } catch (e) { /* robot no disponible en este equipo */ }
+  if (!hecho) {   /* 2) desde cualquier otro equipo: pedido remoto al robot */
+    try {
+      const j = await pedirRemoto("odts", setStatus);
+      if (j) { hecho = true; if (!j.ok) aviso = j.message; else setStatus(j.message); }
+    } catch (e) { /* sin servicio de pedidos */ }
+  }
+  if (!hecho) {   /* 3) último recurso: sincronización de Excel en este PC */
     try {
       setStatus("Sincronizando los Excel con Google Sheets… (puede tardar hasta 2 minutos)");
       const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 240000);
