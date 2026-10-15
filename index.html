@@ -156,6 +156,18 @@ input[type=file]{display:none}
 .tab:hover{color:var(--ink)}
 .tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--btn)}
 .pg-note{margin:0 0 14px;font-size:13.5px;color:var(--muted)}
+/* Registros: problema, solución y observación se leen completos, sin hacer clic */
+td.clip div{display:block;-webkit-line-clamp:unset;overflow:visible;max-width:440px;min-width:200px;white-space:normal;overflow-wrap:anywhere}
+#tbody tr{cursor:default}
+/* Frecuencia de intervención por máquina */
+.fq-tl{display:block;width:270px;max-width:100%;height:40px}
+.fq-leg{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin:6px 0 10px}
+.fq-leg span{display:inline-flex;gap:6px;align-items:center}
+/* Etiqueta de fuente: de dónde sale cada dato */
+.src{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.3px;padding:0 6px;border-radius:4px;border:1px solid var(--line);background:var(--soft);color:var(--ink);vertical-align:1px;white-space:nowrap}
+.src.t{border-color:var(--focus)}
+.src.o{border-color:var(--prev)}
+tr.px-fq{cursor:pointer}
 /* Textos completos y evidencia por causa */
 .px-full{min-width:250px;max-width:480px;white-space:normal;overflow-wrap:anywhere}
 tr.px-causa{cursor:pointer}
@@ -317,7 +329,7 @@ tr.px-det td{background:var(--soft)}
       <span id="pinfo"></span>
       <button type="button" id="next">Siguiente</button>
     </div>
-    <p class="foot">Toca una fila para ver el texto completo.</p>
+    <p class="foot">Los textos de problema, solución y observación se muestran completos.</p>
   </section>
   </div>
   <div id="pgPresc" role="tabpanel" aria-labelledby="tabPresc" hidden>
@@ -349,7 +361,7 @@ tr.px-det td{background:var(--soft)}
     <div class="grid2" style="margin-bottom:18px">
       <div>
         <h3 class="px-h3">Causas del listado más frecuentes</h3>
-        <p class="sub">Correctivos asociados a una causa de tu catálogo. Toca una para filtrar la tabla.</p>
+        <p class="sub">Correctivos de los informes de turno asociados a una causa de tu catálogo. Toca una para filtrar la tabla.</p>
         <ul class="rank px" id="pxCausas"></ul>
       </div>
       <div>
@@ -362,7 +374,7 @@ tr.px-det td{background:var(--soft)}
     <p class="sub" id="pxQhSub"></p>
     <div class="tw">
       <table>
-        <thead><tr><th>Causa</th><th>Qué hacer</th><th>Fallas en turnos</th><th>Proyección 30 d</th><th>ODT relacionadas</th></tr></thead>
+        <thead><tr><th>Causa</th><th>Qué hacer</th><th>Fallas (informes de turno)</th><th>Proyección 30 d (turnos)</th><th>ODT correctivas relacionadas</th></tr></thead>
         <tbody id="pxQhBody"></tbody>
       </table>
     </div>
@@ -370,11 +382,30 @@ tr.px-det td{background:var(--soft)}
       <span id="pxQhInfo"></span>
       <button type="button" id="pxQhMore">Mostrar más</button>
     </div>
+    <h3 class="px-h3" style="margin-top:22px">Cada cuánto se interviene una máquina por la misma falla</h3>
+    <p class="sub" id="pxFqSub"></p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px">
+      <div class="field" style="min-width:300px;flex:1 1 300px;max-width:520px">
+        <label for="pxFqMaq">Máquina o equipo</label>
+        <input type="text" id="pxFqMaq" list="pxFqList" placeholder="Escribe o elige una máquina" autocomplete="off">
+        <datalist id="pxFqList"></datalist>
+      </div>
+      <div class="chips" id="pxFqChips" style="margin:0"></div>
+    </div>
+    <div class="kpis" id="pxFqKpis" style="margin:12px 0"></div>
+    <div class="fq-leg"><span><i class="dot" style="background:var(--corr)"></i>Intervención correctiva (falla)</span><span><i class="dot" style="background:var(--prev)"></i>Intervención preventiva</span></div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Falla (causa)</th><th>Intervenciones</th><th>Cada cuánto se interviene</th><th>Última y próxima</th><th>Línea de tiempo</th></tr></thead>
+        <tbody id="pxFqBody"></tbody>
+      </table>
+    </div>
+    <p class="foot" id="pxFqFoot"></p>
     <h3 class="px-h3" style="margin-top:22px">Plan de acción por máquina y causa</h3>
     <p class="sub" id="pxTblSub"></p>
     <div class="tw">
       <table>
-        <thead><tr><th>Estado</th><th>Máquina</th><th>Causa</th><th>Días con falla</th><th>Últ. 30 d</th><th>1 falla cada</th><th>Paro 90 d</th><th>ODT de esta falla</th><th>Qué hacer</th><th>Último caso del turno</th><th>Último informe de ODT de esta falla</th></tr></thead>
+        <thead><tr><th>Estado</th><th>Máquina</th><th>Causa</th><th>Días con falla (turnos)</th><th>Últ. 30 d (turnos)</th><th>1 falla cada (turnos)</th><th>Paro 90 d (paros Power BI)</th><th>ODT de esta falla</th><th>Qué hacer</th><th>Último caso del turno</th><th>Último informe de ODT de esta falla</th></tr></thead>
         <tbody id="pxBody"></tbody>
       </table>
     </div>
@@ -547,13 +578,6 @@ async function fetchLive(isAuto){
       return;
     }
     const before = DATA.length;
-    // Lectura incompleta: otra persona está sincronizando y la hoja aún se está escribiendo.
-    // El Excel nunca trae menos filas (el sincronizador lo impide), así que se conserva lo que hay y se reintenta.
-    if (before && data.length < before * 0.95){
-      if (!isAuto) setStatus("La hoja se está actualizando en este momento; se reintenta en 20 segundos…");
-      setTimeout(()=> fetchLive(isAuto), 20000);
-      return;
-    }
     DATA = data;
     const now = new Date();
     META = {when: now.toISOString()};
@@ -609,11 +633,8 @@ function resetFilters(keepNothing){
 function uniq(key){ return [...new Set(DATA.map(r=>r[key]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es")); }
 function fillSelect(id, label, values, cur){
   const el = $(id);
-  // Si el valor elegido por este usuario no viene en los datos (lectura parcial mientras otro sincroniza),
-  // se conserva igual: cada usuario mantiene sus filtros.
-  const vals = (cur && !values.includes(cur)) ? values.concat([cur]) : values;
-  el.innerHTML = '<option value="">'+label+'</option>' + vals.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join("");
-  el.value = cur || "";
+  el.innerHTML = '<option value="">'+label+'</option>' + values.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join("");
+  el.value = values.includes(cur) ? cur : "";
 }
 function refreshSecSelect(){
   const vals = [...new Set(DATA.filter(r=>!F.planta || r.planta===F.planta).map(pxArea).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"es"));
@@ -1170,42 +1191,11 @@ function renderTable(){
 
 /* ---------- Eventos ---------- */
 // Boton "Actualizar datos": primero sincroniza Excel -> Google Sheet (servicio local), luego recarga
-const ROBOT_URL = "http://127.0.0.1:8766/actualizar";   /* robot HTM del PC de Fabian */
-const PEDIDOS_URL = "https://script.google.com/macros/s/AKfycbxWrmnQYNfAf5wYNzaX6zimntGY84iF2dMwYCvRsQ2jm_jAm77hS_qBq-UKiuwS1jtW/exec";   /* URL /exec del Apps Script de pedidos (botón desde cualquier equipo); vacío = solo este PC */
-
-/* Pedido remoto: si este equipo no es el PC del robot, se anota un pedido en el Google Sheet
-   (Apps Script) y el robot del PC de Fabian lo atiende; aquí se espera el resultado. */
-async function pedirRemoto(pagina, setMsg) {
-  if (!PEDIDOS_URL) return null;
-  const get = async (q) => { const r = await fetch(PEDIDOS_URL + "?" + q, { cache: "no-store" }); return r.json(); };
-  const p = await get("accion=pedir&pagina=" + encodeURIComponent(pagina));
-  if (!p || !p.ok) return null;
-  const id = p.id, t0 = Date.now();
-  if (p.repetido && p.estado === "listo") return { ok: true, message: "Los datos se actualizaron hace " + (p.edad_min || 0) + " min." };
-  while (Date.now() - t0 < 7 * 60000) {
-    const s = await get("accion=estado");
-    if (s && s.id === id && (s.estado === "listo" || s.estado === "error")) return { ok: s.estado === "listo", message: s.mensaje };
-    setMsg("Pedido enviado al robot de mantenimiento: " + (s && s.estado === "en curso" ? "trayendo datos de HTM…" : "esperando que el PC lo reciba…") + " (" + Math.round((Date.now() - t0) / 1000) + " s)");
-    await new Promise((r) => setTimeout(r, 10000));
-  }
-  return { ok: false, message: "el PC del robot no respondió a tiempo (puede estar apagado). Se muestran los datos actuales de la hoja." };
-}
-
 async function syncAndRefresh(){
   const btn = $("btnUpdate");
   btn.disabled = true;
-  let aviso = "", hecho = false;
-  try{   /* 1) robot en este PC: trae HTM y sincroniza todo (turnos y ODTs) */
-    setStatus("Actualizando datos (HTM y Excel)… puede tardar 2 a 3 minutos");
-    const ctl = new AbortController(); const t = setTimeout(()=>ctl.abort(), 450000);
-    const r = await fetch(ROBOT_URL, {signal: ctl.signal}); clearTimeout(t);
-    const j = await r.json(); hecho = true;
-    if (!j.ok) aviso = j.message || "el robot no pudo actualizar.";
-  }catch(e){ /* no es el PC del robot */ }
-  if (!hecho){   /* 2) otro equipo: pedido remoto al robot */
-    try{ const j = await pedirRemoto("turnos", setStatus); if (j){ hecho = true; if (!j.ok) aviso = j.message; } }catch(e){}
-  }
-  if (!hecho) try{   /* 3) servicio local de siempre */
+  let aviso = "";
+  try{
     setStatus("Sincronizando el Excel con Google Sheets… (puede tardar hasta 2 minutos)");
     const ctl = new AbortController();
     const t = setTimeout(()=>ctl.abort(), 240000);
@@ -1218,11 +1208,8 @@ async function syncAndRefresh(){
   }finally{
     btn.disabled = false;
   }
-  btn.disabled = false;
   pxLoadTodo();
   await fetchLive(false);
-  /* Google puede tardar unos segundos en servir la hoja recién escrita: se vuelve a leer a los 20 s */
-  if (hecho && !aviso) setTimeout(() => fetchLive(true), 20000);
   if (aviso){
     $("status").insertAdjacentHTML("beforeend", ' <span class="err">Aviso: '+esc(aviso)+'</span>');
   }
@@ -1268,12 +1255,7 @@ $("failChips").addEventListener("click", e=>{
 });
 const map = {fFrom:"from",fTo:"to",fPlanta:"planta",fSec:"sec",fProceso:"proceso",fTurno:"turno",fMto:"mto",fParo:"paro"};
 Object.keys(map).forEach(id=> $(id).addEventListener("change", e=>{ F[map[id]] = e.target.value; PAGE=0; renderAll(); }));
-$("fPlanta").addEventListener("change", ()=>{
-  const prev=F.sec;
-  // Cambio hecho por el usuario: si su área no pertenece a la nueva planta, se quita.
-  const enPlanta = DATA.some(r=>(!F.planta || r.planta===F.planta) && pxArea(r)===F.sec);
-  if (F.sec && !enPlanta) F.sec = "";
-  refreshSecSelect(); if (F.sec!==prev){ PAGE=0; renderAll(); } });
+$("fPlanta").addEventListener("change", ()=>{ const prev=F.sec; refreshSecSelect(); if (F.sec!==prev){ PAGE=0; renderAll(); } });
 let qTimer; $("q").addEventListener("input", e=>{ clearTimeout(qTimer); qTimer=setTimeout(()=>{ F.q=e.target.value.trim(); PAGE=0; renderTable(); },180); });
 $("prev").addEventListener("click", ()=>{ PAGE=Math.max(0,PAGE-1); renderTable(); });
 $("next").addEventListener("click", ()=>{ PAGE++; renderTable(); });
@@ -1342,7 +1324,7 @@ function pxLimpia(nombre){
   return String(nombre).replace(/[#\-`’]/g,"").trim().toUpperCase();
 }
 
-const PX = {estado:"vig", q:"", limit:25, res:null, enr:null, enrInfo:null, ver:1, odt:null, odtIdx:new Map(), qh:[], qhMap:new Map(), qhLimit:12, qhAbierto:new Set()};
+const PX = {estado:"vig", q:"", limit:25, res:null, enr:null, enrInfo:null, ver:1, odt:null, odtIdx:new Map(), qh:[], qhMap:new Map(), qhLimit:12, qhAbierto:new Set(), fqAbierto:new Set(), fqMaq:null};
 /* Área de trabajo según el Power BI: la del equipo en paros/ODT (p. ej. "TINTORERIA PROD.");
    si la máquina no está allí, la sección del turno cuando coincide con un área del Power BI; si no, la sección tal cual. */
 let PX_AREA_MAPA = null, PX_AREA_VER = 0;
@@ -1451,6 +1433,7 @@ function pxCausasResumen(res){
   }
   const maqSet = hasFilters() ? new Set(VIEW.map(r=>pxLimpia(r.maq))) : null;
   for (const o of (PX.odt||[])){
+    if (!pxEsCorr(o)) continue;                      // aquí solo las ODT que nacen de una falla; las preventivas van en la frecuencia por máquina
     if (maqSet && !maqSet.has(o.m)) continue;
     const p = pxOdtCausa(o); if (!p.cod) continue;
     const g = get(p); g.odt.tot++;
@@ -1484,8 +1467,8 @@ function pxQueHacer(g){
     l.push((i===0 ? "Hacer primero: " : "Si no resuelve: ")+a.toLowerCase()+(ev.length ? " ("+ev.join(" y ")+")" : ""));
   });
   if (!top.length) l.push("Los informes no describen una acción repetida: dejar la solución escrita en cada ODT.");
-  if (g.repu.length) l.push("Repuestos a tener disponibles: "+g.repu.map(([w,n])=>w+" ("+n+")").join(", "));
-  if (g.n>0) l.push("Proyección: ≈"+g.esp.toFixed(1).replace(".",",")+" falla(s) en los próximos 30 días ("+g.d90+" en los últimos 90)");
+  if (g.repu.length) l.push("Repuestos a tener disponibles (según ODT y reportes de turno): "+g.repu.map(([w,n])=>w+" ("+n+")").join(", "));
+  if (g.n>0) l.push("Proyección (informes de turno): ≈"+g.esp.toFixed(1).replace(".",",")+" falla(s) en los próximos 30 días ("+g.d90+" en los últimos 90)");
   if (g.odt.conObs===0) l.push("Sin ODT terminadas con informe para esta causa: la recomendación sale solo de los reportes de turno.");
   return l;
 }
@@ -1500,6 +1483,150 @@ function pxEvidencia(g){
     h += g.recT.slice(0,3).map(r=>'<div class="px-ev"><b>'+esc(fdate(r.ts))+'</b> · '+esc(r.maq)+(cl(r.prob) ? '<div><b>Falla:</b> '+esc(cl(r.prob))+'</div>' : '')+(cl(r.sol) ? '<div><b>Solución:</b> '+esc(cl(r.sol))+'</div>' : '')+'</div>').join("");
   }
   return '<div class="px-detwrap">'+(h || '<div class="px-act">Sin evidencia para mostrar.</div>')+'</div>';
+}
+/* ---- Cada cuánto se interviene una máquina por la misma falla (correctivas y preventivas) ---- */
+const pxEsCorr = o => o.tipo==="CORRECTIVO" || o.tipo==="MANT_IMPREV";
+const SRC_T = '<span class="src t">TURNO</span>', SRC_O = '<span class="src o">ODT</span>';
+function pxIntervalos(dias){
+  const d = [...new Set(dias)].sort((a,b)=>a-b);
+  if (d.length < 2) return {n:d.length, med:null, prom:null, ult:d.length ? d[d.length-1] : null, dias:d};
+  const ints = d.slice(1).map((x,i)=>x-d[i]);
+  return {n:d.length, med:pxMed(ints), prom:ints.reduce((a,b)=>a+b,0)/ints.length, ult:d[d.length-1], dias:d};
+}
+function pxFrecuencia(maqKey){
+  const hoy = PX.res.hoy, m = new Map();
+  const get = p => { let g = m.get(p.cod); if (!g){ g = {cod:p.cod, nom:p.nom, tC:[], tP:[], oC:[], oP:[], ev:[]}; m.set(p.cod, g); } return g; };
+  const tot = {tC:[], tP:[], oC:[], oP:[]}, evTP = [];
+  for (const r of VIEW){
+    if (pxLimpia(r.maq)!==maqKey) continue;
+    const d = pxDay(r.ts); if (d>hoy+1) continue;
+    if (/preventiv/i.test(r.mto)){
+      tot.tP.push(d);
+      let ligado = false;      // un preventivo de turno solo se liga a una falla si trae texto que la nombre
+      if (cl(r.prob) || cl(r.sol) || cl(r.obs)){
+        if (!r._px) r._px = pxClasificar(r.prob, r.obs, r.sol);
+        if (r._px.cod){ const g = get(r._px); g.tP.push(d); g.ev.push({d, f:"T", t:"P", r}); ligado = true; }
+      }
+      if (!ligado) evTP.push({d, f:"T", t:"P", r});
+      continue;
+    }
+    if (!/correctiv/i.test(r.mto)) continue;
+    tot.tC.push(d);
+    if (!(cl(r.prob) || cl(r.sol))) continue;
+    if (!r._px) r._px = pxClasificar(r.prob, r.obs, r.sol);
+    if (r._px.cod){ const g = get(r._px); g.tC.push(d); g.ev.push({d, f:"T", t:"C", r}); }
+  }
+  for (const o of (PX.odt||[])){
+    if (o.m!==maqKey || o.estado!=="TERMINADO" || !o.f) continue;
+    const d = pxDay(o.f), c = pxEsCorr(o);
+    (c ? tot.oC : tot.oP).push(d);
+    const p = pxOdtCausa(o); if (!p.cod) continue;
+    const g = get(p); g[c ? "oC" : "oP"].push(d); g.ev.push({d, f:"O", t:c ? "C" : "P", o});
+  }
+  const filas = [...m.values()].map(g=>{
+    // una ODT correctiva a 3 días o menos de un reporte de turno de la misma falla es la misma intervención
+    const oNuevas = g.oC.filter(d=> !g.tC.some(t=>Math.abs(t-d)<=3));
+    const corr = pxIntervalos(g.tC.concat(oNuevas)), prev = pxIntervalos(g.oP.concat(g.tP));
+    const todo = pxIntervalos(corr.dias.concat(prev.dias));
+    const ev = g.ev.map(e=> (e.f==="O" && e.t==="C" && g.tC.some(t=>Math.abs(t-e.d)<=3)) ? Object.assign({}, e, {dup:true}) : e).sort((a,b)=>b.d-a.d);
+    return {cod:g.cod, nom:g.nom, nTC:new Set(g.tC).size, nTP:new Set(g.tP).size, nOC:g.oC.length, nOP:g.oP.length, corr, prev, todo,
+      tur:pxIntervalos(g.tC), odc:pxIntervalos(g.oC), tpv:pxIntervalos(g.tP), opv:pxIntervalos(g.oP), ev};
+  }).filter(f=>f.todo.n>0).sort((a,b)=> b.todo.n-a.todo.n || b.corr.n-a.corr.n);
+  evTP.sort((a,b)=>b.d-a.d);
+  return {filas, evTP, tot:{tC:pxIntervalos(tot.tC), tP:pxIntervalos(tot.tP), oC:pxIntervalos(tot.oC), oP:pxIntervalos(tot.oP)}};
+}
+function pxFqDetalle(ev, titulo){
+  const lineas = ev.slice(0, 12).map(e=>{
+    const tipo = e.t==="C" ? "Correctiva" : "Preventiva";
+    let txt = "";
+    if (e.f==="T"){
+      txt = (cl(e.r.prob) ? '<div><b>Falla:</b> '+esc(cl(e.r.prob))+'</div>' : '')+(cl(e.r.sol) ? '<div><b>Solución:</b> '+esc(cl(e.r.sol))+'</div>' : '')+(cl(e.r.obs) ? '<div><b>Observación:</b> '+esc(cl(e.r.obs))+'</div>' : '');
+      if (!txt) txt = '<div class="px-act">El informe de turno no trae texto.</div>';
+    } else {
+      txt = (e.o.d ? '<div><b>Orden:</b> '+esc(e.o.d)+'</div>' : '')+(e.o.o ? '<div><b>Informe final:</b> '+esc(e.o.o)+'</div>' : '');
+    }
+    return '<div class="px-ev"><b>'+esc(fdate(pxIso(e.d)))+'</b> '+(e.f==="T" ? SRC_T : SRC_O)+' <span class="src">'+tipo+'</span>'
+      +(e.dup ? ' <span class="px-act">cuenta como la misma intervención que un reporte de turno cercano</span>' : '')+txt+'</div>';
+  }).join("");
+  return '<div class="px-detwrap"><div class="px-evh">'+esc(titulo)+' (las '+Math.min(12, ev.length)+' más recientes de '+fmt(ev.length)+'). Cada una indica si viene de un informe de turno o de una ODT.</div>'+lineas+'</div>';
+}
+function pxTimeline(f, d0, d1){
+  const W = 270, H = 40, pad = 7, x = d => (pad + (d-d0)/Math.max(d1-d0,1)*(W-2*pad)).toFixed(1);
+  let s = '<svg class="fq-tl" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Línea de tiempo de las intervenciones"><line x1="'+pad+'" x2="'+(W-pad)+'" y1="20" y2="20" style="stroke:var(--line);stroke-width:2"/>';
+  for (const d of f.prev.dias) s += '<circle cx="'+x(d)+'" cy="28" r="3.6" style="fill:var(--prev)"><title>Preventiva · '+fdate(pxIso(d))+'</title></circle>';
+  for (const d of f.corr.dias) s += '<circle cx="'+x(d)+'" cy="12" r="3.6" style="fill:var(--corr)"><title>Correctiva · '+fdate(pxIso(d))+'</title></circle>';
+  s += '<text x="'+pad+'" y="38" style="fill:var(--muted);font-size:9px">'+fdate(pxIso(d0))+'</text><text x="'+(W-pad)+'" y="38" text-anchor="end" style="fill:var(--muted);font-size:9px">'+fdate(pxIso(d1))+'</text></svg>';
+  return s;
+}
+function pxCadaTxt(iv){
+  if (!iv.n) return "—";
+  if (iv.n===1) return "1 vez (sin intervalo todavía)";
+  return "cada ≈ "+fmt(Math.round(iv.med))+" d (promedio "+fmt(Math.round(iv.prom))+" d, "+iv.n+" veces)";
+}
+function pxRenderFq(){
+  const cuenta = new Map(), nombres = new Map();
+  for (const r of VIEW){
+    if (!r.maq) continue;
+    const k = pxLimpia(r.maq); if (!k) continue;
+    nombres.set(k, r.maq);
+    if (/correctiv/i.test(r.mto)) cuenta.set(k, (cuenta.get(k)||0)+1);
+  }
+  const orden = [...nombres.keys()].sort((a,b)=> (cuenta.get(b)||0)-(cuenta.get(a)||0) || nombres.get(a).localeCompare(nombres.get(b),"es"));
+  PX.fqNombres = nombres;
+  $("pxFqList").innerHTML = orden.map(k=>'<option value="'+esc(nombres.get(k))+'">'+fmt(cuenta.get(k)||0)+' correctivos</option>').join("");
+  $("pxFqChips").innerHTML = orden.slice(0,8).map(k=>'<button type="button" class="linkbtn" data-fq="'+esc(k)+'">'+esc(nombres.get(k).replace(/\s*-\s*[^#]*$/,"").slice(0,26))+'</button>').join("");
+  if (!PX.fqMaq || !nombres.has(PX.fqMaq)) PX.fqMaq = orden[0] || null;
+  $("pxFqSub").textContent = "Elige una máquina y mira, falla por falla, cuántas veces se ha intervenido (por falla o por preventivo) y cada cuánto. Usa los reportes de turno filtrados arriba y las ODT terminadas de la máquina.";
+  if (!PX.fqMaq){ $("pxFqKpis").innerHTML = ""; $("pxFqBody").innerHTML = '<tr><td colspan="5" class="empty">No hay máquinas con los filtros actuales.</td></tr>'; return; }
+  if (document.activeElement!==$("pxFqMaq")) $("pxFqMaq").value = nombres.get(PX.fqMaq);
+  const f = pxFrecuencia(PX.fqMaq), hoy = PX.res.hoy, t = f.tot;
+  const sub = iv => iv.n ? (iv.n===1 ? "una sola vez" : "cada ≈ "+fmt(Math.round(iv.med))+" d") : "sin registros";
+  const e = PX.enr && PX.enr.get(PX.fqMaq);
+  $("pxFqKpis").innerHTML = [
+    [fmt(t.tC.n), "Días con correctivo", SRC_T+' <i class="dot" style="background:var(--corr)"></i>'+sub(t.tC)],
+    [fmt(t.tP.n), "Días con preventivo", SRC_T+' <i class="dot" style="background:var(--prev)"></i>'+sub(t.tP)],
+    [fmt(t.oC.n), "ODT correctivas terminadas", SRC_O+' <i class="dot" style="background:var(--corr)"></i>'+sub(t.oC)],
+    [fmt(t.oP.n), "ODT preventivas terminadas", SRC_O+' <i class="dot" style="background:var(--prev)"></i>'+sub(t.oP)],
+    e && e.fallo_horas_90!=="" && e.fallo_horas_90!=null ? [fmt(Math.round(+e.fallo_horas_90))+" h", "Paro por falla (90 d)", '<span class="src">PAROS</span> MTTR '+(+e.mttr_h).toFixed(1).replace(".",",")+" h"] : ["—", "Paro por falla (90 d)", '<span class="src">PAROS</span> sin datos']
+  ].map(i=>'<div class="kpi"><div class="n">'+i[0]+'</div><div class="l">'+i[1]+'</div><div class="p">'+i[2]+'</div></div>').join("");
+  const todos = f.filas.flatMap(x=>x.todo.dias).concat(f.evTP.map(e=>e.d));
+  const d0 = todos.length ? Math.min(...todos) : hoy-30, d1 = Math.max(hoy, ...(todos.length ? todos : [hoy]));
+  let html = f.filas.map(x=>{
+    const K = x.todo.n>=2 ? Math.max(1, Math.round(x.todo.med)) : null;
+    const prox = K!=null ? x.todo.ult + K : null;
+    const hace = hoy - x.todo.ult;
+    const proxTxt = prox==null ? "Próxima: sin intervalo todavía" : (prox<hoy ? "Próxima esperada: "+fdate(pxIso(prox))+" · vencida hace "+fmt(hoy-prox)+" d" : "Próxima esperada: "+fdate(pxIso(prox))+" · en "+fmt(prox-hoy)+" d");
+    const ab = PX.fqAbierto.has(x.cod);
+    return '<tr class="px-fq" data-cod="'+esc(x.cod)+'">'
+      +'<td class="px-full"><b>'+esc(x.nom)+'</b><div class="px-act">código '+esc(x.cod)+' · '+(ab ? '▾ ocultar informes' : '▸ ver informes de turno y ODT')+'</div></td>'
+      +'<td class="px-full"><div><i class="dot" style="background:var(--corr)"></i> <b>'+fmt(x.corr.n)+'</b> correctiva(s)</div>'
+        +'<div class="px-act">'+SRC_T+' '+fmt(x.nTC)+' día(s) con reporte · '+SRC_O+' '+fmt(x.nOC)+' ODT correctiva(s)</div>'
+        +'<div style="margin-top:4px"><i class="dot" style="background:var(--prev)"></i> <b>'+fmt(x.prev.n)+'</b> preventiva(s)</div><div class="px-act">'+SRC_T+' '+fmt(x.nTP)+' día(s) con reporte preventivo · '+SRC_O+' '+fmt(x.nOP)+' ODT preventiva(s)</div></td>'
+      +'<td class="px-full"><div><b>'+(K!=null ? 'Intervenir cada ≈ '+fmt(K)+' d' : 'Sin intervalo todavía')+'</b>'+(x.todo.n<3 ? ' <span class="px-act">(poca historia: '+x.todo.n+' intervención)</span>' : '')+'</div>'
+        +'<div class="px-act">Correctiva, todo junto: '+esc(pxCadaTxt(x.corr))+'</div>'
+        +'<div class="px-act">'+SRC_T+' solo reportes de turno: '+esc(pxCadaTxt(x.tur))+'</div>'
+        +'<div class="px-act">'+SRC_O+' solo ODT correctivas: '+esc(pxCadaTxt(x.odc))+'</div>'
+        +'<div class="px-act">Preventiva, todo junto: '+esc(pxCadaTxt(x.prev))+'</div>'
+        +'<div class="px-act">'+SRC_T+' solo reportes de turno preventivos: '+esc(pxCadaTxt(x.tpv))+'</div>'
+        +'<div class="px-act">'+SRC_O+' solo ODT preventivas: '+esc(pxCadaTxt(x.opv))+'</div></td>'
+      +'<td class="px-full"><div>Última: '+esc(fdate(pxIso(x.todo.ult)))+'</div><div class="px-act">hace '+fmt(hace)+' d</div><div class="px-act">'+esc(proxTxt)+'</div></td>'
+      +'<td>'+pxTimeline(x, d0, d1)+'</td></tr>'
+      +(ab ? '<tr class="px-det"><td colspan="5">'+pxFqDetalle(x.ev, "Intervenciones por «"+x.nom+"»")+'</td></tr>' : '');
+  }).join("");
+  if (f.evTP.length){     // preventivos reportados en el turno: no traen texto, no se pueden ligar a una falla
+    const iv = pxIntervalos(f.evTP.map(e=>e.d)), ab = PX.fqAbierto.has("__tp");
+    html += '<tr class="px-fq" data-cod="__tp"><td class="px-full"><b>Preventivo reportado en turno (sin causa del catálogo)</b><div class="px-act">el informe de turno preventivo casi nunca trae texto, así que no se puede ligar a una falla · '+(ab ? '▾ ocultar' : '▸ ver fechas')+'</div></td>'
+      +'<td class="px-full"><div><i class="dot" style="background:var(--prev)"></i> <b>'+fmt(iv.n)+'</b> día(s) con preventivo</div><div class="px-act">'+SRC_T+'</div></td>'
+      +'<td class="px-full"><div><b>'+(iv.n>=2 ? 'Cada ≈ '+fmt(Math.round(iv.med))+' d' : 'Sin intervalo todavía')+'</b></div><div class="px-act">'+SRC_T+' '+esc(pxCadaTxt(iv))+'</div></td>'
+      +'<td class="px-full"><div>Última: '+esc(fdate(pxIso(iv.ult)))+'</div><div class="px-act">hace '+fmt(hoy-iv.ult)+' d</div></td>'
+      +'<td>'+pxTimeline({corr:{dias:[]}, prev:iv}, d0, d1)+'</td></tr>'
+      +(ab ? '<tr class="px-det"><td colspan="5">'+pxFqDetalle(f.evTP, "Preventivos reportados en turno")+'</td></tr>' : '');
+  }
+  $("pxFqBody").innerHTML = html || '<tr><td colspan="5" class="empty">Esta máquina no tiene intervenciones con una causa del catálogo en estos filtros.</td></tr>';
+  $("pxFqFoot").innerHTML = "<b>De dónde sale cada dato.</b> "+SRC_T+" = informes de turno; "+SRC_O+" = ODT terminadas. "
+    +"Una intervención es un día con un reporte de turno correctivo de esa falla o una ODT terminada que la menciona; una ODT correctiva a 3 días o menos de un reporte de turno de la misma falla cuenta como la misma intervención. "
+    +"Los preventivos de turno casi nunca traen texto: los que sí lo traen se ligan a la falla que nombran y los demás quedan en la última fila. Las ODT preventivas se asignan a una falla cuando su descripción o su informe nombra ese componente (por ejemplo «se verifican relevos y contactores»). "
+    +"El intervalo es la mediana de días entre intervenciones; con menos de 3 es solo una referencia.";
 }
 function pxRenderQh(){
   const lista = PX.qh, vis = lista.slice(0, PX.qhLimit);
@@ -1590,6 +1717,7 @@ function renderPrescriptive(){
   const res = PX.res;
   PX.odtIdx = new Map();
   for (const o of (PX.odt||[])){
+    if (!pxEsCorr(o)) continue;
     const p = pxOdtCausa(o); if (!p.cod || !o.m) continue;
     const k = o.m+"|"+p.cod; if (!PX.odtIdx.has(k)) PX.odtIdx.set(k, []); PX.odtIdx.get(k).push(o);
   }
@@ -1600,10 +1728,10 @@ function renderPrescriptive(){
   const maqAct = new Set(act.map(r=>r.maq)).size;
   const conTurnos = PX.qh.filter(g=>g.n>0).length, conRespaldo = PX.qh.filter(g=>g.n>0 && g.odt.conObs>0).length;
   const items = [
-    [fmt(res.nFallas), "Correctivos analizados", ""],
-    [pct(res.clasif, res.nFallas)+"%", "Con causa del listado", fmt(res.clasif)+" de "+fmt(res.nFallas)],
+    [fmt(res.nFallas), "Correctivos analizados", SRC_T+' informes de turno'],
+    [pct(res.clasif, res.nFallas)+"%", "Con causa del listado", SRC_T+' '+fmt(res.clasif)+" de "+fmt(res.nFallas)],
     [fmt(act.length), "Combinaciones activas", '<i class="dot" style="background:var(--paro)"></i>en '+fmt(maqAct)+' máquinas'],
-    PX.odt ? [fmt(conRespaldo)+" de "+fmt(conTurnos), "Causas con ODT terminadas", '<i class="dot" style="background:var(--prev)"></i>respaldan qué hacer']
+    PX.odt ? [fmt(conRespaldo)+" de "+fmt(conTurnos), "Causas con ODT terminadas", SRC_O+' <i class="dot" style="background:var(--prev)"></i>respaldan qué hacer']
            : [fmt(maqAct), "Máquinas con alerta activa", '<i class="dot" style="background:var(--paro)"></i>al menos una causa activa'],
     [fmt(vig.length), "Por vigilar", '<i class="dot" style="background:var(--corr)"></i>1 día con falla en 30 d']
   ];
@@ -1611,7 +1739,7 @@ function renderPrescriptive(){
   $("pxEnrInfo").textContent = ei ? "Datos de Power BI: paros hasta el "+fdate(ei.p)+" y ODT hasta el "+fdate(ei.o)+" ("+fmt(ei.n)+" máquinas en la base)." : "No se pudo leer la pestaña con paros y ODT; se muestra solo lo que sale del informe de turnos.";
   $("pxKpis").innerHTML = items.map(i=>'<div class="kpi"><div class="n">'+i[0]+'</div><div class="l">'+i[1]+'</div><div class="p">'+i[2]+'</div></div>').join("");
   $("pxSub").textContent = "Qué falla se repite en cada máquina y cada cuánto inspeccionarla. Usa los filtros de arriba y toma como fecha de hoy el "+fdate(pxIso(res.hoy))+".";
-  pxRenderListas(); pxRenderQh(); pxRenderTabla();
+  pxRenderListas(); pxRenderQh(); pxRenderFq(); pxRenderTabla();
 }
 /* Paros y ODT (Power BI): pestaña "Prescriptivo_Maquinas" del mismo Google Sheet, una fila por máquina */
 function pxJsonp(hoja){
@@ -1686,6 +1814,15 @@ $("pxQhBody").addEventListener("click", e=>{
   pxRenderQh();
 });
 $("pxQhMore").addEventListener("click", ()=>{ PX.qhLimit += 12; pxRenderQh(); });
+function pxElegirMaq(k){ PX.fqMaq = k; pxRenderFq(); }
+$("pxFqMaq").addEventListener("input", e=>{ const k = pxLimpia(e.target.value.trim()); if (PX.fqNombres && PX.fqNombres.has(k)) pxElegirMaq(k); });
+$("pxFqMaq").addEventListener("change", e=>{ const k = pxLimpia(e.target.value.trim()); if (PX.fqNombres && PX.fqNombres.has(k)) pxElegirMaq(k); else if (PX.fqMaq && PX.fqNombres) e.target.value = PX.fqNombres.get(PX.fqMaq)||""; });
+$("pxFqBody").addEventListener("click", e=>{
+  const tr = e.target.closest("tr.px-fq"); if (!tr) return;
+  const c = tr.dataset.cod; if (PX.fqAbierto.has(c)) PX.fqAbierto.delete(c); else PX.fqAbierto.add(c);
+  pxRenderFq();
+});
+$("pxFqChips").addEventListener("click", e=>{ const b = e.target.closest("[data-fq]"); if (b) pxElegirMaq(b.dataset.fq); });
 $("pxEstado").addEventListener("change", e=>{ PX.estado = e.target.value; PX.limit = 25; pxRenderTabla(); });
 let pxTimer; $("pxQ").addEventListener("input", e=>{ clearTimeout(pxTimer); pxTimer = setTimeout(()=>{ PX.q = e.target.value.trim(); PX.limit = 25; pxRenderListas(); pxRenderTabla(); }, 180); });
 $("pxMore").addEventListener("click", ()=>{ PX.limit += 25; pxRenderTabla(); });
