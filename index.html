@@ -1398,11 +1398,30 @@ function pxCausaNombre(r){
   if (!r._px) r._px = pxClasificar(r.prob, r.obs, r.sol);
   return r._px.cod ? r._px.nom+" ("+r._px.cod+")" : null;
 }
-function pxCompute(){
+/* Un solo filtro para toda la página: «Mostrar» (estado) y «Buscar» (máquina, área o causa) */
+const pxToks = () => pxBusca(PX.q).split(" ").filter(Boolean);
+function pxVista(){
+  const toks = pxToks(); if (!toks.length) return VIEW;
+  return VIEW.filter(r=>{
+    let cn = "";
+    if (cl(r.prob) || cl(r.sol) || cl(r.obs)){ if (!r._px) r._px = pxClasificar(r.prob, r.obs, r.sol); if (r._px.cod) cn = r._px.nom+" "+r._px.cod; }
+    const e = PX.enr && PX.enr.get(pxLimpia(r.maq));
+    const h = pxBusca(r.maq+" "+(r.sec||"")+" "+(r.planta||"")+" "+((e && e.area_pbi) || "")+" "+cn);
+    return toks.every(t=>h.includes(t));
+  });
+}
+function pxOdtOk(o, p){
+  const toks = pxToks(); if (!toks.length) return true;
+  const e = PX.enr && PX.enr.get(o.m);
+  const h = pxBusca(o.m+" "+o.nombre+" "+((e && e.area_pbi) || "")+" "+p.nom+" "+p.cod);
+  return toks.every(t=>h.includes(t));
+}
+function pxEstOk(maq, cod){ return PX.estado==="all" || !PX.estSet || PX.estSet.has(pxLimpia(maq)+"|"+cod); }
+function pxCompute(vista){
   const todayN = Math.floor(Date.now()/86400000)+1;
   let hoy = 0;
   for (const r of DATA){ const d = pxDay(r.ts); if (d<=todayN && d>hoy) hoy = d; }
-  const fallas = VIEW.filter(r=> /correctiv/i.test(r.mto) && (cl(r.prob) || cl(r.sol)));
+  const fallas = (vista || VIEW).filter(r=> /correctiv/i.test(r.mto) && (cl(r.prob) || cl(r.sol)));
   const groups = new Map(), causas = new Map(), cand = new Map();
   let clasif = 0;
   for (const r of fallas){
@@ -1448,7 +1467,7 @@ function pxFiltradas(){
   return rows.filter(r=>{
     if (!okEst.includes(r.est)) return false;
     if (!toks.length) return true;
-    const h = pxBusca(r.maq+" "+r.nom+" "+r.cod+" "+r.sec);
+    const h = pxBusca(r.maq+" "+r.nom+" "+r.cod+" "+r.sec+" "+r.planta+" "+((r.enr && r.enr.area_pbi) || ""));
     return toks.every(t=>h.includes(t));
   });
 }
@@ -1473,10 +1492,11 @@ function pxRepuestos(textos){
 function pxCausasResumen(res){
   const hoy = res.hoy, map = new Map();
   const get = p => { let g = map.get(p.cod); if (!g){ g = {cod:p.cod, nom:p.nom, n:0, paro:0, d90:0, accT:new Map(), nSol:0, solTxt:[], recT:[], accO:new Map(), odt:{tot:0, term:0, conObs:0}, odtTxt:[], odtLista:[]}; map.set(p.cod, g); } return g; };
-  for (const r of VIEW){
+  for (const r of PX.vista){
     if (!/correctiv/i.test(r.mto) || !(cl(r.prob) || cl(r.sol))) continue;
     if (!r._px) r._px = pxClasificar(r.prob, r.obs, r.sol);
-    const p = r._px; if (!p.cod) continue;
+    const p = r._px; if (!p.cod || !pxEstOk(r.maq, p.cod)) continue;
+    if (PX.q && !pxToks().every(t=>pxBusca(p.nom+" "+p.cod+" "+r.maq+" "+(r.sec||"")+" "+((PX.enr && (PX.enr.get(pxLimpia(r.maq))||{}).area_pbi)||"")).includes(t))) continue;
     const g = get(p); g.n++; if (r.paro==="Si") g.paro++;
     const d = pxDay(r.ts); if (d<=hoy+1 && hoy-d<=90) g.d90++;
     if (cl(r.sol)){ g.nSol++; g.solTxt.push(r.sol); const a = pxAccion(r.sol, r.obs); g.accT.set(a, (g.accT.get(a)||0)+1); }
@@ -1486,7 +1506,7 @@ function pxCausasResumen(res){
   for (const o of (PX.odt||[])){
     if (!pxEsCorr(o)) continue;                      // aquí solo las ODT que nacen de una falla; las preventivas van en la frecuencia por máquina
     if (maqSet && !maqSet.has(o.m)) continue;
-    const p = pxOdtCausa(o); if (!p.cod) continue;
+    const p = pxOdtCausa(o); if (!p.cod || !pxEstOk(o.m, p.cod) || !pxOdtOk(o, p)) continue;
     const g = get(p); g.odt.tot++;
     if (o.estado==="TERMINADO"){
       g.odt.term++;
@@ -1635,9 +1655,10 @@ function pxCadaTxt(iv){
 }
 function pxRenderFq(){
   const cuenta = new Map(), nombres = new Map();
-  for (const r of VIEW){
+  const conEst = PX.estado!=="all" && PX.estSet && PX.estSet.size ? new Set([...PX.estSet].map(x=>x.split("|")[0])) : null;
+  for (const r of PX.vista){
     if (!r.maq) continue;
-    const k = pxLimpia(r.maq); if (!k) continue;
+    const k = pxLimpia(r.maq); if (!k || (conEst && !conEst.has(k))) continue;
     nombres.set(k, r.maq);
     if (/correctiv/i.test(r.mto)) cuenta.set(k, (cuenta.get(k)||0)+1);
   }
@@ -1650,6 +1671,12 @@ function pxRenderFq(){
   if (!PX.fqMaq){ $("pxFqKpis").innerHTML = ""; $("pxFqBody").innerHTML = '<tr><td colspan="5" class="empty">No hay máquinas con los filtros actuales.</td></tr>'; return; }
   if (document.activeElement!==$("pxFqMaq")) $("pxFqMaq").value = nombres.get(PX.fqMaq);
   const f = pxFrecuencia(PX.fqMaq), hoy = PX.res.hoy, t = f.tot;
+  const tk = pxToks();
+  if (tk.length){     // si se buscó una causa, solo esa causa; si se buscó máquina o área, todas las de la máquina
+    const e0 = PX.enr && PX.enr.get(PX.fqMaq), hm = pxBusca(nombres.get(PX.fqMaq)+" "+((e0 && e0.area_pbi) || ""));
+    f.filas = f.filas.filter(x=> tk.every(w=> hm.includes(w) || pxBusca(x.nom+" "+x.cod).includes(w)));
+    if (!tk.every(w=>hm.includes(w))) f.evTP = [];
+  }
   const sub = iv => iv.n ? (iv.n===1 ? "una sola vez" : "cada ≈ "+fmt(Math.round(iv.med))+" d") : "sin registros";
   const e = PX.enr && PX.enr.get(PX.fqMaq);
   $("pxFqKpis").innerHTML = [
@@ -1784,7 +1811,10 @@ function pxRenderListas(){
     : '<li class="empty">Todas las fallas quedaron asociadas a una causa del listado.</li>';
 }
 function renderPrescriptive(){
-  PX.res = pxCompute();
+  PX.vista = pxVista();
+  PX.res = pxCompute(PX.vista);
+  PX.resBase = PX.q ? pxCompute(VIEW) : PX.res;      // base sin búsqueda: de ahí salen las sugerencias del buscador
+  PX.estSet = new Set(pxFiltradas().map(r=>pxLimpia(r.maq)+"|"+r.cod));
   const res = PX.res;
   PX.odtIdx = new Map();
   for (const o of (PX.odt||[])){
@@ -1809,7 +1839,7 @@ function renderPrescriptive(){
   const ei = PX.enrInfo;
   $("pxEnrInfo").textContent = ei ? "Datos de Power BI: paros hasta el "+fdate(ei.p)+" y ODT hasta el "+fdate(ei.o)+" ("+fmt(ei.n)+" máquinas en la base)." : "No se pudo leer la pestaña con paros y ODT; se muestra solo lo que sale del informe de turnos.";
   $("pxKpis").innerHTML = items.map(i=>'<div class="kpi"><div class="n">'+i[0]+'</div><div class="l">'+i[1]+'</div><div class="p">'+i[2]+'</div></div>').join("");
-  $("pxSub").textContent = "Qué falla se repite en cada máquina y cada cuánto inspeccionarla. Usa los filtros de arriba y toma como fecha de hoy el "+fdate(pxIso(res.hoy))+".";
+  $("pxSub").textContent = "Qué falla se repite en cada máquina y cada cuánto inspeccionarla. «Mostrar» y «Buscar» (máquina, área o causa), junto con los filtros de arriba, aplican a toda esta página. Fecha de hoy: "+fdate(pxIso(res.hoy))+".";
   pxRenderListas(); pxRenderRs(); pxRenderQh(); pxRenderFq(); pxRenderTabla();
 }
 /* ---- Riesgo de falla: Weibull sobre los intervalos entre fallas (turnos) y probabilidad condicional dado el tiempo sin falla ---- */
@@ -1831,9 +1861,9 @@ function pxPatron(w){
   if (!w.fit) return {t:"pocos datos", c:"var(--muted)"};
   return w.b>=1.3 ? {t:"desgaste (el riesgo sube con los días)", c:"var(--paro)"} : w.b<=0.8 ? {t:"temprana / repetitiva", c:"var(--corr)"} : {t:"aleatoria (sin patrón de tiempo)", c:"var(--muted)"};
 }
-function pxRiesgos(res){
+function pxRiesgos(res, filas){
   const out = [];
-  for (const r of res.rows){
+  for (const r of filas){
     if (r.dias.length < 4) continue;
     const ints = r.dias.slice(1).map((d,i)=>d-r.dias[i]);
     const w = pxWeibull(ints), t = Math.max(res.hoy - r.ultima, 0);
@@ -1842,10 +1872,10 @@ function pxRiesgos(res){
   }
   return out.sort((a,b)=>Math.round(b.p30*100)-Math.round(a.p30*100) || a.x-b.x);
 }
-function pxValidar(res){
+function pxValidar(res, filas){
   /* Prueba hacia atrás: se predice con los datos hasta hace 30 días y se compara con lo que ocurrió después */
   const corte = res.hoy-30; let n = 0, fallo = 0, alto = 0, altoF = 0;
-  for (const r of res.rows){
+  for (const r of filas){
     const prev = r.dias.filter(d=>d<=corte); if (prev.length < 4) continue;
     const w = pxWeibull(prev.slice(1).map((d,i)=>d-prev[i])), p = pxProb(w, corte-prev[prev.length-1], 30);
     const ocurrio = r.dias.some(d=>d>corte); n++; if (ocurrio) fallo++;
@@ -1854,7 +1884,7 @@ function pxValidar(res){
   return {n, fallo, alto, altoF};
 }
 function pxRenderRs(){
-  const res = PX.res, lista = pxRiesgos(res), lim = PX.rsLimit || 15, vis = lista.slice(0, lim);
+  const res = PX.res, filas = pxFiltradas(), lista = pxRiesgos(res, filas), lim = PX.rsLimit || 15, vis = lista.slice(0, lim);
   const pc = v=>Math.round(v*100)+"%";
   const niv = p=> p>=0.6 ? {t:"Alto", c:"var(--paro)"} : p>=0.3 ? {t:"Medio", c:"var(--corr)"} : {t:"Bajo", c:"var(--prev)"};
   $("pxRsSub").innerHTML = SRC_T+" Para cada máquina y causa con 4 o más días de falla se ajusta el tiempo entre fallas (modelo Weibull) y se calcula la probabilidad de que vuelva a fallar según los días que lleva sin fallar. Ordenado de mayor a menor riesgo.";
@@ -1873,7 +1903,7 @@ function pxRenderRs(){
   }).join("") : '<tr><td colspan="8" class="empty">No hay combinaciones con 4 o más días de falla en estos filtros.</td></tr>';
   $("pxRsInfo").textContent = "Mostrando "+fmt(vis.length)+" de "+fmt(lista.length)+" combinaciones";
   $("pxRsMore").hidden = vis.length >= lista.length;
-  const v = pxValidar(res);
+  const v = pxValidar(res, filas);
   $("pxRsVal").innerHTML = v.n >= 10
     ? "<b>Qué tan confiable es.</b> Prueba hacia atrás: con los datos de hace 30 días, de "+fmt(v.n)+" combinaciones fallaron "+fmt(v.fallo)+" ("+pc(v.fallo/v.n)+"). De las "+fmt(v.alto)+" que el modelo marcó con 50% o más, fallaron "+fmt(v.altoF)+(v.alto ? " ("+pc(v.altoF/v.alto)+")" : "")+". Si el porcentaje de aciertos no supera al general, el modelo todavía no aporta; con más historia y datos de condición mejora."
     : "No hay suficientes combinaciones para validar el modelo con estos filtros.";
@@ -1949,7 +1979,7 @@ setTimeout(()=>{ if (location.hash==="#prescriptivo") setPage("prescriptivo"); }
 const PXS = {items:[], act:-1};
 function pxSugItems(q){
   const maq = new Map(), cau = new Map();
-  for (const r of (PX.res ? PX.res.rows : [])){ maq.set(r.maq, (maq.get(r.maq)||0)+1); cau.set(r.nom, (cau.get(r.nom)||0)+1); }
+  for (const r of (PX.resBase ? PX.resBase.rows : [])){ maq.set(r.maq, (maq.get(r.maq)||0)+1); cau.set(r.nom, (cau.get(r.nom)||0)+1); }
   const todos = [...maq].map(([t,n])=>({t, tipo:"Máquina", n, k:pxBusca(t)})).concat([...cau].map(([t,n])=>({t, tipo:"Causa", n, k:pxBusca(t)})));
   const toks = pxBusca(q).split(" ").filter(Boolean);
   if (!toks.length) return todos.sort((a,b)=>b.n-a.n).slice(0,8);
@@ -1970,7 +2000,7 @@ function pxSugElegir(i){
   const x = PXS.items[i]; if (!x) return;
   $("pxQ").value = x.t; PX.q = x.t; PX.limit = 25; pxSugCerrar();
   if (!pxFiltradas().length){ PX.estado = "all"; $("pxEstado").value = "all"; }   // si ese estado no tiene filas, se muestran todas las recurrentes
-  pxRenderListas(); pxRenderTabla();
+  renderPrescriptive();
 }
 $("pxQ").addEventListener("input", pxSugAbrir);
 $("pxQ").addEventListener("focus", pxSugAbrir);
@@ -1999,12 +2029,12 @@ $("pxFqBody").addEventListener("click", e=>{
   pxRenderFq();
 });
 $("pxFqChips").addEventListener("click", e=>{ const b = e.target.closest("[data-fq]"); if (b) pxElegirMaq(b.dataset.fq); });
-$("pxEstado").addEventListener("change", e=>{ PX.estado = e.target.value; PX.limit = 25; pxRenderTabla(); });
-let pxTimer; $("pxQ").addEventListener("input", e=>{ clearTimeout(pxTimer); pxTimer = setTimeout(()=>{ PX.q = e.target.value.trim(); PX.limit = 25; pxRenderListas(); pxRenderTabla(); }, 180); });
+$("pxEstado").addEventListener("change", e=>{ PX.estado = e.target.value; PX.limit = 25; PX.qhLimit = 12; PX.rsLimit = 15; renderPrescriptive(); });
+let pxTimer; $("pxQ").addEventListener("input", e=>{ clearTimeout(pxTimer); pxTimer = setTimeout(()=>{ PX.q = e.target.value.trim(); PX.limit = 25; PX.qhLimit = 12; PX.rsLimit = 15; renderPrescriptive(); }, 180); });
 $("pxMore").addEventListener("click", ()=>{ PX.limit += 25; pxRenderTabla(); });
 function pxPickCausa(li){
   if (!li || li.dataset.px==null) return;
-  PX.q = PX.q===li.dataset.px ? "" : li.dataset.px; $("pxQ").value = PX.q; PX.limit = 25; pxRenderListas(); pxRenderTabla();
+  PX.q = PX.q===li.dataset.px ? "" : li.dataset.px; $("pxQ").value = PX.q; PX.limit = 25; PX.qhLimit = 12; PX.rsLimit = 15; renderPrescriptive();
 }
 $("pxCausas").addEventListener("click", e=> pxPickCausa(e.target.closest("li[data-px]")));
 $("pxCausas").addEventListener("keydown", e=>{ if (e.key==="Enter"||e.key===" "){ const li=e.target.closest("li[data-px]"); if (li){ e.preventDefault(); pxPickCausa(li); } } });
