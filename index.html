@@ -159,6 +159,11 @@ input[type=file]{display:none}
 /* Registros: problema, solución y observación se leen completos, sin hacer clic */
 td.clip div{display:block;-webkit-line-clamp:unset;overflow:visible;max-width:440px;min-width:200px;white-space:normal;overflow-wrap:anywhere}
 #tbody tr{cursor:default}
+/* Autocompletado de «Buscar máquina o causa» */
+.px-sug{position:absolute;left:0;right:0;top:100%;z-index:30;margin:3px 0 0;padding:4px;list-style:none;background:var(--surface);border:1px solid var(--line);border-radius:8px;max-height:300px;overflow:auto;box-shadow:0 8px 22px rgba(0,0,0,.2)}
+.px-sug li{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:14px;overflow-wrap:anywhere}
+.px-sug li:hover,.px-sug li[aria-selected="true"]{background:var(--soft)}
+.px-sug .tp{flex:none;font-size:11.5px;color:var(--muted);white-space:nowrap}
 /* Frecuencia de intervención por máquina */
 .fq-tl{display:block;width:270px;max-width:100%;height:40px}
 .fq-leg{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin:6px 0 10px}
@@ -351,9 +356,10 @@ tr.px-det td{background:var(--soft)}
             <option value="all">Todas las recurrentes</option>
           </select>
         </div>
-        <div class="field" style="min-width:230px">
+        <div class="field" style="min-width:260px;position:relative">
           <label for="pxQ">Buscar máquina o causa</label>
-          <input type="search" id="pxQ" placeholder="Ej. Jet 995, variador" autocomplete="off">
+          <input type="search" id="pxQ" placeholder="Escribe: Termofijadora 878, variador…" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="pxQSug">
+          <ul class="px-sug" id="pxQSug" role="listbox" aria-label="Sugerencias de máquina o causa" hidden></ul>
         </div>
       </div>
     </div>
@@ -1395,11 +1401,18 @@ function pxCompute(){
     causas:[...causas.values()].sort((a,b)=>b.n-a.n),
     cand:[...cand.entries()].sort((a,b)=>b[1]-a[1])};
 }
+/* Búsqueda tolerante: sin tildes, sin «#» ni guiones y por palabras sueltas ("termofijadora #878" encuentra "Termofijadora # 878 - Montex") */
+const pxBusca = s => pxNorm(s).replace(/[^a-z0-9]+/g, " ").trim();
 function pxFiltradas(){
   const rows = PX.res.rows;
   const okEst = {act:["act"], vig:["act","vig"], rec:["act","vig","rec"], all:["act","vig","rec","sin"]}[PX.estado];
-  const q = pxNorm(PX.q);
-  return rows.filter(r=> okEst.includes(r.est) && (!q || pxNorm(r.maq+" "+r.nom+" "+r.cod+" "+r.sec).includes(q)));
+  const toks = pxBusca(PX.q).split(" ").filter(Boolean);
+  return rows.filter(r=>{
+    if (!okEst.includes(r.est)) return false;
+    if (!toks.length) return true;
+    const h = pxBusca(r.maq+" "+r.nom+" "+r.cod+" "+r.sec);
+    return toks.every(t=>h.includes(t));
+  });
 }
 /* ---- Qué hacer por causa: ODT correctivas terminadas + informes de turno ---- */
 const PX_ACC_SIN = new Set(["Otra / sin detalle","Seguimiento pendiente"]);
@@ -1808,6 +1821,44 @@ function setPage(p){
 $("tabTurnos").addEventListener("click", ()=> setPage("turnos"));
 $("tabPresc").addEventListener("click", ()=> setPage("prescriptivo"));
 setTimeout(()=>{ if (location.hash==="#prescriptivo") setPage("prescriptivo"); }, 0);
+/* Sugerencias mientras se escribe en «Buscar máquina o causa» */
+const PXS = {items:[], act:-1};
+function pxSugItems(q){
+  const maq = new Map(), cau = new Map();
+  for (const r of (PX.res ? PX.res.rows : [])){ maq.set(r.maq, (maq.get(r.maq)||0)+1); cau.set(r.nom, (cau.get(r.nom)||0)+1); }
+  const todos = [...maq].map(([t,n])=>({t, tipo:"Máquina", n, k:pxBusca(t)})).concat([...cau].map(([t,n])=>({t, tipo:"Causa", n, k:pxBusca(t)})));
+  const toks = pxBusca(q).split(" ").filter(Boolean);
+  if (!toks.length) return todos.sort((a,b)=>b.n-a.n).slice(0,8);
+  const q1 = toks.join(" ");
+  return todos.filter(x=>toks.every(t=>x.k.includes(t)))
+    .sort((a,b)=> (b.k.startsWith(q1)-a.k.startsWith(q1)) || b.n-a.n || a.t.localeCompare(b.t,"es")).slice(0,8);
+}
+function pxSugRender(){
+  const ul = $("pxQSug"), inp = $("pxQ");
+  if (!PXS.items.length){ ul.hidden = true; inp.setAttribute("aria-expanded","false"); inp.removeAttribute("aria-activedescendant"); return; }
+  ul.innerHTML = PXS.items.map((x,i)=>'<li role="option" id="pxQSug'+i+'" data-i="'+i+'" aria-selected="'+(i===PXS.act)+'"><span>'+esc(x.t)+'</span><span class="tp">'+x.tipo+' · '+x.n+'</span></li>').join("");
+  ul.hidden = false; inp.setAttribute("aria-expanded","true");
+  if (PXS.act>=0) inp.setAttribute("aria-activedescendant","pxQSug"+PXS.act); else inp.removeAttribute("aria-activedescendant");
+}
+function pxSugAbrir(){ PXS.items = pxSugItems($("pxQ").value); PXS.act = -1; pxSugRender(); }
+function pxSugCerrar(){ PXS.items = []; PXS.act = -1; pxSugRender(); }
+function pxSugElegir(i){
+  const x = PXS.items[i]; if (!x) return;
+  $("pxQ").value = x.t; PX.q = x.t; PX.limit = 25; pxSugCerrar();
+  if (!pxFiltradas().length){ PX.estado = "all"; $("pxEstado").value = "all"; }   // si ese estado no tiene filas, se muestran todas las recurrentes
+  pxRenderListas(); pxRenderTabla();
+}
+$("pxQ").addEventListener("input", pxSugAbrir);
+$("pxQ").addEventListener("focus", pxSugAbrir);
+$("pxQ").addEventListener("blur", ()=> setTimeout(pxSugCerrar, 150));
+$("pxQ").addEventListener("keydown", e=>{
+  const n = PXS.items.length; if (!n) return;
+  if (e.key==="ArrowDown"){ e.preventDefault(); PXS.act = (PXS.act+1)%n; pxSugRender(); }
+  else if (e.key==="ArrowUp"){ e.preventDefault(); PXS.act = (PXS.act-1+n)%n; pxSugRender(); }
+  else if (e.key==="Enter" && PXS.act>=0){ e.preventDefault(); pxSugElegir(PXS.act); }
+  else if (e.key==="Escape"){ pxSugCerrar(); }
+});
+$("pxQSug").addEventListener("mousedown", e=>{ const li = e.target.closest("li[data-i]"); if (li){ e.preventDefault(); pxSugElegir(+li.dataset.i); } });
 $("pxQhBody").addEventListener("click", e=>{
   const tr = e.target.closest("tr.px-causa"); if (!tr) return;
   const c = tr.dataset.cod; if (PX.qhAbierto.has(c)) PX.qhAbierto.delete(c); else PX.qhAbierto.add(c);
