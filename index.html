@@ -159,6 +159,27 @@ input[type=file]{display:none}
 /* Registros: problema, solución y observación se leen completos, sin hacer clic */
 td.clip div{display:block;-webkit-line-clamp:unset;overflow:visible;max-width:440px;min-width:200px;white-space:normal;overflow-wrap:anywhere}
 #tbody tr{cursor:default}
+/* Tabla de registros: en pantalla ancha las 11 columnas caben sin desplazar; en pantallas angostas se desplaza dentro de su marco */
+.reg-tbl{min-width:1100px}
+.reg-tbl th,.reg-tbl td{overflow-wrap:anywhere;word-break:normal}
+@media (min-width:1100px){
+  .reg-tbl{table-layout:fixed;width:100%;min-width:0}
+  .reg-tbl th{white-space:normal}
+  .reg-tbl th:nth-child(1){width:10%}
+  .reg-tbl th:nth-child(2){width:5%}
+  .reg-tbl th:nth-child(3){width:8%}
+  .reg-tbl th:nth-child(4){width:11%}
+  .reg-tbl th:nth-child(5){width:8%}
+  .reg-tbl th:nth-child(6){width:5%}
+  .reg-tbl th:nth-child(7){width:15%}
+  .reg-tbl th:nth-child(8){width:16%}
+  .reg-tbl th:nth-child(9){width:9%}
+  .reg-tbl th:nth-child(10){width:5%}
+  .reg-tbl th:nth-child(11){width:8%}
+  .reg-tbl td:first-child{white-space:normal !important}
+  .reg-tbl .tag{padding:1px 6px;font-size:11.5px}
+  .reg-tbl td.clip div{max-width:none;min-width:0}
+}
 /* Autocompletado de «Buscar máquina o causa» */
 .px-sug{position:absolute;left:0;right:0;top:100%;z-index:30;margin:3px 0 0;padding:4px;list-style:none;background:var(--surface);border:1px solid var(--line);border-radius:8px;max-height:300px;overflow:auto;box-shadow:0 8px 22px rgba(0,0,0,.2)}
 .px-sug li{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:14px;overflow-wrap:anywhere}
@@ -174,7 +195,11 @@ td.clip div{display:block;-webkit-line-clamp:unset;overflow:visible;max-width:44
 .src.o{border-color:var(--prev)}
 tr.px-fq{cursor:pointer}
 /* Textos completos y evidencia por causa */
-.px-full{min-width:250px;max-width:480px;white-space:normal;overflow-wrap:anywhere}
+.px-full{min-width:320px;max-width:640px;white-space:normal;overflow-wrap:anywhere}
+.px-paso{margin:2px 0 10px}
+.px-paso>b{display:block}
+.px-paso ol{margin:4px 0 0;padding-left:20px;font-size:13.5px;color:var(--text)}
+.px-paso li{margin:2px 0}
 tr.px-causa{cursor:pointer}
 tr.px-det td{background:var(--soft)}
 .px-ev{margin:0 0 10px;padding:8px 12px;border-left:3px solid var(--line);background:var(--surface);border-radius:0 6px 6px 0;white-space:normal;overflow-wrap:anywhere}
@@ -324,7 +349,7 @@ tr.px-det td{background:var(--soft)}
       <input type="search" id="q" placeholder="Buscar por máquina, problema, solución, observación o técnico" aria-label="Buscar en los registros">
     </div>
     <div class="tw">
-      <table>
+      <table class="reg-tbl">
         <thead><tr><th>Fecha</th><th>Turno</th><th>Sección</th><th>Máquina</th><th>Tipo</th><th>Paro</th><th>Problema</th><th>Solución</th><th>Observación</th><th>Foto</th><th>Técnico</th></tr></thead>
         <tbody id="tbody"></tbody>
       </table>
@@ -376,11 +401,24 @@ tr.px-det td{background:var(--soft)}
         <ul class="rank px static" id="pxCand"></ul>
       </div>
     </div>
-    <h3 class="px-h3">Qué hacer por causa</h3>
+    <h3 class="px-h3">Riesgo de falla en los próximos 30 días</h3>
+    <p class="sub" id="pxRsSub"></p>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Riesgo</th><th>Máquina</th><th>Causa</th><th>Última falla</th><th>Patrón de la falla</th><th>Prob. 7 d</th><th>Prob. 30 d</th><th>Qué anticipar</th></tr></thead>
+        <tbody id="pxRsBody"></tbody>
+      </table>
+    </div>
+    <div class="pager">
+      <span id="pxRsInfo"></span>
+      <button type="button" id="pxRsMore">Mostrar más</button>
+    </div>
+    <p class="sub" id="pxRsVal" style="margin-top:8px"></p>
+    <h3 class="px-h3" style="margin-top:22px">Qué hacer por causa</h3>
     <p class="sub" id="pxQhSub"></p>
     <div class="tw">
       <table>
-        <thead><tr><th>Causa</th><th>Qué hacer</th><th>Fallas (informes de turno)</th><th>Proyección 30 d (turnos)</th><th>ODT correctivas relacionadas</th></tr></thead>
+        <thead><tr><th>Causa</th><th>Qué hacer</th><th>Fallas (informes de turno)</th><th>Proyección 30 d (turnos)</th></tr></thead>
         <tbody id="pxQhBody"></tbody>
       </table>
     </div>
@@ -1391,7 +1429,7 @@ function pxCompute(){
     const d30 = dias.filter(d=>hoy-d<=30).length, d3060 = dias.filter(d=>hoy-d>30 && hoy-d<=60).length;
     const est = d30>=2 ? "act" : d30===1 ? "vig" : d3060>=1 ? "rec" : "sin";
     const cada = Math.max(hoy-dias[0],1)/dias.length;
-    rows.push({maq:g.maq, cod:g.cod, nom:g.nom, sec:g.sec, planta:g.planta, n:dias.length, d30, d3060, est,
+    rows.push({dias, maq:g.maq, cod:g.cod, nom:g.nom, sec:g.sec, planta:g.planta, n:dias.length, d30, d3060, est,
       cada, med:pxMed(ints), insp:Math.min(90, Math.max(7, Math.round(cada*0.5))), desde:hoy-dias[dias.length-1], ultima:dias[dias.length-1],
       acc:pxModa(g.acc), paroN:g.paro, last:g.last, enr:(PX.enr && PX.enr.get(pxLimpia(g.maq))) || null,
       score:(d30*3 + d3060*1.5 + dias.length*0.5) * (1 + g.paro/g.rows)});
@@ -1466,6 +1504,23 @@ function pxCausasResumen(res){
   lista.sort((a,b)=> b.n-a.n || b.odt.term-a.odt.term);
   return lista;
 }
+/* Paso a paso estándar de cada solución (las que más se usan en ODT y turnos). «{c}» se reemplaza por la causa. */
+const PX_PASOS = {
+  "Cambio de repuesto / pieza":["Detener la máquina y bloquear/etiquetar la energía (eléctrica, neumática o hidráulica) antes de intervenir.","Confirmar la falla de «{c}» y ubicar la pieza dañada (referencia, marca y capacidad).","Verificar que el repuesto esté en bodega y que coincida con la pieza instalada.","Desmontar la pieza dañada y revisar su base, conexiones y desgaste de piezas vecinas.","Instalar la pieza nueva con el torque y la conexión correctos.","Energizar, hacer prueba en vacío y luego con carga; confirmar que la falla no se repite.","Registrar en la ODT la pieza cambiada, la referencia y la causa que la dañó."],
+  "Ajuste / calibración":["Detener la máquina y asegurar la energía.","Medir o leer el valor actual del parámetro de «{c}» y compararlo con el valor de referencia.","Ajustar o calibrar hasta quedar dentro del rango (graduar, nivelar o regular según el caso).","Apretar los seguros o contratuercas para que el ajuste no se pierda.","Probar la máquina en operación y confirmar que el valor se mantiene.","Anotar en el informe el valor final ajustado."],
+  "Revisión de conexiones / apriete":["Desenergizar y bloquear la máquina; comprobar ausencia de tensión.","Abrir el tablero o caja de conexiones de «{c}» y revisar visualmente bornes, terminales y cables (calentamiento, color, sulfato, flojos).","Apretar bornes y terminales al torque recomendado; cambiar los terminales o cables dañados.","Medir continuidad y aislamiento del tramo revisado.","Cerrar, energizar y verificar que el equipo arranca y opera sin falla.","Dejar anotados los puntos flojos encontrados para revisarlos en la próxima preventiva."],
+  "Reinicio / reprogramación":["Registrar el código de falla o el estado que muestra el equipo antes de reiniciar.","Reiniciar o resetear el equipo (variador, PLC, controlador o pantalla).","Si la falla vuelve, revisar y recargar el programa o los parámetros desde el respaldo.","Verificar señales y comunicación (sensores, red, entradas y salidas).","Probar en operación y confirmar que el parámetro quedó correcto.","Guardar el respaldo del programa y anotar el código de falla en el informe."],
+  "Limpieza":["Detener la máquina y asegurar la energía.","Retirar residuos, pelusa, polvo o producto de «{c}» con aire, aspirado o paño; no usar agua en partes eléctricas.","Revisar el componente limpio por desgaste, daño o suciedad en canales y filtros.","Reinstalar y probar el funcionamiento.","Ajustar la frecuencia de limpieza si la falla es repetitiva."],
+  "Lubricación":["Detener la máquina y asegurar la energía.","Identificar los puntos de lubricación de «{c}» y el lubricante correcto según el manual.","Limpiar el punto de engrase y aplicar la cantidad indicada.","Girar manualmente y verificar que no haya ruido, juego o calentamiento.","Registrar el lubricante usado y la fecha en el plan de lubricación."],
+  "Envío a taller / bobinado":["Desconectar y bloquear la energía; retirar el equipo (motor u otro) con ayuda de izaje si hace falta.","Rotular las conexiones antes de soltarlas y tomar datos de placa.","Enviar al taller con la descripción de la falla (quemado, aterrizado, rodamientos, eje).","Pedir al taller el informe de reparación y las pruebas de aislamiento.","Instalar de nuevo, alinear y probar corriente y temperatura.","Registrar tiempo de reparación y garantía del taller."],
+  "Soldadura":["Detener la máquina, asegurar energía y proteger piezas y cables cercanos del calor.","Limpiar la zona de la fisura o ruptura y preparar el bisel.","Soldar con el procedimiento y el material correctos; controlar la deformación.","Esmerilar, revisar alineación y dimensiones.","Montar, probar y revisar que la pieza no vuelva a fisurarse; analizar la causa de la rotura."],
+  "Reparación":["Detener la máquina y asegurar la energía.","Diagnosticar el daño de «{c}» y definir si se repara o se cambia la pieza.","Reparar o rectificar la pieza y verificar medidas, juegos y estado de las piezas vecinas.","Montar y probar en vacío y con carga.","Registrar en la ODT qué se reparó y qué pieza quedó pendiente de cambio."]
+};
+function pxPasosDe(a, nom){
+  const p = PX_PASOS[a]; if (!p) return [];
+  const corto = nom.replace(/\s*\(.*$/, "").toLowerCase();
+  return p.map(s=>s.replace(/\{c\}/g, corto));
+}
 function pxQueHacer(g){
   const l = [], comb = new Map();
   for (const [a,k] of g.accO) comb.set(a, (comb.get(a)||0) + 2*k);
@@ -1473,15 +1528,17 @@ function pxQueHacer(g){
   for (const a of PX_ACC_SIN) comb.delete(a);
   const top = [...comb.entries()].sort((a,b)=>b[1]-a[1]).slice(0,2);
   g.acciones = top.map(([a])=>a);
+  g.pasos = [];
   top.forEach(([a],i)=>{
     const ev = [], kO = g.accO.get(a)||0, kT = g.accT.get(a)||0;
-    if (kO) ev.push(kO+" de "+g.odt.conObs+" ODT terminadas");
+    if (kO) ev.push(kO+" de "+g.odt.conObs+" informes de ODT");
     if (kT) ev.push(kT+" de "+g.nSol+" reportes de turno");
-    l.push((i===0 ? "Hacer primero: " : "Si no resuelve: ")+a.toLowerCase()+(ev.length ? " ("+ev.join(" y ")+")" : ""));
+    const titulo = (i===0 ? "Hacer primero: " : "Si no resuelve: ")+a.toLowerCase()+(ev.length ? " ("+ev.join(" y ")+")" : "");
+    l.push(titulo);
+    g.pasos.push({titulo, pasos:pxPasosDe(a, g.nom)});
   });
   if (!top.length) l.push("Los informes no describen una acción repetida: dejar la solución escrita en cada ODT.");
   if (g.repu.length) l.push("Repuestos a tener disponibles (según ODT y reportes de turno): "+g.repu.map(([w,n])=>w+" ("+n+")").join(", "));
-  if (g.n>0) l.push("Proyección (informes de turno): ≈"+g.esp.toFixed(1).replace(".",",")+" falla(s) en los próximos 30 días ("+g.d90+" en los últimos 90)");
   if (g.odt.conObs===0) l.push("Sin ODT terminadas con informe para esta causa: la recomendación sale solo de los reportes de turno.");
   return l;
 }
@@ -1644,18 +1701,19 @@ function pxRenderFq(){
 function pxRenderQh(){
   const lista = PX.qh, vis = lista.slice(0, PX.qhLimit);
   const dec = v => (+v).toFixed(1).replace(".",",");
-  $("pxQhSub").textContent = "Para cada causa del catálogo: cuántas fallas hay en turnos, cuántas ODT correctivas se relacionan con ella y qué hacer según lo que resolvió esas ODT y esos reportes. "
-    +(PX.odt ? "ODT desde "+fdate(PX.odt.reduce((m,o)=>(o.f && o.f<m ? o.f : m), "9999-12-31"))+"." : "No se pudieron leer las ODT: solo se usan los informes de turno.")+" Toca una causa para ver las ODT y reportes que la respaldan.";
+  $("pxQhSub").textContent = "Para cada causa del catálogo: las dos soluciones más usadas (según informes de ODT terminadas y reportes de turno) con su paso a paso. "
+    +(PX.odt ? "ODT desde "+fdate(PX.odt.reduce((m,o)=>(o.f && o.f<m ? o.f : m), "9999-12-31"))+"." : "No se pudieron leer las ODT: solo se usan los informes de turno.")+" Toca una causa para ver cómo se resolvió en los informes reales.";
   $("pxQhBody").innerHTML = vis.length ? vis.map(g=>{
     const ab = PX.qhAbierto.has(g.cod);
     return '<tr class="px-causa" data-cod="'+esc(g.cod)+'">'
       +'<td><b>'+esc(g.nom)+'</b><div class="px-act">código '+esc(g.cod)+' · '+(ab ? '▾ ocultar respaldo' : '▸ ver respaldo')+'</div></td>'
-      +'<td class="px-full">'+g.lineas.map((t,i)=>'<div'+(i ? ' class="px-act"' : '')+'>'+(i ? '' : '<b>')+esc(t)+(i ? '' : '</b>')+'</div>').join("")+'</td>'
+      +'<td class="px-full">'+(g.pasos.length ? g.pasos.map(p=>'<div class="px-paso"><b>'+esc(p.titulo)+'</b><ol>'+p.pasos.map(s=>'<li>'+esc(s)+'</li>').join("")+'</ol></div>').join("") : '')
+        +g.lineas.filter(t=>!/^(Hacer primero|Si no resuelve)/.test(t)).map(t=>'<div class="px-act">'+esc(t)+'</div>').join("")+'</td>'
       +'<td class="px-num"><b>'+fmt(g.n)+'</b><div class="px-act">'+fmt(g.paro)+' con paro</div></td>'
       +'<td class="px-num">'+(g.n>0 ? '≈ '+dec(g.esp)+'<div class="px-act">'+fmt(g.d90)+' en los últimos 90 d</div>' : '<span class="px-act">sin fallas en turnos</span>')+'</td>'
-      +'<td class="px-num"><b>'+fmt(g.odt.tot)+'</b> correctivas<div class="px-act">'+fmt(g.odt.term)+' terminadas</div></td></tr>'
-      +(ab ? '<tr class="px-det"><td colspan="5">'+pxEvidencia(g)+'</td></tr>' : '');
-  }).join("") : '<tr><td colspan="5" class="empty">No hay causas con fallas u ODT en estos filtros.</td></tr>';
+      +'</tr>'
+      +(ab ? '<tr class="px-det"><td colspan="4">'+pxEvidencia(g)+'</td></tr>' : '');
+  }).join("") : '<tr><td colspan="4" class="empty">No hay causas con fallas u ODT en estos filtros.</td></tr>';
   $("pxQhInfo").textContent = "Mostrando "+fmt(vis.length)+" de "+fmt(lista.length)+" causas";
   $("pxQhMore").hidden = vis.length >= lista.length;
 }
@@ -1752,7 +1810,73 @@ function renderPrescriptive(){
   $("pxEnrInfo").textContent = ei ? "Datos de Power BI: paros hasta el "+fdate(ei.p)+" y ODT hasta el "+fdate(ei.o)+" ("+fmt(ei.n)+" máquinas en la base)." : "No se pudo leer la pestaña con paros y ODT; se muestra solo lo que sale del informe de turnos.";
   $("pxKpis").innerHTML = items.map(i=>'<div class="kpi"><div class="n">'+i[0]+'</div><div class="l">'+i[1]+'</div><div class="p">'+i[2]+'</div></div>').join("");
   $("pxSub").textContent = "Qué falla se repite en cada máquina y cada cuánto inspeccionarla. Usa los filtros de arriba y toma como fecha de hoy el "+fdate(pxIso(res.hoy))+".";
-  pxRenderListas(); pxRenderQh(); pxRenderFq(); pxRenderTabla();
+  pxRenderListas(); pxRenderRs(); pxRenderQh(); pxRenderFq(); pxRenderTabla();
+}
+/* ---- Riesgo de falla: Weibull sobre los intervalos entre fallas (turnos) y probabilidad condicional dado el tiempo sin falla ---- */
+function pxWeibull(ints){
+  const x = ints.map(v=>Math.max(v,1)).sort((a,b)=>a-b), n = x.length;
+  if (n >= 3){
+    const X = x.map(Math.log), Y = x.map((_,i)=>Math.log(-Math.log(1-(i+1-0.3)/(n+0.4))));
+    const mx = X.reduce((a,b)=>a+b,0)/n, my = Y.reduce((a,b)=>a+b,0)/n;
+    let sxy = 0, sxx = 0; for (let i=0;i<n;i++){ sxy += (X[i]-mx)*(Y[i]-my); sxx += (X[i]-mx)**2; }
+    if (sxx > 1e-9){
+      const b = Math.min(4, Math.max(0.5, sxy/sxx));
+      return {b, eta:Math.exp(mx - my/(sxy/sxx)), fit:true};
+    }
+  }
+  return {b:1, eta:x.reduce((a,c)=>a+c,0)/n, fit:false};
+}
+function pxProb(w, t, h){ const S = u=>Math.exp(-Math.pow(u/w.eta, w.b)); return Math.min(0.99, Math.max(0, 1 - S(t+h)/S(t))); }
+function pxPatron(w){
+  if (!w.fit) return {t:"pocos datos", c:"var(--muted)"};
+  return w.b>=1.3 ? {t:"desgaste (el riesgo sube con los días)", c:"var(--paro)"} : w.b<=0.8 ? {t:"temprana / repetitiva", c:"var(--corr)"} : {t:"aleatoria (sin patrón de tiempo)", c:"var(--muted)"};
+}
+function pxRiesgos(res){
+  const out = [];
+  for (const r of res.rows){
+    if (r.dias.length < 4) continue;
+    const ints = r.dias.slice(1).map((d,i)=>d-r.dias[i]);
+    const w = pxWeibull(ints), t = Math.max(res.hoy - r.ultima, 0);
+    const x = Math.max(0, w.eta*Math.pow(Math.pow(t/w.eta, w.b)+Math.LN2, 1/w.b) - t);   // días hasta que la probabilidad acumulada llega al 50%
+    out.push({r, w, t, x, p7:pxProb(w,t,7), p30:pxProb(w,t,30)});
+  }
+  return out.sort((a,b)=>Math.round(b.p30*100)-Math.round(a.p30*100) || a.x-b.x);
+}
+function pxValidar(res){
+  /* Prueba hacia atrás: se predice con los datos hasta hace 30 días y se compara con lo que ocurrió después */
+  const corte = res.hoy-30; let n = 0, fallo = 0, alto = 0, altoF = 0;
+  for (const r of res.rows){
+    const prev = r.dias.filter(d=>d<=corte); if (prev.length < 4) continue;
+    const w = pxWeibull(prev.slice(1).map((d,i)=>d-prev[i])), p = pxProb(w, corte-prev[prev.length-1], 30);
+    const ocurrio = r.dias.some(d=>d>corte); n++; if (ocurrio) fallo++;
+    if (p >= 0.5){ alto++; if (ocurrio) altoF++; }
+  }
+  return {n, fallo, alto, altoF};
+}
+function pxRenderRs(){
+  const res = PX.res, lista = pxRiesgos(res), lim = PX.rsLimit || 15, vis = lista.slice(0, lim);
+  const pc = v=>Math.round(v*100)+"%";
+  const niv = p=> p>=0.6 ? {t:"Alto", c:"var(--paro)"} : p>=0.3 ? {t:"Medio", c:"var(--corr)"} : {t:"Bajo", c:"var(--prev)"};
+  $("pxRsSub").innerHTML = SRC_T+" Para cada máquina y causa con 4 o más días de falla se ajusta el tiempo entre fallas (modelo Weibull) y se calcula la probabilidad de que vuelva a fallar según los días que lleva sin fallar. Ordenado de mayor a menor riesgo.";
+  $("pxRsBody").innerHTML = vis.length ? vis.map(x=>{
+    const r = x.r, n = niv(x.p30), pa = pxPatron(x.w), med = Math.round(r.med);
+    const g = PX.qhMap && PX.qhMap.get(r.cod);
+    const acc = g && g.acciones && g.acciones[0] ? g.acciones[0].toLowerCase() : "inspección";
+    const prox = "Próxima falla probable en ≈"+fmt(Math.max(1, Math.round(x.x)))+" d. ";
+    const que = prox + (x.t >= med && x.p30 >= 0.3 ? "Ya pasó su intervalo típico ("+fmt(med)+" d): inspeccionar y preparar "+acc+" esta semana." : x.p30 >= 0.3 ? "Planear inspección antes de esa fecha y tener el repuesto disponible." : "Seguir con la inspección rutinaria cada "+fmt(r.insp)+" d.");
+    return '<tr style="cursor:default"><td><span class="est"><i class="dot" style="background:'+n.c+'"></i>'+n.t+'</span></td>'
+      +'<td>'+esc(r.maq)+'</td><td>'+esc(r.nom)+'<div class="px-act">código '+esc(r.cod)+'</div></td>'
+      +'<td class="px-num">hace '+fmt(x.t)+' d<div class="px-act">cada ≈'+fmt(med)+' d (mediana)</div></td>'
+      +'<td><span style="color:'+pa.c+'">'+pa.t+'</span><div class="px-act">forma β = '+x.w.b.toFixed(1).replace(".",",")+' · '+fmt(r.n)+' fallas</div></td>'
+      +'<td class="px-num"><b>'+pc(x.p7)+'</b></td><td class="px-num"><b>'+pc(x.p30)+'</b></td>'
+      +'<td class="px-full">'+esc(que)+'</td></tr>';
+  }).join("") : '<tr><td colspan="8" class="empty">No hay combinaciones con 4 o más días de falla en estos filtros.</td></tr>';
+  $("pxRsInfo").textContent = "Mostrando "+fmt(vis.length)+" de "+fmt(lista.length)+" combinaciones";
+  $("pxRsMore").hidden = vis.length >= lista.length;
+  const v = pxValidar(res);
+  $("pxRsVal").innerHTML = v.n >= 10
+    ? "<b>Qué tan confiable es.</b> Prueba hacia atrás: con los datos de hace 30 días, de "+fmt(v.n)+" combinaciones fallaron "+fmt(v.fallo)+" ("+pc(v.fallo/v.n)+"). De las "+fmt(v.alto)+" que el modelo marcó con 50% o más, fallaron "+fmt(v.altoF)+(v.alto ? " ("+pc(v.altoF/v.alto)+")" : "")+". Si el porcentaje de aciertos no supera al general, el modelo todavía no aporta; con más historia y datos de condición mejora."
+    : "No hay suficientes combinaciones para validar el modelo con estos filtros.";
 }
 /* Paros y ODT (Power BI): pestaña "Prescriptivo_Maquinas" del mismo Google Sheet, una fila por máquina */
 function pxJsonp(hoja){
@@ -1865,6 +1989,7 @@ $("pxQhBody").addEventListener("click", e=>{
   pxRenderQh();
 });
 $("pxQhMore").addEventListener("click", ()=>{ PX.qhLimit += 12; pxRenderQh(); });
+$("pxRsMore").addEventListener("click", ()=>{ PX.rsLimit = (PX.rsLimit||15) + 15; pxRenderRs(); });
 function pxElegirMaq(k){ PX.fqMaq = k; pxRenderFq(); }
 $("pxFqMaq").addEventListener("input", e=>{ const k = pxLimpia(e.target.value.trim()); if (PX.fqNombres && PX.fqNombres.has(k)) pxElegirMaq(k); });
 $("pxFqMaq").addEventListener("change", e=>{ const k = pxLimpia(e.target.value.trim()); if (PX.fqNombres && PX.fqNombres.has(k)) pxElegirMaq(k); else if (PX.fqMaq && PX.fqNombres) e.target.value = PX.fqNombres.get(PX.fqMaq)||""; });
