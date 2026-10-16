@@ -244,6 +244,7 @@ tr.px-det td{background:var(--soft)}
       <div class="field"><label for="fTurno">Turno</label><select id="fTurno"></select></div>
       <div class="field"><label for="fMto">Tipo de mantenimiento</label><select id="fMto"></select></div>
       <div class="field"><label for="fParo">Paro</label><select id="fParo"></select></div>
+      <div class="field"><label for="fMaq">Máquina</label><input type="text" id="fMaq" list="fMaqList" placeholder="Escribe o elige una máquina" autocomplete="off"><datalist id="fMaqList"></datalist></div>
     </div>
     <div class="chips" id="chips"></div>
   </section>
@@ -408,7 +409,7 @@ tr.px-det td{background:var(--soft)}
     <p class="sub" id="pxRsSub"></p>
     <div class="tw">
       <table>
-        <thead><tr><th>Riesgo</th><th>Máquina</th><th>Causa</th><th>Última falla</th><th>Patrón de la falla</th><th>Prob. 7 d</th><th>Prob. 30 d</th><th>Qué anticipar</th></tr></thead>
+        <thead><tr><th>Riesgo</th><th>Máquina</th><th>Causa</th><th>Última falla</th><th>Falla cada</th><th>Patrón de la falla</th><th>Prob. 7 d</th><th>Prob. 30 d</th><th>Qué anticipar</th></tr></thead>
         <tbody id="pxRsBody"></tbody>
       </table>
     </div>
@@ -695,6 +696,7 @@ function refreshSelects(){
   fillSelect("fTurno","Todos",uniq("turno"),F.turno);
   fillSelect("fMto","Todos",uniq("mto"),F.mto);
   fillSelect("fParo","Todos",["Si","No"],F.paro);
+  $("fMaqList").innerHTML = uniq("maq").map(m=>'<option value="'+esc(m)+'"></option>').join("");
   const first = DATA[0].ts.slice(0,10), last = DATA[DATA.length-1].ts.slice(0,10);
   ["fFrom","fTo"].forEach(id=>{ $(id).min=first; $(id).max=last; });
 }
@@ -734,6 +736,7 @@ function renderHeader(){
   $("range").textContent = fmt(DATA.length)+" registros, del "+fdate(a)+" al "+fdt(b)+". "+src;
 }
 function renderChips(){
+  if (document.activeElement!==$("fMaq")) $("fMaq").value = F.maq;
   const items = [];
   if (F.maq) items.push(["maq","Máquina: "+F.maq]);
   if (F.tec) items.push(["tec","Técnico: "+F.tec]);
@@ -1899,11 +1902,12 @@ function pxRenderRs(){
     const que = prox + (x.t >= med && x.p30 >= 0.3 ? "Ya pasó su intervalo típico ("+fmt(med)+" d): inspeccionar y preparar "+acc+" esta semana." : x.p30 >= 0.3 ? "Planear inspección antes de esa fecha y tener el repuesto disponible." : "Seguir con la inspección rutinaria cada "+fmt(r.insp)+" d.");
     return '<tr style="cursor:default"><td><span class="est"><i class="dot" style="background:'+n.c+'"></i>'+n.t+'</span></td>'
       +'<td>'+esc(r.maq)+'</td><td>'+esc(r.nom)+'<div class="px-act">código '+esc(r.cod)+'</div></td>'
-      +'<td class="px-num">hace '+fmt(x.t)+' d<div class="px-act">cada ≈'+fmt(med)+' d (mediana)</div></td>'
-      +'<td><span style="color:'+pa.c+'">'+pa.t+'</span><div class="px-act">forma β = '+x.w.b.toFixed(1).replace(".",",")+' · '+fmt(r.n)+' fallas</div></td>'
+      +'<td class="px-num">hace '+fmt(x.t)+' d<div class="px-act">'+esc(fdate(pxIso(r.ultima)))+'</div></td>'
+      +'<td class="px-num"><b>cada ≈'+fmt(med)+' d</b><div class="px-act">promedio '+fmt(Math.round(r.cada))+' d · '+fmt(r.n)+' fallas</div></td>'
+      +'<td><span style="color:'+pa.c+'">'+pa.t+'</span><div class="px-act">forma β = '+x.w.b.toFixed(1).replace(".",",")+'</div></td>'
       +'<td class="px-num"><b>'+pc(x.p7)+'</b></td><td class="px-num"><b>'+pc(x.p30)+'</b></td>'
       +'<td class="px-full">'+esc(que)+'</td></tr>';
-  }).join("") : '<tr><td colspan="8" class="empty">No hay combinaciones con 4 o más días de falla en estos filtros.</td></tr>';
+  }).join("") : '<tr><td colspan="9" class="empty">No hay combinaciones con 4 o más días de falla en estos filtros.</td></tr>';
   $("pxRsInfo").textContent = "Mostrando "+fmt(vis.length)+" de "+fmt(lista.length)+" combinaciones";
   $("pxRsMore").hidden = vis.length >= lista.length;
   const v = pxValidar(res, filas);
@@ -2042,6 +2046,19 @@ function pxPickCausa(li){
 $("pxCausas").addEventListener("click", e=> pxPickCausa(e.target.closest("li[data-px]")));
 $("pxCausas").addEventListener("keydown", e=>{ if (e.key==="Enter"||e.key===" "){ const li=e.target.closest("li[data-px]"); if (li){ e.preventDefault(); pxPickCausa(li); } } });
 
+
+/* Filtro de máquina (arriba): nombre exacto, o una búsqueda que coincida con una sola máquina */
+function fMaqAplicar(texto, final){
+  const v = texto.trim();
+  if (!v){ if (F.maq){ F.maq = ""; PAGE = 0; renderAll(); } return; }
+  const nombres = uniq("maq");
+  let m = nombres.find(n=>n===v) || nombres.find(n=>pxBusca(n)===pxBusca(v));
+  if (!m && final){ const toks = pxBusca(v).split(" ").filter(Boolean), c = nombres.filter(n=>toks.every(t=>pxBusca(n).includes(t))); if (c.length===1) m = c[0]; }
+  if (m){ if (F.maq!==m){ F.maq = m; PAGE = 0; renderAll(); } }
+  else if (final){ $("fMaq").value = F.maq; }
+}
+$("fMaq").addEventListener("input", e=> fMaqAplicar(e.target.value, false));
+$("fMaq").addEventListener("change", e=> fMaqAplicar(e.target.value, true));
 /* ---------- Inicio ---------- */
 const hadCache = loadStore();
 refreshSelects();
