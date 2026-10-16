@@ -160,6 +160,9 @@ input[type=file]{display:none}
 td.clip div{display:block;-webkit-line-clamp:unset;overflow:visible;max-width:440px;min-width:200px;white-space:normal;overflow-wrap:anywhere}
 #tbody tr{cursor:default}
 /* Tabla de registros: en pantalla ancha las 11 columnas caben sin desplazar; en pantallas angostas se desplaza dentro de su marco */
+/* Todas las tablas: el marco desplaza en los dos sentidos, así el título queda fijo y la barra horizontal siempre está a la vista (sin bajar hasta el final) */
+.tw{overflow:auto;max-height:min(75vh,680px);overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.tw th{position:sticky;top:0;z-index:3;background:var(--soft);box-shadow:0 1px 0 var(--line)}
 .reg-tbl{min-width:1100px}
 .reg-tbl th,.reg-tbl td{overflow-wrap:anywhere;word-break:normal}
 @media (min-width:1100px){
